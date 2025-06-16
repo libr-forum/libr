@@ -25,7 +25,7 @@ We've made LIBR beginner-friendly with:
    - **Beginners**: Documentation, UI improvements, simple bug fixes
    - **Web developers**: `src/web-client/` (React/TypeScript)
    - **Mobile developers**: `src/mobile-client/` (Flutter)
-   - **Backend developers**: `src/core/` (Go)
+   - **Backend developers**: `src/core-protocol/` or `src/network/` (Go)
    - **Blockchain developers**: `src/contracts/` (Solidity)
 
 ### When Reviewing First PRs:

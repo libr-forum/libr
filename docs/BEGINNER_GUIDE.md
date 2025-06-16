@@ -46,7 +46,8 @@ LIBR is organized into different folders for different programming languages:
 
 ```
 src/
-├── core/           # 🟢 Go code - Backend logic
+├── core-protocol/  # 🔧 Go code - Core LIBR protocol
+├── network/        # 🌐 Go code - P2P networking
 ├── web-client/     # 🔵 React/TypeScript - Website
 ├── mobile-client/  # 🟣 Flutter/Dart - Mobile app
 ├── contracts/      # 🟡 Solidity - Blockchain contracts
@@ -57,7 +58,7 @@ src/
 - **New to programming?** Start with `src/web-client/` (website)
 - **Know JavaScript/TypeScript?** Work in `src/web-client/`
 - **Know mobile development?** Work in `src/mobile-client/`
-- **Know Go/backend?** Work in `src/core/`
+- **Know Go/backend?** Work in `src/core-protocol/` or `src/network/`
 - **Know blockchain?** Work in `src/contracts/`
 
 ## 🤝 How to Contribute
@@ -96,7 +97,8 @@ git checkout -b dark-mode-theme
   - `improve-error-messages`
 - `web/` - Website (React)
 - `mobile/` - Mobile app (Flutter)
-- `core/` - Backend (Go)
+- `core-protocol/` - Core LIBR logic (Go)
+- `network/` - P2P networking (Go)
 - `contracts/` - Blockchain (Solidity)
 
 ### Step 3: Make Your Changes
