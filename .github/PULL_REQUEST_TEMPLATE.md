@@ -44,6 +44,7 @@
 
 - [ ] 🔍 I tested my changes and they work
 - [ ] 💬 My commit messages follow the format (like `feat: add login button`)
+- [ ] 🌿 My branch has a descriptive name (like `add-login-button` or `fix-spelling`)
 - [ ] 📖 I read the [Beginner Guide](../docs/BEGINNER_GUIDE.md) if this is my first PR
 - [ ] 🤔 I would be comfortable explaining my changes to someone else
 
@@ -55,7 +56,7 @@
 ---
 
 ### 📚 New to contributing? 
-Check out our [Beginner Guide](../docs/BEGINNER_GUIDE.md) for step-by-step instructions!
+Check out our [Beginner Guide](../docs/BEGINNER_GUIDE.md) for step-by-step instructions!`
 
 ### ❓ Need help with commit messages?
 Run this command to check if your commit message is correct:

@@ -304,4 +304,146 @@ This section lists the labels we use to help us track and manage issues and pull
 * `question` - Further information is requested
 * `wontfix` - This will not be worked on
 
+## 🌿 Branch Naming & Workflow Guidelines
+
+To keep our project organized, please follow these simple guidelines for naming your branches:
+
+### 📝 Simple Branch Naming
+
+**Keep it simple and descriptive!** Use names that clearly explain what you're working on:
+
+```bash
+# ✅ Good examples - simple and clear
+add-login-button
+fix-mobile-crash
+update-readme
+improve-dark-mode
+add-search-feature
+fix-typo-in-docs
+
+# ❌ Avoid these - too vague or complex  
+my-changes
+stuff
+fix
+new-feature
+type/scope/very-long-description-that-is-hard-to-read
+```
+
+### 💡 Branch Naming Tips
+
+**For new contributors:**
+- **Be descriptive** but keep it short
+- **Use dashes** instead of spaces (`add-login` not `add login`)
+- **Start with action words** like `add`, `fix`, `update`, `improve`
+- **Don't worry about perfect formatting** - clarity is more important!
+
+**Examples by type of work:**
+```bash
+# Adding something new
+add-user-profile
+add-search-bar
+add-mobile-support
+
+# Fixing bugs
+fix-login-error
+fix-broken-link
+fix-mobile-layout
+
+# Updating documentation
+update-installation-guide
+fix-readme-typos
+add-api-docs
+
+# Improving existing features
+improve-loading-speed
+enhance-user-interface
+optimize-database-queries
+```
+
+### 🔄 Workflow Steps
+
+1. **Fork and Clone**
+   ```bash
+   # Fork the repository on GitHub, then:
+   git clone https://github.com/YOUR_USERNAME/libr.git
+   cd libr
+   git remote add upstream https://github.com/devlup-labs/libr.git
+   ```
+
+2. **Create a Feature Branch**
+   ```bash
+   # Always start from the latest main branch
+   git checkout main
+   git pull upstream main
+   
+   # Create your feature branch with a simple, descriptive name
+   git checkout -b add-user-profile
+   ```
+
+3. **Make Your Changes**
+   ```bash
+   # Make your changes, then stage them
+   git add .
+   
+   # Use conventional commit messages
+   git commit -m "feat: add user profile page with avatar upload"
+   ```
+
+4. **Keep Your Branch Updated**
+   ```bash
+   # Regularly sync with main to avoid conflicts
+   git fetch upstream
+   git rebase upstream/main
+   ```
+
+5. **Push and Create PR**
+   ```bash
+   # Push your branch
+   git push origin feat/web/user-profile-page
+   
+   # Then create a Pull Request on GitHub
+   ```
+
+### ✅ Branch Best Practices
+
+- **Keep branches focused** - One feature/fix per branch
+- **Use descriptive names** - Others should understand what you're working on
+- **Keep branches short-lived** - Aim to merge within a few days
+- **Delete merged branches** - Clean up after your PR is merged
+- **Rebase instead of merge** - Keep history clean
+
+### 🚫 Branch Names to Avoid
+
+```bash
+# Too vague - what are you fixing/updating?
+fix
+update
+my-changes
+stuff
+
+# Too long - keep it concise
+create-a-new-user-authentication-system-with-oauth-and-jwt-tokens
+
+# Hard to read - use dashes, not underscores or capitals
+fix_login_bug
+NEW-FEATURE
+userauth
+```
+
+### 🔧 Branch Management Commands
+
+```bash
+# List all branches
+git branch -a
+
+# Delete local branch after merge
+git branch -d add-user-profile
+
+# Delete remote branch  
+git push origin --delete add-user-profile
+
+# Clean up merged branches
+git branch --merged main | grep -v main | xargs -n 1 git branch -d
+```
+
 Thank you for your contributions to LIBR!

@@ -67,16 +67,37 @@ src/
 2. Look for issues labeled `good first issue` - these are perfect for beginners!
 3. Comment "I'd like to work on this" on the issue you choose
 
-### Step 2: Create a Branch
+### Step 2: Create a Branch With a Good Name
 ```bash
 # Always create a new branch for your work
-git checkout -b my-feature-name
+git checkout -b your-branch-name
 
-# Examples of good branch names:
-# git checkout -b add-user-login
-# git checkout -b fix-button-color
-# git checkout -b update-readme
+# 😊 Simple, descriptive names work best!
+# Examples of GREAT branch names:
+git checkout -b add-login-button
+git checkout -b fix-spelling-error  
+git checkout -b update-readme
+git checkout -b dark-mode-theme
+
+# 🚫 Avoid these branch names:
+# git checkout -b my-changes        # Too vague
+# git checkout -b fix               # What fix?
+# git checkout -b new-stuff         # What stuff?
 ```
+
+**💡 Branch Naming Tips:**
+- **Use short, clear descriptions** of what you're doing
+- **Use dashes** instead of spaces (`add-login-button` not `add login button`)
+- **Be specific** but not too long (`fix-login-bug` is better than `fix-the-bug-where-login-doesnt-work`)
+- **Examples that work well:**
+  - `add-search-bar`
+  - `fix-mobile-layout`
+  - `update-installation-docs`
+  - `improve-error-messages`
+- `web/` - Website (React)
+- `mobile/` - Mobile app (Flutter)
+- `core/` - Backend (Go)
+- `contracts/` - Blockchain (Solidity)
 
 ### Step 3: Make Your Changes
 - Work on your feature/fix in the appropriate `src/` folder

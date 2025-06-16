@@ -1,36 +1,6 @@
 version: 2
 updates:
-  # Enable version updates for Go modules
-  - package-ecosystem: "gomod"
-    directory: "/src/core"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "@lakshyajain-0291"
-      - "@Aradhya2708"
-    assignees:
-      - "@lakshyajain-0291"
-    commit-message:
-      prefix: "go"
-      include: "scope"
-
-  # Enable version updates for npm (web client)
-  - package-ecosystem: "npm"
-    directory: "/src/web-client"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "@lakshyajain-0291"
-      - "@Aradhya2708"
-    assignees:
-      - "@lakshyajain-0291"
-    commit-message:
-      prefix: "npm"
-      include: "scope"
-
-  # Enable version updates for npm (contracts)
+  # Smart contracts - only if package.json exists
   - package-ecosystem: "npm"
     directory: "/src/contracts"
     schedule:
@@ -42,7 +12,33 @@ updates:
     assignees:
       - "@lakshyajain-0291"
     commit-message:
-      prefix: "contracts"
+      prefix: "deps(contracts)"
+      include: "scope"
+
+  # GitHub Actions - always check for workflow updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "deps(ci)"
+      include: "scope"
+
+  # Note: Additional package ecosystems will be automatically added
+  # when package.json (for web-client) or go.mod (for core) files are created
+  # in their respective directories. Dependabot will discover them automatically.
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps"
       include: "scope"
 
   # Enable version updates for GitHub Actions
@@ -50,7 +46,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "@lakshyajain-0291"
       - "@Aradhya2708"
