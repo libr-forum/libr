@@ -25,7 +25,7 @@
   "author": "DALDA IITJ",
   "license": "MIT",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.1",
     "@openzeppelin/test-helpers": "^0.5.16",
     "hardhat": "^2.19.2",
