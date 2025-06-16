@@ -204,8 +204,8 @@ When your code is ready:
 2. **Read the documentation** - look at README.md and CONTRIBUTING.md
 3. **Ask questions** - create a new issue with the "Question" template
 4. **Contact mentors:**
-   - Aradhya Mahajan: +91 90581 38511
-   - Lakshya Jain: +91 79761 23107
+   - Aradhya Mahajan: [Aradhya2708](https://github.com/Aradhya2708/)
+   - Lakshya Jain: [lakshyajain-0291](https://github.com/lakshyajain-0291)
 
 ### Common Beginner Questions:
 
