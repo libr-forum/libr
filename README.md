@@ -27,11 +27,10 @@ LIBR strikes a balance by using a replicated DHT (Distributed Hash Table) settin
 
 LIBR is built with the following components:
 
-1. **Core Protocol (Go)**: The backbone of the system, implementing the DHT, cryptographic operations, and moderation quorum mechanisms.
-2. **Blockchain Layer (Solidity)**: Smart contracts that manage global state, moderator registry, and community governance.
+1. **Protocol and Networking Layer (Go)**: The backbone of the system, implementing the DHT, cryptographic operations, moderation quorum mechanisms, and peer-to-peer communication.
+2. **Blockchain Layer (Solidity)**: Smart contracts that manage global state, moderator registry, and community governance and incentivization.
 3. **Web Client (React)**: User-friendly interface for interacting with LIBR communities.
 4. **Mobile Client (Flutter)**: Native mobile experience for broader accessibility.
-5. **Networking Layer (libp2p)**: Handles peer-to-peer communication between nodes.
 
 ## Tech Stack
 
