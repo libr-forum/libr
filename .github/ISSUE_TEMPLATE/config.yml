@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Beginner Guide
+    url: https://github.com/devlup-labs/libr/blob/main/docs/BEGINNER_GUIDE.md
+    about: New to contributing? Start here for step-by-step guidance!
+  - name: 💬 General Discussion
+    url: https://github.com/devlup-labs/libr/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📞 Contact Mentors
+    url: https://github.com/devlup-labs/libr#contact
+    about: Need direct help? Contact our mentors

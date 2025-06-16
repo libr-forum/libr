@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-go:
+    name: Test Go Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Test Go modules
+        run: |
+          cd src/core
+          if [ -f "go.mod" ]; then
+            go test -v ./...
+          else
+            echo "No Go modules found, skipping tests"
+          fi
+
+  test-web:
+    name: Test Web Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd src/web-client
+          if [ -f "package.json" ]; then
+            npm ci
+          else
+            echo "No package.json found, skipping web client tests"
+          fi
+      - name: Run tests
+        run: |
+          cd src/web-client
+          if [ -f "package.json" ]; then
+            npm test -- --passWithNoTests
+          fi
+
+  test-mobile:
+    name: Test Mobile Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+      - name: Install dependencies
+        run: |
+          cd src/mobile-client
+          if [ -d "lib" ]; then
+            flutter pub get
+          else
+            echo "No Flutter project found, skipping mobile client tests"
+          fi
+      - name: Run tests
+        run: |
+          cd src/mobile-client
+          if [ -d "lib" ]; then
+            flutter test --no-pub
+          fi
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Go Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55.2
+          working-directory: src/core
+          args: --timeout=5m
+          skip-pkg-cache: true
+          skip-build-cache: true
+        continue-on-error: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Lint Web Client
+        run: |
+          cd src/web-client
+          if [ -f "package.json" ]; then
+            npm ci
+            npm run lint
+          else
+            echo "No package.json found, skipping web client linting"
+          fi
+        continue-on-error: true

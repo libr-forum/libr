@@ -1,0 +1,61 @@
+version: 2
+updates:
+  # Enable version updates for Go modules
+  - package-ecosystem: "gomod"
+    directory: "/src/core"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "go"
+      include: "scope"
+
+  # Enable version updates for npm (web client)
+  - package-ecosystem: "npm"
+    directory: "/src/web-client"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "npm"
+      include: "scope"
+
+  # Enable version updates for npm (contracts)
+  - package-ecosystem: "npm"
+    directory: "/src/contracts"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "contracts"
+      include: "scope"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
