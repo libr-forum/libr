@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Smart contracts - only if package.json exists
+  # Smart contracts - only runs if package.json exists in directory
   - package-ecosystem: "npm"
     directory: "/src/contracts"
     schedule:
@@ -30,28 +30,7 @@ updates:
       prefix: "deps(ci)"
       include: "scope"
 
-  # Note: Additional package ecosystems will be automatically added
-  # when package.json (for web-client) or go.mod (for core) files are created
-  # in their respective directories. Dependabot will discover them automatically.
-      - "@Aradhya2708"
-    assignees:
-      - "@lakshyajain-0291"
-    commit-message:
-      prefix: "deps"
-      prefix-development: "deps"
-      include: "scope"
-
-  # Enable version updates for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-    reviewers:
-      - "@lakshyajain-0291"
-      - "@Aradhya2708"
-    assignees:
-      - "@lakshyajain-0291"
-    commit-message:
-      prefix: "ci"
-      include: "scope"
+# Note: Additional ecosystems can be added when files are created:
+# - Add "gomod" ecosystem for "/src/core" when go.mod is created
+# - Add "npm" ecosystem for "/src/web-client" when package.json is created
+# - Add "pub" ecosystem for "/src/mobile-client" when pubspec.yaml is created
