@@ -170,7 +170,7 @@ jobs:
           fi
       - name: Lint Core Protocol (Go)
         if: steps.check_core_protocol.outputs.exists == 'true'
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v8
         with:
           version: v1.55.2
           working-directory: src/core-protocol
@@ -191,7 +191,7 @@ jobs:
           fi
       - name: Lint Network Layer (Go)
         if: steps.check_network.outputs.exists == 'true'
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v8
         with:
           version: v1.55.2
           working-directory: src/network
