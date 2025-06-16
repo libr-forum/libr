@@ -1,0 +1,152 @@
+LIBR
+A Moderated, Censorship-Resilient Social Network Framework
+LIBR is a protocol for building digital public forums and social networks that are
+both provably censorship-resilient and safeguarded against harmful or
+illegal content.
+Traditional centralized platforms (Facebook, Reddit, Twitter, etc.) control their
+own databases, which lets them remove or block content at will—undermining
+free expression. Fully decentralized networks avoid that single point of control,
+but without any moderation they may become overrun by offensive or malicious
+posts, turning communities chaotic rather than constructive.
+LIBR strikes a balance by using a replicated DHT (Distributed Hash Table)
+setting for partial immutability—cheaper and faster than storing every message
+on a full blockchain—while storing necessary global configuration on a public
+Blockchain (eg., Ethereum). At the same time, content, for each community, is
+vetted (or approved) by a decentralized moderation quorum (a majority of
+moderators), so that no single moderator can decide the fate of a message. Only
+when a majority of moderators approve does a message get stored and shared,
+keeping the forum both open and safe.​
+​
+The LIBR protocol is currently implemented as a working prototype, with core
+components—clients, database nodes, and moderators—communicating over a
+custom decentralized protocol. The system simulates blockchain-backed global
+state resolution, and the full implementation can be found here:
+GitHub Repository: github.com/devlup-labs/libr
+Concept Document:
+github.com/devlup-labs/libr/blob/main/concept_document.pdf
+
+Development Plan under Devlup Labs Summer of
+Code
+As part of SoC, the LIBR project will evolve from a working prototype into a
+complete, end-to-end platform, deployable and usable in the real world. The
+following milestones are planned:
+-​ Blockchain Integration: Integrate a real blockchain (likely Ethereum) to
+manage the global state and consensus for communities.
+-​ Web Client: Build a fully functional, user-facing web application using
+React.
+-​ Mobile Client: Develop a mobile client using either React Native or Flutter,
+to allow broader and more accessible participation.
+-​ Governance Model: Design and implement a modular, transparent
+governance system for node behavior, moderator onboarding, and
+parameter updates.
+-​ Core Optimization: Improve the underlying protocol for scalability,
+modularity, and performance.
+-​ Agile Lifecycle: We’ll follow a startup-style agile lifecycle to ensure rapid
+iteration, feedback incorporation, and adaptability to challenges during
+development.
+-​ Software Testing and Metrics: We’ll be implementing robust software
+testing and track key metrics such as performance, fault tolerance, and
+usability to continuously refine the system.
+
+Tech Stack
+-​
+-​
+-​
+-​
+-​
+-​
+
+Smart Contracts: Solidity
+Blockchain Interface: Go Ethereum
+Networking Layer: libp2p
+Core Protocol Logic: Go Lang
+Web Client: React
+Mobile Client: Flutter
+
+Note: This is a tentative stack, and we are open to new suggestions that
+may be better suited to our needs.
+
+Roles and Opportunities
+We are seeking passionate individuals for the following roles :
+1.​ Frontend Developer
+○​ Build user-friendly interfaces for the web and mobile clients.
+○​ Work on UI/UX improvements and ensure responsive design.
+○​ Collaborate with the team to translate user requirements into
+functional features.​
+2.​ Backend and Network Developer
+○​ Develop and maintain backend APIs to support client, mod and node
+communication.
+○​ Optimize the networking layer for performance and scalability.
+○​ Ensure seamless interaction between different components of the
+system.​
+3.​ Protocol Developer
+○​ Help design and implement core decentralized protocols.
+○​ Work on features like message validation, quorum-based decisions,
+and DHT optimization.
+○​ Assist in debugging and refining the protocol logic.​
+4.​ Blockchain Developer
+○​ Implement and test blockchain-based features like global state
+management and consensus.
+○​ Develop smart contracts and integrate them with other components.
+○​ Test blockchain interactions for performance, security, and
+correctness.
+Note: The number of mentees and their division will be at our discretion.
+
+Concepts to Explore
+Theory:
+●​ Basics of Peer-to-Peer Architecture:
+How Peer to Peer (P2P) Network works | System Design Interview B…
+●​ Basics of Asymmetric Cryptography & Digital Signatures:
+Encryption - Symmetric Encryption vs Asymmetric Encryption - Crypt…
+Public and Private Keys - Signatures & Key Exchanges - Cryptograp…
+●​ Basics of Decentralized Ledger & Blockchain:
+But how does bitcoin actually work?
+What is Ethereum? A Beginner's Explanation in Plain English
+●​ Distributed Hash Table:
+
+Kademlia, Explained
+
+●​ Byzantine Consistent Broadcast:
+●​ The LIBR Concept Document
+
+Byzantine Generals Problem (related)
+
+Proposal Expectations
+●​ General & Contact Information
+●​ Technical Understanding of the Project and Concept Document
+●​ Role Application: Clearly state the roles you wish to apply for and provide
+a justification explaining why you are suitable for them in this project.
+●​ Brief Proposal for a Governance Scheme: Should highlight a suitable
+method for governance within the protocol, such as electing and slashing
+moderators. (If you do not understand, just mention it. It isn’t a quiz :D)
+●​ Use Case: Suggest a use case other than those already mentioned in
+section 9 of the Concept Document.
+●​ Suggestions for the project (if any)
+●​ Past Projects
+●​ Campus Involvement and Commitments (with priority)
+●​ Time Commitment to the project (in Hours per Week)
+●​ Anything else we should know about you
+
+Brownie points for finding already existing projects or products out there similar
+to LIBR.
+– Let's keep this open ended, share new ideas and insights for the project. We
+welcome innovative suggestions and expect to be amazed by your thoughts :)​
+
+Prerequisites
+There are no strict prerequisites to join this project. However, a passion for
+learning and consistency in your efforts are a must. Rest can all be learned along
+the way.
+
+Do reach out to us if you have any doubts regarding the project or proposal
+submission. It is also expected that you familiarise yourself, or atleast have an
+overview with the used concepts such as P2P Networks, Decentralization and
+Blockchain as this will help you understand the project.
+You should also skim through the concept document, especially the Abstract,
+the Addressed Issues (1.1), the Underlying Theoretical Concepts (3) and
+Use Case (9)
+
+Contact Us
++91 90581 38511 (Aradhya Mahajan)
++91 79761 23107 (Lakshya Jain)​
+
+
