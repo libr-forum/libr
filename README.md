@@ -58,7 +58,8 @@ All source code is organized under the `src/` directory:
 
 ```
 src/
-├── core/           # Go - Core protocol implementation
+├── core-protocol/  # Go - Core LIBR protocol and moderation logic
+├── network/        # Go - P2P networking and DHT operations
 ├── web-client/     # React/TypeScript - Web interface
 ├── mobile-client/  # Flutter/Dart - Mobile application
 ├── contracts/      # Solidity - Smart contracts
@@ -67,7 +68,8 @@ src/
 
 ### Language Guidelines by Directory
 
-- **`src/core/`**: Go (1.21+) - Implements the core LIBR protocol, DHT operations, cryptographic functions, and peer-to-peer networking
+- **`src/core-protocol/`**: Go (1.21+) - Core LIBR protocol implementation, moderation logic, and data structures
+- **`src/network/`**: Go (1.21+) - Peer-to-peer networking, DHT operations, and node discovery
 - **`src/web-client/`**: React with TypeScript - User-facing web application with modern UI/UX
 - **`src/mobile-client/`**: Flutter/Dart - Cross-platform mobile application
 - **`src/contracts/`**: Solidity - Ethereum smart contracts for global state management
@@ -77,7 +79,11 @@ src/
 
 ```bash
 # Core protocol
-cd src/core
+cd src/core-protocol
+go run main.go
+
+# Network layer
+cd src/network
 go run main.go
 
 # Web client
