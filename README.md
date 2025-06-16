@@ -37,8 +37,7 @@ LIBR is built with the following components:
 
 - **Smart Contracts**: Solidity
 - **Blockchain Interface**: Go Ethereum
-- **Networking Layer**: libp2p
-- **Core Protocol Logic**: Go Lang
+- **Protocol and Networking Logic**: Go Lang
 - **Web Client**: React
 - **Mobile Client**: Flutter
 
@@ -52,33 +51,6 @@ LIBR is built with the following components:
 - Solidity compiler
 - Ethereum development environment (Hardhat, Truffle, etc.)
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/devlup-labs/libr.git
-cd libr
-
-# 🚀 Quick setup (recommended for beginners)
-./scripts/setup.sh
-
-# Or set up manually:
-# Core protocol
-cd src/core
-go mod download
-
-# Web client
-cd ../web-client
-npm install
-
-# Mobile client
-cd ../mobile-client
-flutter pub get
-
-# Smart contracts
-cd ../contracts
-npm install
-```
 
 ## Project Structure
 
