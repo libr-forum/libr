@@ -23,7 +23,7 @@ jobs:
           fi
       - name: Set up Go
         if: steps.check_core_protocol.outputs.exists == 'true'
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.21'
       - name: Test core-protocol modules
@@ -48,7 +48,7 @@ jobs:
           fi
       - name: Set up Go
         if: steps.check_network.outputs.exists == 'true'
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.21'
       - name: Test network modules
