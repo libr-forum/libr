@@ -1,6 +1,6 @@
-#  Moderator Module Documentation
+# 🛡️ Moderator Module Documentation
 
-##  Module Overview
+## 📌 Module Overview
 
 The **Moderator Module** is responsible for:
 - Receiving user messages containing unique ID (timestamp) and the message content
@@ -10,7 +10,7 @@ The **Moderator Module** is responsible for:
 
 ---
 
-##  File Structure
+## 📁 File Structure
 ```
 moderator/
 │
@@ -41,7 +41,7 @@ moderator/
 
 ---
 
-## Endpoints
+## 🌐 Endpoints
 
 The Moderator Module exposes the following REST API for client interaction:
 
