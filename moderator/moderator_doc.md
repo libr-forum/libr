@@ -163,7 +163,6 @@ The Moderator Module interacts with other parts of the LIBR system in the follow
 ### 1. Client Module → Moderator Module
 - The **Client Module** sends a user-generated message to the Moderator Module for validation.
 - The message includes:
-  - A unique identifier (UUID)
   - A content string
   - A timestamp
 
