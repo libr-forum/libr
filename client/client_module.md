@@ -60,38 +60,40 @@ client/
   "sign": "signature"
 }
 ```
-##⚙️ Core Functions
-###1. ValidateMessage(message, timestamp) -> error (validator)
+## ⚙️ Core Functions
+### 1. ValidateMessage(message, timestamp) -> error (validator)
 Ensures:
 
 Message is not empty and within allowed size
 
 Timestamp is recent (within drift margin of system clock)
 
-###2. IsClockSynced(remoteTimestamps) -> bool (utils/timesync.go)
+### 2. IsClockSynced(remoteTimestamps) -> bool (utils/timesync.go)
 Optionally checks time drift by comparing remote mod-provided timestamps with local time
 
-###3. SignMessage(message, timestamp) -> (signature, pubKey) (Crypto Module)
+### 3. SignMessage(message, timestamp) -> (signature, pubKey) (Crypto Module)
 Signs the message using Ed25519 private key.
 
-###4. SendToModerators(message, timestamp, signature) -> []ModSign
+### 4. SendToModerators(message, timestamp, signature) -> []ModSign
 Sends signed message to 2M+1 moderators
 
 Collects at least M+1 valid ModSigns
 
-###5. BuildMsgCert(message, timestamp, modSigns) -> MsgCert (Crypto Module)
+### 5. BuildMsgCert(message, timestamp, modSigns) -> MsgCert (Crypto Module)
 Builds the message certificate using:
 
 Moderator approvals
 
 Client signature over final payload
 
-###6. PassToDBModule(msgCert) (Database Module)
+### 6. PassToDBModule(msgCert) (Database Module)
 Calls SelectDBNodes(timestamp)
 
 Sends msgCert to selected DB nodes via SendToDBs()
 
-##🔄 Interactions
+---
+
+## 🔄 Interactions
 Source	Target	Purpose
 Client	Moderator Nodes	Send signed message for moderation
 Client	Crypto Module	Sign messages, build MsgCerts
@@ -99,7 +101,7 @@ Client	Validator/Time	Check for validity and clock correctness
 Client	Database Module	Select DBs, store MsgCert (used, not owned)
 Client	State Layer	Retrieve MOD_JOINED quorum info
 
-##📝 Notes & Assumptions
+## 📝 Notes & Assumptions
 Ed25519 keypair is securely generated (via Crypto Module)
 
 Message content is validated before sending
@@ -110,7 +112,7 @@ MsgCert creation is allowed only after receiving sufficient ModSigns
 
 DB node interaction is abstracted out and delegated
 
-##🧠 Summary of Responsibilities
+## 🧠 Summary of Responsibilities
 Function	Description
 ValidateMessage()	Ensures user message is safe and timestamp is sane
 IsClockSynced()	Detects major clock drift from remote timestamps
@@ -119,7 +121,7 @@ SendToModerators()	Sends message to moderators
 BuildMsgCert()	Builds quorum-signed MsgCert
 PassToDBModule()	Passes control to DB Module for further handling
 
-##🔐 Related Modules
+## 🔐 Related Modules
 👉 See Crypto Module for:
 
 Key management
@@ -128,7 +130,7 @@ Signing logic
 
 MsgCert construction
 
-##👉 See Database Module for:
+## 👉 See Database Module for:
 
 DB node selection
 
