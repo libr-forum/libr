@@ -74,7 +74,7 @@ client/
     "ts": 1234567890123
   },
   "ts": 1234567890123,
-  "Modcert": [array of ModCert]
+  "Modcert": ["array of ModCert"]
   "sign": "string"
 }
 ```
