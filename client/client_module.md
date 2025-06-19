@@ -2,141 +2,213 @@
 
 ## 📌 Overview
 
-The **Client Module** is responsible for orchestrating the partial lifecycle of a user-submitted message in the LIBR protocol. It handles:
+The **Client Module** is responsible for initiating and managing the message certification process in the LIBR system. It performs:
 
-- Accepting user messages
-- Performing user-side validation and clock sync checks
-- Interfacing with the Crypto Module to:
-  - Sign messages
-  - Build message certificates (`MsgCert`)
-- Communicating with moderator nodes to collect `ModSign`s
-- Passing `MsgCert` to the Database Module for DB node selection and storage
+- ✅ Validating user-submitted messages
+- 🧾 Creating message structs with UNIX timestamp
+- 🤝 Communicating with Moderator nodes (via the Network Module)
+- 🔐 Verifying moderator responses using the Crypto Module
+- 🧠 Creating a `MsgCert` once quorum is achieved
+- 📤 Sending the `MsgCert` directly to DB nodes
 
-While the client uses functions like `SelectDBNodes()` and `SendToDBs()`, they **belong to the Database Module** and are imported from there.
+> Note: The **Crypto Module**, **Network Module**, and **Kademlia Module** are external and not part of this directory.
 
 ---
 
 ## 🗂️ File Structure
+
+```text
 client/
+├── main.go                     # Entry point
 │
-├── main.go # Entry point
+├── handler/
+│   └── input_handler.go        # Accepts user input, calls SendToMods
 │
-├── signer/
-│ └── signer.go # Wrapper over Crypto module for signing
-│
-├── certbuilder/
-│ ├── cert_builder.go # Handles ModSign collection and MsgCert construction
-│ ├── mod_communicator.go # Handles communication with moderators
-│ └── types.go # Structs: Message, ModSign, MsgCert
-│
-├── validator/
-│ └── message_validator.go # Validates message content and timestamp sanity
+├── core/
+│   ├── mod_comm.go             # Implements SendToMods and goroutine logic
+│   ├── cert_builder.go         # Implements CreateMsgCert
+│   ├── send_to_db.go           # Implements SendToDB (inside Client Module)
+│   └── validator.go            # Implements isValidMessage
 │
 ├── utils/
-│ ├── timesync.go # Clock sync helpers
-│ └── state_reader.go # Parses blockchain state (MOD_JOINED, etc.)
+│   └── state.go                # Reads current moderators and DB node sets
+```
 
 ---
 
-## 🌐 External Endpoints Used
+## 🧩 Structs (All JSON format)
 
-### `POST /api/moderate` (Moderator Node)
-
-**Purpose:** Submit signed message for moderation
-
-**Request:**
+### 🔸 `ModCert`
 ```json
 {
-  "message": "This is a user message.",
-  "timestamp": 1718609422,
-  "user_signature": "hex-string",
-  "user_public_key": "hex-string"
+  "Sign": "string",
+  "Pub_key": "string",
+  "Status": "approved" | "rejected"
 }
 ```
-**Response:**
+
+### 🔸 `Msg`
 ```json
 {
-  "public_key": "pubkey",
-  "sign": "signature"
+  "message": "string",
+  "ts": 1234567890123
 }
 ```
-## ⚙️ Core Functions
-### 1. ValidateMessage(message, timestamp) -> error (validator)
-Ensures:
 
-Message is not empty and within allowed size
-
-Timestamp is recent (within drift margin of system clock)
-
-### 2. IsClockSynced(remoteTimestamps) -> bool (utils/timesync.go)
-Optionally checks time drift by comparing remote mod-provided timestamps with local time
-
-### 3. SignMessage(message, timestamp) -> (signature, pubKey) (Crypto Module)
-Signs the message using Ed25519 private key.
-
-### 4. SendToModerators(message, timestamp, signature) -> []ModSign
-Sends signed message to 2M+1 moderators
-
-Collects at least M+1 valid ModSigns
-
-### 5. BuildMsgCert(message, timestamp, modSigns) -> MsgCert (Crypto Module)
-Builds the message certificate using:
-
-Moderator approvals
-
-Client signature over final payload
-
-### 6. PassToDBModule(msgCert) (Database Module)
-Calls SelectDBNodes(timestamp)
-
-Sends msgCert to selected DB nodes via SendToDBs()
+### 🔸 `MsgCert`
+```json
+{
+  "SenderPub_key": "string",
+  "Msg": {
+    "message": "string",
+    "ts": 1234567890123
+  },
+  "ts": 1234567890123,
+  "Modcert": [ /* ModCert[] */ ],
+  "sign": "string"
+}
+```
 
 ---
 
-## 🔄 Interactions
+## ⚙️ Functions (Exact Logic Preserved)
 
-| Source  | Target           | Purpose                                     |
-|---------|------------------|---------------------------------------------|
-| Client  | Moderator Nodes  | Send signed message for moderation          |
-| Client  | Crypto Module    | Sign messages, build MsgCerts               |
-| Client  | Validator/Time   | Check for validity and clock correctness    |
-| Client  | Database Module  | Select DBs, store MsgCert (used, not owned) |
-| Client  | State Layer      | Retrieve MOD_JOINED quorum info             |
+### 🔹 `isValidMessage(msg)`
 
-## 📝 Notes & Assumptions
-Ed25519 keypair is securely generated (via Crypto Module)
+```
+Function isValidMessage(msg):
+    If msg is not a string:
+        Return false
+    Trim msg
+    If msg is empty or too long:
+        Return false
+    Return true
+```
 
-Message content is validated before sending
+---
 
-Clock drift is managed at the client side before timestamp use
+### 🔹 `SendToMods(message)`
 
-MsgCert creation is allowed only after receiving sufficient ModSigns
+```
+Function SendToMods(message):
 
-DB node interaction is abstracted out and delegated
+    1. Retrieve current UNIX timestamp → ts
+
+    2. Construct Msg object:
+         Msg = Msg{
+             message: message,
+             ts: ts
+         }
+
+    3. Get list of currently online moderators → onlineMods
+       Set totalMods = count of onlineMods
+
+    4. Initialize:
+        - modcertList = empty list of approved ModCerts
+        - approvedCount = 0
+
+    5. For each mod in onlineMods:
+        - Send Msg to the mod using the network module
+        - Wait for response with a fixed timeout
+          (Handled using goroutines and channels)
+
+    6. As responses arrive:
+        For each response:
+            a. Verify the mod’s signature using crypto module
+            b. If valid and status == "approved":
+                - Add ModCert to modcertList
+                - approvedCount += 1
+            c. If response not received or invalid:
+                - Decrease totalMods by 1
+
+    7. After processing all mods:
+        If approvedCount > totalMods / 2:
+            - cert = CreateMsgCert(message, ts, modcertList)
+            - SendToDB(cert)
+
+    8. Return modcertList
+```
+
+---
+
+### 🔹 `CreateMsgCert(message, ts, modcertList)`
+
+```
+Function CreateMsgCert(message, ts, modcertList):
+
+    1. Retrieve sender’s public key → senderPubKey
+
+    2. Construct dataToSign = {
+           "message": message,
+           "timestamp": ts,
+           "modcerts": modcertList
+       }
+
+    3. Canonically serialize dataToSign to a string
+       (e.g., using json.Marshal with sorted ModCert list)
+
+    4. sign = SignMessage(privateKey, serializedString)
+
+    5. Construct MsgCert = {
+           "SenderPub_key": senderPubKey,
+           "Msg": {
+               "message": message,
+               "ts": ts
+           },
+           "ts": ts,
+           "Modcert": modcertList,
+           "sign": sign
+       }
+
+    6. Return MsgCert
+```
+
+> 🔐 `SignMessage(privateKey, message string)` uses:
+> ```go
+> ed25519.Sign(privateKey, []byte(message))
+> ```
+
+---
+
+### 🔹 `SendToDB(cert)`
+
+```
+Function SendToDB(cert):
+
+    1. Extract ts = cert.ts
+
+    2. dbNodes = SelectDBNodes(ts)  // From the Kademlia module
+
+    3. For each dbNode in dbNodes:
+        - Send cert to dbNode using the Network Module
+          (e.g. over custom UDP)
+
+    4. Optionally log or retry failures
+```
+
+> 🧠 This function is implemented inside the **Client Module**.
+
+---
+
+## 🔄 Module Interactions
+
+| From        | To              | Purpose                                      |
+|-------------|------------------|----------------------------------------------|
+| Client      | Moderator Nodes | Send Msg, collect ModCerts                   |
+| Client      | Crypto Module   | Sign MsgCert, verify ModCerts                |
+| Client      | Network Module  | Sends messages to Mods and DBs               |
+| Client      | Kademlia Module | Selects DB nodes based on timestamp          |
+| Client      | State Utility   | Loads MOD_JOINED and DB node lists           |
+
+---
 
 ## 🧠 Summary of Responsibilities
-Function	Description
-ValidateMessage()	Ensures user message is safe and timestamp is sane
-IsClockSynced()	Detects major clock drift from remote timestamps
-SignMessage()	Signs the message before moderation
-SendToModerators()	Sends message to moderators
-BuildMsgCert()	Builds quorum-signed MsgCert
-PassToDBModule()	Passes control to DB Module for further handling
 
-## 🔐 Related Modules
-👉 See Crypto Module for:
+| Function           | Description                              |
+|--------------------|------------------------------------------|
+| `isValidMessage()` | Validates message content                |
+| `SendToMods()`     | Sends to Mods, verifies responses        |
+| `CreateMsgCert()`  | Signs data deterministically             |
+| `SendToDB()`       | Sends MsgCert to selected DBs            |
 
-Key management
-
-Signing logic
-
-MsgCert construction
-
-## 👉 See Database Module for:
-
-DB node selection
-
-MsgCert storage
-
-Querying functionality
-
+---
