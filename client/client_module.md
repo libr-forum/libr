@@ -218,8 +218,7 @@ Function SendToDB(cert):
 |--------------------|------------------------------------------|
 | `isValidMessage()` | Validates message content                |
 | `SendToMods()`     | Sends to Mods, verifies responses        |
-| `CreateMsgCert()`  | CreateMsgCert() | Builds cert; signs via external Crypto Module
-            |
+| `CreateMsgCert()`  | CreateMsgCert() | Builds cert; signs via external Crypto Module            |
 | `SendToDB()`       | Sends MsgCert to selected DBs            |
 
 ---
