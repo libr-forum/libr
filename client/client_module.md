@@ -19,19 +19,29 @@ The **Client Module** is responsible for initiating and managing the message cer
 
 ```text
 client/
-├── main.go                     # Entry point
+├── main.go                       # Bootstraps the client node
 │
 ├── handler/
-│   └── input_handler.go        # Accepts user input, calls SendToMods
+│   └── input_handler.go          # Accepts and validates user message input
 │
 ├── core/
-│   ├── mod_comm.go             # Implements SendToMods and goroutine logic
-│   ├── cert_builder.go         # Implements CreateMsgCert
-│   ├── send_to_db.go           # Implements SendToDB (inside Client Module)
-│   └── validator.go            # Implements isValidMessage
+│   ├── mod_comm.go               # Orchestrates SendToMods
+│   ├── cert_builder.go           # Builds MsgCert after quorum
+│   ├── send_to_db.go             # Sends MsgCert to selected DBs
+│   └── validator.go              # Implements isValidMessage
 │
 ├── utils/
-│   └── state.go                # Reads current moderators and DB node sets
+│   ├── state.go                  # Reads MOD_JOINED, DB_JOINED
+│   └── logger.go                 # Optional: Logging helpers
+│
+├── config/
+│   └── config.go                 # Loads .env or YAML settings
+│
+├── types/
+│   └── structs.go                # Shared structs: Msg, ModCert, MsgCert
+│
+├── .env                          # Client-specific configuration
+└── README.md                     # Documentation for the Client Module
 ```
 
 ---
@@ -43,7 +53,7 @@ client/
 {
   "Sign": "string",
   "Pub_key": "string",
-  "Status": "approved" | "rejected"
+  "Status": "string" // "approved" or "rejected"
 }
 ```
 
@@ -58,13 +68,13 @@ client/
 ### 🔸 `MsgCert`
 ```json
 {
-  "SenderPub_key": "string",
+  "Public_key": "string",
   "Msg": {
     "message": "string",
     "ts": 1234567890123
   },
   "ts": 1234567890123,
-  "Modcert": [ /* ModCert[] */ ],
+  "Modcert": [ /* array of ModCert */ ]
   "sign": "string"
 }
 ```
@@ -136,7 +146,7 @@ Function SendToMods(message):
 ```
 Function CreateMsgCert(message, ts, modcertList):
 
-    1. Retrieve sender’s public key → senderPubKey
+    1. Retrieve sender’s public key → SenderPub_key (via Crypto Module)
 
     2. Construct dataToSign = {
            "message": message,
@@ -147,10 +157,10 @@ Function CreateMsgCert(message, ts, modcertList):
     3. Canonically serialize dataToSign to a string
        (e.g., using json.Marshal with sorted ModCert list)
 
-    4. sign = SignMessage(privateKey, serializedString)
+    4. sign = SignMessage(privateKey, serializedString) // Calls into external Crypto Module
 
     5. Construct MsgCert = {
-           "SenderPub_key": senderPubKey,
+           "Public_key": PublicKey,
            "Msg": {
                "message": message,
                "ts": ts
@@ -165,7 +175,7 @@ Function CreateMsgCert(message, ts, modcertList):
 
 > 🔐 `SignMessage(privateKey, message string)` uses:
 > ```go
-> ed25519.Sign(privateKey, []byte(message))
+> // SignMessage is imported from the external Crypto Module
 > ```
 
 ---
@@ -195,9 +205,9 @@ Function SendToDB(cert):
 | From        | To              | Purpose                                      |
 |-------------|------------------|----------------------------------------------|
 | Client      | Moderator Nodes | Send Msg, collect ModCerts                   |
-| Client      | Crypto Module   | Sign MsgCert, verify ModCerts                |
-| Client      | Network Module  | Sends messages to Mods and DBs               |
-| Client      | Kademlia Module | Selects DB nodes based on timestamp          |
+| Client      | Crypto Module (Imported)  | Sign MsgCert, verify ModCerts                |
+| Client      | Network Module (Imported) | Sends messages to Mods and DBs               |
+| Client      | Kademlia Module (Imported) | Selects DB nodes based on timestamp          |
 | Client      | State Utility   | Loads MOD_JOINED and DB node lists           |
 
 ---
@@ -208,7 +218,8 @@ Function SendToDB(cert):
 |--------------------|------------------------------------------|
 | `isValidMessage()` | Validates message content                |
 | `SendToMods()`     | Sends to Mods, verifies responses        |
-| `CreateMsgCert()`  | Signs data deterministically             |
+| `CreateMsgCert()`  | CreateMsgCert() | Builds cert; signs via external Crypto Module
+            |
 | `SendToDB()`       | Sends MsgCert to selected DBs            |
 
 ---
