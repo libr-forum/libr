@@ -2,44 +2,39 @@
 
 ## 📌 Overview
 
-The **Client Module** is responsible for orchestrating the complete lifecycle of a user-submitted message in the LIBR protocol. It handles:
+The **Client Module** is responsible for orchestrating the partial lifecycle of a user-submitted message in the LIBR protocol. It handles:
 
 - Accepting user messages
+- Performing user-side validation and clock sync checks
 - Interfacing with the Crypto Module to:
   - Sign messages
   - Build message certificates (`MsgCert`)
 - Communicating with moderator nodes to collect `ModSign`s
-- Selecting DB nodes for storage via PRNG
-- Sending validated messages to DB nodes
-- Querying DB nodes for previously stored messages
+- Passing `MsgCert` to the Database Module for DB node selection and storage
+
+While the client uses functions like `SelectDBNodes()` and `SendToDBs()`, they **belong to the Database Module** and are imported from there.
 
 ---
 
 ## 🗂️ File Structure
-
-```
 client/
 │
-├── main.go                     # Entry point
+├── main.go # Entry point
 │
 ├── signer/
-│   └── signer.go               # Wrapper over Crypto module for signing
+│ └── signer.go # Wrapper over Crypto module for signing
 │
 ├── certbuilder/
-│   ├── cert_builder.go         # Handles ModSign collection and MsgCert construction
-│   ├── mod_communicator.go     # Handles communication with moderators
-│   └── types.go                # Structs: Message, ModSign, MsgCert
+│ ├── cert_builder.go # Handles ModSign collection and MsgCert construction
+│ ├── mod_communicator.go # Handles communication with moderators
+│ └── types.go # Structs: Message, ModSign, MsgCert
 │
-├── storage/
-│   ├── prng_selector.go        # PRNG-based DB node selection
-│   └── db_communicator.go      # MsgCert delivery to DB nodes
-│
-├── query/
-│   └── fetcher.go              # Message querying logic by timestamp
+├── validator/
+│ └── message_validator.go # Validates message content and timestamp sanity
 │
 ├── utils/
-│   └── state_reader.go         # Parses blockchain state (MOD_JOINED, DB_JOINED, etc.)
-```
+│ ├── timesync.go # Clock sync helpers
+│ └── state_reader.go # Parses blockchain state (MOD_JOINED, etc.)
 
 ---
 
@@ -47,7 +42,7 @@ client/
 
 ### `POST /api/moderate` (Moderator Node)
 
-**Purpose**: Submit signed message for moderation
+**Purpose:** Submit signed message for moderation
 
 **Request:**
 ```json
@@ -58,7 +53,6 @@ client/
   "user_public_key": "hex-string"
 }
 ```
-
 **Response:**
 ```json
 {
@@ -66,77 +60,79 @@ client/
   "sign": "signature"
 }
 ```
+##⚙️ Core Functions
+###1. ValidateMessage(message, timestamp) -> error (validator)
+Ensures:
 
----
+Message is not empty and within allowed size
 
-## ⚙️ Core Functions
+Timestamp is recent (within drift margin of system clock)
 
-### 1. `SignMessage(message, timestamp) -> (signature, pubKey)` *(delegated to Crypto Module)*
+###2. IsClockSynced(remoteTimestamps) -> bool (utils/timesync.go)
+Optionally checks time drift by comparing remote mod-provided timestamps with local time
 
-Signs `message + timestamp` using Ed25519 private key.
+###3. SignMessage(message, timestamp) -> (signature, pubKey) (Crypto Module)
+Signs the message using Ed25519 private key.
 
----
+###4. SendToModerators(message, timestamp, signature) -> []ModSign
+Sends signed message to 2M+1 moderators
 
-### 2. `SendToModerators(message, timestamp, signature) -> []ModSign`
+Collects at least M+1 valid ModSigns
 
-- Sends signed message to `2M+1` moderators.
-- Collects at least `M+1` valid moderator signatures (`ModSign`).
+###5. BuildMsgCert(message, timestamp, modSigns) -> MsgCert (Crypto Module)
+Builds the message certificate using:
 
----
+Moderator approvals
 
-### 3. `BuildMsgCert(message, timestamp, modSigns) -> MsgCert`  
-*Delegated to Crypto Module*
+Client signature over final payload
 
-Constructs a `MsgCert` containing:
-- Sender's public key
-- Message
-- Timestamp
-- Moderator signatures (`ModCert`)
-- Signature over the full cert
+###6. PassToDBModule(msgCert) (Database Module)
+Calls SelectDBNodes(timestamp)
 
----
+Sends msgCert to selected DB nodes via SendToDBs()
 
-### 4. `SelectDBNodes(timestamp) -> []DBNode`
+##🔄 Interactions
+Source	Target	Purpose
+Client	Moderator Nodes	Send signed message for moderation
+Client	Crypto Module	Sign messages, build MsgCerts
+Client	Validator/Time	Check for validity and clock correctness
+Client	Database Module	Select DBs, store MsgCert (used, not owned)
+Client	State Layer	Retrieve MOD_JOINED quorum info
 
-- Uses `SHA256(timestamp)` → 8-byte PRNG seed  
-- Selects `R` DB nodes from current active set (read via state)
+##📝 Notes & Assumptions
+Ed25519 keypair is securely generated (via Crypto Module)
 
----
+Message content is validated before sending
 
-## 🔄 Interactions
+Clock drift is managed at the client side before timestamp use
 
-| Source          | Target           | Purpose                                      |
-|-----------------|------------------|----------------------------------------------|
-| Client          | Moderator Nodes  | Send signed message for moderation           |
-| Client          | Crypto Module    | Sign messages, build MsgCerts                |
-| Client          | State Layer      | Retrieve quorum configurations and node sets |
+MsgCert creation is allowed only after receiving sufficient ModSigns
 
----
+DB node interaction is abstracted out and delegated
 
-## 📝 Notes & Assumptions
+##🧠 Summary of Responsibilities
+Function	Description
+ValidateMessage()	Ensures user message is safe and timestamp is sane
+IsClockSynced()	Detects major clock drift from remote timestamps
+SignMessage()	Signs the message before moderation
+SendToModerators()	Sends message to moderators
+BuildMsgCert()	Builds quorum-signed MsgCert
+PassToDBModule()	Passes control to DB Module for further handling
 
-- Ed25519 keypair generated and stored securely on client side
-- Timestamp must be valid (non-repeating, monotonic, and recent)
-- Retry and fallback logic required for mod node unavailability
-- MsgCert must be constructed only after collecting `M+1` `ModSign`s
-- DB node selection must be deterministic across all honest clients
+##🔐 Related Modules
+👉 See Crypto Module for:
 
----
+Key management
 
-## 🧠 Summary of Responsibilities
+Signing logic
 
-| Function             | Description                                       |
-|----------------------|---------------------------------------------------|
-| `SignMessage()`      | Signs message before moderation                   |
-| `SendToModerators()` | Sends message to mods and collects signatures     |
-| `BuildMsgCert()`     | Builds final certificate of moderation approval   |
-| `SelectDBNodes()`    | Picks DB nodes using deterministic PRNG logic     |
+MsgCert construction
 
----
+##👉 See Database Module for:
 
-## 🔐 Related Module
+DB node selection
 
-👉 See [Crypto Module Documentation](../crypto/README.md) for:
-- Key generation
-- Signature logic
-- MsgCert construction & verification
+MsgCert storage
+
+Querying functionality
+
