@@ -94,12 +94,14 @@ Sends msgCert to selected DB nodes via SendToDBs()
 ---
 
 ## 🔄 Interactions
-Source	Target	Purpose
-Client	Moderator Nodes	Send signed message for moderation
-Client	Crypto Module	Sign messages, build MsgCerts
-Client	Validator/Time	Check for validity and clock correctness
-Client	Database Module	Select DBs, store MsgCert (used, not owned)
-Client	State Layer	Retrieve MOD_JOINED quorum info
+
+| Source  | Target           | Purpose                                     |
+|---------|------------------|---------------------------------------------|
+| Client  | Moderator Nodes  | Send signed message for moderation          |
+| Client  | Crypto Module    | Sign messages, build MsgCerts               |
+| Client  | Validator/Time   | Check for validity and clock correctness    |
+| Client  | Database Module  | Select DBs, store MsgCert (used, not owned) |
+| Client  | State Layer      | Retrieve MOD_JOINED quorum info             |
 
 ## 📝 Notes & Assumptions
 Ed25519 keypair is securely generated (via Crypto Module)
