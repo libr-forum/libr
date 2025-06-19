@@ -1,55 +1,55 @@
-# 💻 Client Module Documentation
+# 💻 LIBR Client Module
 
-## 📌 Module Overview
+## 📌 Overview
 
-The **Client Module** in LIBR is responsible for managing the full lifecycle of a user-submitted message. Its tasks include:
+The **Client Module** is responsible for orchestrating the complete lifecycle of a user-submitted message in the LIBR protocol. It handles:
 
-* Accepting user input
-* Signing the message with the user's ECDSA private key
-* Communicating with moderator nodes to gather `ModSign`s
-* Building a `MsgCert` once quorum is reached
-* Selecting DB nodes via PRNG logic
-* Sending the `MsgCert` to selected DB nodes for storage
-* Querying DB nodes to retrieve messages based on timestamps
+- Accepting user messages
+- Interfacing with the Crypto Module to:
+  - Sign messages
+  - Build message certificates (`MsgCert`)
+- Communicating with moderator nodes to collect `ModSign`s
+- Selecting DB nodes for storage via PRNG
+- Sending validated messages to DB nodes
+- Querying DB nodes for previously stored messages
 
 ---
 
-## 📁 File Structure
+## 🗂️ File Structure
 
 ```
 client/
 │
-├── main.go                     # Entry point: initializes flow
+├── main.go                     # Entry point
 │
-├── signer/                    
-│   └── signer.go              # Handles message signing using ECDSA
+├── signer/
+│   └── signer.go               # Wrapper over Crypto module for signing
 │
 ├── certbuilder/
-│   ├── cert_builder.go        # Builds MsgCert from ModSigns
-│   ├── mod_communicator.go    # Sends signed messages to moderators and collects ModSigns
-│   └── types.go               # Structs: Message, ModSign, MsgCert
+│   ├── cert_builder.go         # Handles ModSign collection and MsgCert construction
+│   ├── mod_communicator.go     # Handles communication with moderators
+│   └── types.go                # Structs: Message, ModSign, MsgCert
 │
 ├── storage/
-│   ├── prng_selector.go       # Selects DB nodes using PRNG(seed = timestamp)
-│   └── db_communicator.go     # Sends MsgCert to selected DBs for storage
+│   ├── prng_selector.go        # PRNG-based DB node selection
+│   └── db_communicator.go      # MsgCert delivery to DB nodes
 │
 ├── query/
-│   └── fetcher.go             # Fetches messages from DB nodes based on timestamp
+│   └── fetcher.go              # Message querying logic by timestamp
 │
 ├── utils/
-│   └── state_reader.go        # Parses state transactions to get active mod/DB node lists
+│   └── state_reader.go         # Parses blockchain state (MOD_JOINED, DB_JOINED, etc.)
 ```
 
 ---
 
-## 🌐 Endpoints (Consumed)
+## 🌐 External Endpoints Used
 
-### POST `/api/moderate` (Moderator Node)
+### `POST /api/moderate` (Moderator Node)
 
-**Purpose**: To send signed message for validation and receive `ModSign`
+**Purpose**: Submit signed message for moderation
 
 **Request:**
-
 ```json
 {
   "message": "This is a user message.",
@@ -60,11 +60,10 @@ client/
 ```
 
 **Response:**
-
 ```json
 {
   "public_key": "pubkey",
-  "sign": "sign"
+  "sign": "signature"
 }
 ```
 
@@ -72,140 +71,72 @@ client/
 
 ## ⚙️ Core Functions
 
-### 1. `SignMessage(message, timestamp) -> (signature, pubKey)`
+### 1. `SignMessage(message, timestamp) -> (signature, pubKey)` *(delegated to Crypto Module)*
 
-**Purpose**: Signs a message + timestamp using the user's private key.
-
-**Logic:**
-
-```
-1. Serialize (message + timestamp)
-2. Compute SHA-256 hash
-3. Sign hash using ECDSA private key
-4. Return signature and public key
-```
+Signs `message + timestamp` using Ed25519 private key.
 
 ---
 
 ### 2. `SendToModerators(message, timestamp, signature) -> []ModSign`
 
-**Purpose**: Sends signed message to `2M+1` moderators and collects `M+1` valid signatures.
-
-**Logic:**
-
-```
-1. Prepare JSON payload with message, timestamp, signature, and pubkey
-2. Send POST requests to moderators in parallel or sequentially
-3. Validate each ModSign returned
-4. Stop after M+1 valid ModSigns are collected
-```
+- Sends signed message to `2M+1` moderators.
+- Collects at least `M+1` valid moderator signatures (`ModSign`).
 
 ---
 
-### 3. `BuildMsgCert(message, timestamp, modSigns) -> MsgCert`
+### 3. `BuildMsgCert(message, timestamp, modSigns) -> MsgCert`  
+*Delegated to Crypto Module*
 
-**Purpose**: Constructs a message certificate with M+1 moderator approvals.
-
-**Logic:**
-
-```
-1. Validate all mod signatures
-2. Construct MsgCert object:
-   - sender
-   - message
-   - timestamp
-   - mod_signatures[]
-```
+Constructs a `MsgCert` containing:
+- Sender's public key
+- Message
+- Timestamp
+- Moderator signatures (`ModCert`)
+- Signature over the full cert
 
 ---
 
 ### 4. `SelectDBNodes(timestamp) -> []DBNode`
 
-**Purpose**: Deterministically selects `R` DB nodes using PRNG based on timestamp.
-
-**Logic:**
-
-```
-1. Hash timestamp (SHA256)
-2. Extract first 8 bytes as PRNG seed
-3. Load list of active DB nodes from state
-4. Use PRNG(seed) to select R DB nodes
-```
-
----
-
-### 5. `SendToDBs(msgCert) -> status`
-
-**Purpose**: Sends MsgCert to selected DB nodes for storage.
-
-**Logic:**
-
-```
-1. Retrieve DB node IPs and ports from state
-2. Send MsgCert to each selected DB node using POST /store
-3. Handle retry/failure if any DB node is down
-```
-
----
-
-### 6. `QueryMessage(timestamp) -> message`
-
-**Purpose**: Fetches a previously stored message from the DB nodes.
-
-**Logic:**
-
-```
-1. Use same PRNG logic to select DB nodes
-2. Send GET /query to selected DB nodes
-3. Return first successful response
-```
+- Uses `SHA256(timestamp)` → 8-byte PRNG seed  
+- Selects `R` DB nodes from current active set (read via state)
 
 ---
 
 ## 🔄 Interactions
 
-### 1. Client → Moderator Nodes
-
-* Sends signed messages
-* Collects `ModSign`s (moderator approvals)
-
-### 2. Client (Internal)
-
-* Aggregates moderator signatures to build `MsgCert`
-
-### 3. Client → DB Nodes
-
-* Sends `MsgCert` for storage
-* Queries timestamp-indexed messages
-
-### 4. Client → State Layer (Hashchain)
-
-* Reads `MOD_JOINED`, `DB_JOINED`, etc. to determine quorum participants
+| Source          | Target           | Purpose                                      |
+|-----------------|------------------|----------------------------------------------|
+| Client          | Moderator Nodes  | Send signed message for moderation           |
+| Client          | Crypto Module    | Sign messages, build MsgCerts                |
+| Client          | State Layer      | Retrieve quorum configurations and node sets |
 
 ---
 
 ## 📝 Notes & Assumptions
 
-* Assumes user has a valid ECDSA keypair on device
-* All messages must include timestamp and signature before moderation
-* Message moderation is synchronous for now (can be improved)
-* DB node selection must be deterministic and reproducible
-* Retry logic must handle slow or unreachable nodes
+- Ed25519 keypair generated and stored securely on client side
+- Timestamp must be valid (non-repeating, monotonic, and recent)
+- Retry and fallback logic required for mod node unavailability
+- MsgCert must be constructed only after collecting `M+1` `ModSign`s
+- DB node selection must be deterministic across all honest clients
 
 ---
 
 ## 🧠 Summary of Responsibilities
 
-| Function             | Role                                           |
-| -------------------- | ---------------------------------------------- |
-| `SignMessage()`      | Authenticates user's message                   |
-| `SendToModerators()` | Collects quorum of moderator approvals         |
-| `BuildMsgCert()`     | Aggregates `ModSign`s into a valid certificate |
-| `SelectDBNodes()`    | Chooses where to store the message             |
-| `SendToDBs()`        | Forwards approved message to storage           |
-| `QueryMessage()`     | Fetches messages by timestamp from DB nodes    |
+| Function             | Description                                       |
+|----------------------|---------------------------------------------------|
+| `SignMessage()`      | Signs message before moderation                   |
+| `SendToModerators()` | Sends message to mods and collects signatures     |
+| `BuildMsgCert()`     | Builds final certificate of moderation approval   |
+| `SelectDBNodes()`    | Picks DB nodes using deterministic PRNG logic     |
 
 ---
 
-```
-```
+## 🔐 Related Module
+
+👉 See [Crypto Module Documentation](../crypto/README.md) for:
+- Key generation
+- Signature logic
+- MsgCert construction & verification
