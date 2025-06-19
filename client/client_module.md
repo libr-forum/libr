@@ -53,7 +53,7 @@ client/
 {
   "Sign": "string",
   "Pub_key": "string",
-  "Status": "string" // "approved" or "rejected"
+  `"Status": "string" // "approved" or "rejected"`
 }
 ```
 
