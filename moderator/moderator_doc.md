@@ -4,39 +4,38 @@
 
 The **Moderator Module** is responsible for:
 - Receiving user messages containing unique ID (timestamp) and the message content
-- Sending the message content to the **Google Gemini API** for moderation
+- Sending the message content further for moderation
 - Receiving the response and signing it 
-- Forwarding messages to client node for aggregation with modSign and public key
+- Sending modResponse to client node for aggregation 
 
 ---
 
 ## 📁 File Structure
 ```
 moderator/
+├── main.go                         # Entry point: starts REST server, sets up handlers
 │
-├── handlers/
-│   └── messageHandler.go       # Contains HandleMsg() — main HTTP endpoint
-│
-├── services/
-│   ├── moderation.go           # ModerateMsg(), AnalyzeToxicity()
-│   └── signer.go               # ModSign() — uses private key to sign approved messages
-│
-├── crypto/
-│   └── keys.go                 # Key generation, loading, and signature helpers
-│
-├── models/
-│   └── message.go              # Structs: Msg, SignedMsg, ModSign
+├── internal/                       # Private implementation code
+│   ├── handlers/
+│   │   └── moderate_handler.go     # HTTP handler for POST /api/moderate
+│   │
+│   ├── service/
+│   │   ├── moderation.go           # ModerateMsg, SelectModel, AnalyzeContent
+│   │   └── signer.go               # ModSign: serialize, sign, emit SignedMsg
+│   │
+│   └── util/
+│       └── http_client.go          # HTTP calls to external moderation APIs
 │
 ├── config/
-│   └── env.go                  # LoadConfig(), RunChecks()
+│   └── config.go                   # LoadConfig(), RunChecks()
 │
-├── utils/
-│   └── httpClient.go           # Reusable HTTP client for Gemini requests
+├── pkg/
+│   └── model/
+│       └── types.go                # Public types: MsgRequest, ModResponse, SignedMsg
 │
-├── main.go                     # Entry point — sets up server, routes, and config
-├── go.mod                      # Go module definition
-├── .env                        # Contains GEMINI_API_KEY and GEMINI_API_URL
-└── README.md                   # This exact module documentation
+├── go.mod
+├── go.sum
+└── README.md                       # Module documentation
 ```
 
 ---
@@ -89,43 +88,46 @@ Accepts a user message for moderation, processes it through the Gemini API, sign
 ```
 1. Extract content from msg
 2. Call AnalyzeToxicity(content)
-3. Return ("approved") if clean, or ("rejected") if toxic
+3. Return (1) if clean, or (0) if toxic
 ```
 
-## 3. `AnalyzeToxicity(content string) (string)`
+##  `SelectModel(models []string) (ModelFunc, error)`
+- Models for moderation could be selected 
+
+
+## 3. `AnalyzeToxicity(content string, fn ModelFunc) (string)`
 
 ### Purpose:
-- Communicates with the Google Gemini moderation API to evaluate message content.
+- A unified wrapper that calls the selected moderation function 
 
 ### Logic
 ```
 1. Prepare request with content as JSON
 2. Load API key from environment
-3. Send POST request to Gemini API
+3. Send POST request 
 4. Parse response
-5. If harmful/toxic return "rejected"
-6. Else return ("accepted")
+5. If harmful/toxic return 0
+6. Else return (1)
 ```
 
-## 4. `ModSign(msg Msg) (SignedMsg, error)`
+## 4. `ModResponse(msg Msg) (ModResponse, error)`
 
 ### Purpose:
-- Digitally signs the approved message and attaches a public key.
+- Digitally signs a message (including `timestamp`, `content`, and an optional `status`)
 
 ### Logic
 ```
-1. Serialize msg content (Timestamp + Content)
+1. Serialize msg content (Timestamp + Content + (status))
 2. Generate hash
 3. Sign hash using private key 
 4. Export public key
-5. Return SignedMsg {
-   timestamp,
-   content,
-   modSign,
-   publicKey
+5. Return ModResponse {
+   public_key
+   sign
+   (status)
 }
 
-** if rejected msg is to be stored then add one more attribute as accepted or rejected.
+** status included only once full testing confirms acceptable bandwidth/computation tradeoff
 
 ```
 
@@ -137,9 +139,7 @@ Accepts a user message for moderation, processes it through the Gemini API, sign
 ### Logic:
 ```
 1. Use godotenv to load `.env` file
-2. Set up global config variables:
-   - GEMINI_API_KEY
-   - GEMINI_API_URL
+2. Set up global config variables
 ```
 
 ## 6. `RunChecks() error`
@@ -149,11 +149,10 @@ Accepts a user message for moderation, processes it through the Gemini API, sign
 
 ### Logic:
 ```
-1. Check if GEMINI_API_KEY is loaded
+1. Check if loading from dotenv is successful
 2. Check if private key for signing is available
 3. If either missing, return error
 4. Else return nil
-
 ```
 
 ## 🔄 Interactions
@@ -167,31 +166,25 @@ The Moderator Module interacts with other parts of the LIBR system in the follow
   - A timestamp
 
 ### 2. Moderator Module (Internal Interaction)
-- The Moderator calls `analyzeToxicity()` to send the message content to the **Google Gemini API**.
+- The Moderator calls `analyzeToxicity()` to send the message content further for moderation.
 - This function performs **content moderation**, determining whether the message adheres to community guidelines.
 
-### 3. Moderator Module → Crypto Module
-  - The Moderator Module sends the message to the **Crypto Module**.
+### 3. Crypto Module Interaction 
+  - The Moderator Module uses the Crypto Module as a dependency to **hash and sign approved messages**
   - The Crypto module:
     - Generates a hash of the message.
     - Signs it using the moderator’s **private key**.
-    - Returns a `ModSign` which includes:
-      - `sign`: the digital signature
-      - `public_key`: the moderator's public key
+    - Returns a `ModResponse` 
 
 ### 4. Moderator Module → Client Module
   - The Moderator signs the message using its private key.
-  - It sends back a **ModSign**, which contains:
-    - The message
-    - The timestamp
-    - A digital signature
-    - The Moderator’s public key
+  - It sends back a **ModResponse**, which contains
 
 ---
 
 ### 💡 Summary of Interactions
 
-| Source        | Target          | Purpose                           |
+| Source        | Target           | Purpose                          |
 |---------------|------------------|----------------------------------|
 | Client Module | Moderator Module | Submit message for moderation    |
 | Moderator     | Gemini API       | Analyze message toxicity         |
