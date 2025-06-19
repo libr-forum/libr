@@ -53,7 +53,7 @@ client/
 {
   "Sign": "string",
   "Pub_key": "string",
-  `"Status": "string" // "approved" or "rejected"`
+  "Status": "string("approved" or "rejected")" 
 }
 ```
 
@@ -74,7 +74,7 @@ client/
     "ts": 1234567890123
   },
   "ts": 1234567890123,
-  "Modcert": [ /* array of ModCert */ ]
+  "Modcert": [array of ModCert]
   "sign": "string"
 }
 ```
