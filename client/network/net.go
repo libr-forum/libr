@@ -1,9 +1,12 @@
 package network
 
 import (
-	"encoding/json"
 	"errors"
+	"fmt"
+	"libr/keycache"
 	"libr/types"
+	util "libr/utils"
+	"log"
 	"time"
 
 	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
@@ -13,28 +16,31 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 	// Simulate network delay
 	time.Sleep(300 * time.Millisecond)
 
-	pub, priv, err := cryptoutils.LoadKeys()
-	if err != nil {
-		return nil, err
-	}
+	pub := keycache.PubKey
+	priv := keycache.PrivKey
 
-	// Serialize payload
-	payloadBytes, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	payload := string(payloadBytes)
-
-	// Sign the data
-	sign, err := cryptoutils.SignMessage(priv, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	// Response behavior based on type
 	switch expect {
 	case "mod":
-		// simulate mod response
+		msg, ok := data.(types.Msg)
+		if !ok {
+			return nil, errors.New("expected Msg struct for mod")
+		}
+
+		msgString, err := util.CanonicalizeMsg(msg)
+		fmt.Println("🖊️  Signing this exact string:", msgString)
+
+		if err != nil {
+			log.Printf("Failed to generate canonical JSON: %v", err)
+			return nil, err
+		}
+
+		fmt.Println("🔏 Mod is signing:", msgString)
+
+		sign, err := cryptoutils.SignMessage(priv, msgString)
+		if err != nil {
+			return nil, err
+		}
+
 		status := "approved"
 		if time.Now().Unix()%2 == 1 {
 			status = "rejected"

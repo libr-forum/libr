@@ -23,15 +23,10 @@ func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.
 	dataToSign := types.DataToSign{
 		Content:   message,
 		Timestamp: ts,
-		ModCerts:  modcertList,
+		ModCerts:  modcertList, // sorted before signing
 	}
-
-	jsonBytes, err := json.Marshal(dataToSign)
-	if err != nil {
-		log.Fatalf("failed to marshal dataToSign: %v", err)
-	}
-
-	sign, err := cryptoutils.SignMessage(privKey, string(jsonBytes)) // crypto
+	jsonBytes, _ := json.Marshal(dataToSign)
+	sign, err := cryptoutils.SignMessage(privKey, string(jsonBytes))
 	if err != nil {
 		log.Fatalf("failed to sign message: %v", err)
 	}

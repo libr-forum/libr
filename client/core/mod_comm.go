@@ -3,7 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"libr/network"
 	"libr/types"
@@ -51,23 +51,33 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			go func() {
 				response, err := network.SendTo(addr, msg, "mod")
-				modcert := response.(types.ModCert)
-				if !bytes.Equal(modcert.PublicKey, mod.PublicKey) {
-					log.Printf("Response public key mismatch from mod %s — expected %s, got %s",
-						mod.IP, mod.PublicKey, modcert.PublicKey)
+				if err != nil {
+					log.Printf("Failed to contact mod at %s: %v", addr, err)
 					return
 				}
-				if err == nil {
-					jsonBytes, err := json.Marshal(msg)
-					if err != nil {
-						log.Printf("Failed to marshal mod response from %s: %v", mod.IP, err)
-						return
-					}
-					msgString := string(jsonBytes)
-					if cryptoutils.VerifySignature(modcert.PublicKey, msgString, modcert.Sign) {
-						responseChan <- modcert
-					}
 
+				modcert, ok := response.(types.ModCert)
+				if !ok {
+					log.Printf("Invalid mod response format from %s", addr)
+					return
+				}
+
+				if !bytes.Equal(modcert.PublicKey, mod.PublicKey) {
+					log.Printf("Response public key mismatch from mod %s", mod.IP)
+					return
+				}
+
+				fmt.Println("🔑 Expected mod key:", base64.StdEncoding.EncodeToString(mod.PublicKey))
+				fmt.Println("🧾 Response mod key:", base64.StdEncoding.EncodeToString(modcert.PublicKey))
+
+				msgString, _ := util.CanonicalizeMsg(msg)
+
+				fmt.Println("🔍 Verifying against this string:", msgString)
+
+				if cryptoutils.VerifySignature(modcert.PublicKey, msgString, modcert.Sign) {
+					responseChan <- modcert
+				} else {
+					log.Printf("Invalid signature from mod %s", mod.IP)
 				}
 			}()
 
@@ -92,6 +102,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 				mu.Unlock()
 			}
 		}(mod, msg)
+
 	}
 
 	wg.Wait()

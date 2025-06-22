@@ -22,12 +22,16 @@ func SendToDb(msgcert types.MsgCert) string {
 
 	for _, DBnode := range bootDB {
 		response, err := network.SendTo(DBnode, msgcert, "db")
-		resDB := response.(string)
 		if err != nil {
 			log.Printf("Failed to send to DB node %s: %v", DBnode, err)
 			continue
 		}
-		return resDB
+		resDB, ok := response.(string)
+		if ok {
+			log.Printf("DB %s responded: %s", DBnode, resDB)
+			return resDB
+		}
 	}
-	return "None of the bootstrap DB online"
+
+	return "❌ None of the bootstrap DBs responded"
 }
