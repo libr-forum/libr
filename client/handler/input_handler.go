@@ -37,15 +37,15 @@ func RunInputLoop() {
 
 		modcertlist := core.SendToMods(msg, ts)
 		if modcertlist == nil {
-			fmt.Println("Message rejected by mods")
-			return
+			fmt.Printf("Message rejected by mods\n")
+		} else {
+			fmt.Printf("✅ Received %d accepted moderator responses.\n", len(modcertlist))
+
+			msgCert := core.CreateMsgCert(msg, ts, modcertlist)
+
+			response := core.SendToDb(msgCert)
+
+			fmt.Printf("Response by DB: %v\n", response)
 		}
-		fmt.Printf("✅ Received %d accepted moderator responses.\n", len(modcertlist))
-
-		msgCert := core.CreateMsgCert(msg, ts, modcertlist)
-
-		response := core.SendToDb(msgCert)
-
-		fmt.Printf("Response by DB: %v", response)
 	}
 }

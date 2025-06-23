@@ -1,19 +1,13 @@
 package util
 
 import (
-	"bytes"
 	"encoding/json"
 	"libr/types"
-	"strings"
+	"sort"
 )
 
 func CanonicalizeMsg(msg types.Msg) (string, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "") // compact output
-
-	err := enc.Encode(struct {
+	canonical, err := json.Marshal(struct {
 		Content string `json:"content"`
 		Ts      int64  `json:"ts"`
 	}{
@@ -24,6 +18,29 @@ func CanonicalizeMsg(msg types.Msg) (string, error) {
 		return "", err
 	}
 
-	// Remove newline at the end if any
-	return strings.TrimSpace(buf.String()), nil
+	return string(canonical), nil
+}
+
+func CanonicalizeMsgCert(msg types.Msg, modCerts []types.ModCert) (string, error) {
+	// Step 1: Sort the ModCerts by PublicKey (to ensure deterministic signing)
+	sort.SliceStable(modCerts, func(i, j int) bool {
+		return modCerts[i].PublicKey < modCerts[j].PublicKey
+	})
+
+	// Step 2: Build a canonical struct
+	canonical := struct {
+		Msg      types.Msg       `json:"msg"`
+		ModCerts []types.ModCert `json:"modCerts"`
+	}{
+		Msg:      msg,
+		ModCerts: modCerts,
+	}
+
+	// Step 3: Marshal to JSON
+	canonicalBytes, err := json.Marshal(canonical)
+	if err != nil {
+		return "", err
+	}
+
+	return string(canonicalBytes), nil
 }

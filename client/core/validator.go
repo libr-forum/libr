@@ -7,11 +7,10 @@ import (
 )
 
 func IsValidMessage(content string) bool {
-	trimmedContent := strings.TrimSpace(content)
-	if len(trimmedContent) == 0 || len(trimmedContent) > 500 {
+	if len(content) == 0 || len(content) > 500 {
 		return false
 	}
-	if strings.ContainsAny(trimmedContent, "<>{}") {
+	if strings.ContainsAny(content, "<>{}") {
 		return false
 	}
 	return true

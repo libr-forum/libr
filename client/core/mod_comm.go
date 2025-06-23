@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"libr/network"
 	"libr/types"
@@ -21,26 +19,25 @@ func SendToMods(message string, ts int64) []types.ModCert {
 		Ts:      ts,
 	}
 
-	onlineMods, err := util.GetOnlineMods() // utils/state.go
+	onlineMods, err := util.GetOnlineMods()
 	if err != nil {
 		log.Fatalf("failed to get online mods: %v", err)
 	}
 
-	totalMods := len(onlineMods)
-	var modcertList []types.ModCert
+	var (
+		totalMods   = len(onlineMods)
+		modcertList []types.ModCert
+		rejCount    int
+		mu          sync.Mutex
+		wg          sync.WaitGroup
+	)
 
-	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	ctx, cancel := context.WithCancel(timeoutCtx)
-	defer timeoutCancel()
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	rejCount := 0
 
 	for _, mod := range onlineMods {
 		wg.Add(1)
-		go func(mod types.Mod, msg types.Msg) {
+		go func(mod types.Mod) {
 			defer wg.Done()
 
 			addr := fmt.Sprintf("%s:%s", mod.IP, mod.Port)
@@ -49,6 +46,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			responseChan := make(chan types.ModCert, 1)
 
+			// Send the request to the mod
 			go func() {
 				response, err := network.SendTo(addr, msg, "mod")
 				if err != nil {
@@ -62,18 +60,12 @@ func SendToMods(message string, ts int64) []types.ModCert {
 					return
 				}
 
-				if !bytes.Equal(modcert.PublicKey, mod.PublicKey) {
+				if string(modcert.PublicKey) != string(mod.PublicKey) {
 					log.Printf("Response public key mismatch from mod %s", mod.IP)
 					return
 				}
 
-				fmt.Println("🔑 Expected mod key:", base64.StdEncoding.EncodeToString(mod.PublicKey))
-				fmt.Println("🧾 Response mod key:", base64.StdEncoding.EncodeToString(modcert.PublicKey))
-
 				msgString, _ := util.CanonicalizeMsg(msg)
-
-				fmt.Println("🔍 Verifying against this string:", msgString)
-
 				if cryptoutils.VerifySignature(modcert.PublicKey, msgString, modcert.Sign) {
 					responseChan <- modcert
 				} else {
@@ -83,35 +75,47 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			select {
 			case res := <-responseChan:
-				mu.Lock()
 				if res.Status == "approved" {
+					mu.Lock()
 					modcertList = append(modcertList, res)
+					mu.Unlock()
 				} else {
+					mu.Lock()
 					rejCount++
-					if rejCount > (totalMods / 2) {
-						log.Println("Too many rejections! Cancelling all mod requests.")
+					curRej := rejCount
+					curTotal := totalMods
+					mu.Unlock()
+
+					if curRej > (curTotal / 2) {
+						log.Println("🚫 Majority rejected — cancelling.")
 						cancel()
 					}
 				}
-				mu.Unlock()
 
 			case <-modCtx.Done():
-				log.Printf("Mod %s timed out or cancelled\n", mod.IP)
+				log.Printf("Mod %s timed out or cancelled", mod.IP)
 				mu.Lock()
 				totalMods--
+				curRej := rejCount
+				curTotal := totalMods
 				mu.Unlock()
-			}
-		}(mod, msg)
 
+				if curRej > (curTotal / 2) {
+					log.Println("🚫 Majority rejected after timeouts — cancelling.")
+					cancel()
+				}
+			}
+		}(mod)
 	}
 
 	wg.Wait()
 
 	mu.Lock()
-	rejected := rejCount > (totalMods / 2)
+	finalRej := rejCount
+	finalTotal := totalMods
 	mu.Unlock()
 
-	if rejected {
+	if finalRej > (finalTotal / 2) {
 		return nil
 	}
 	return modcertList

@@ -1,23 +1,21 @@
 package types
 
-import "crypto/ed25519"
-
 type Msg struct {
 	Content string `json:"content"`
 	Ts      int64  `json:"ts"`
 }
 
 type ModCert struct {
-	Sign      string            `json:"sign"`
-	PublicKey ed25519.PublicKey `json:"public_key"`
-	Status    string            `json:"status"`
+	Sign      string `json:"sign"`
+	PublicKey string `json:"public_key"`
+	Status    string `json:"status"`
 }
 
 type MsgCert struct {
-	PublicKey ed25519.PublicKey `json:"public_key"`
-	Msg       Msg               `json:"msg"`
-	ModCerts  []ModCert         `json:"modCerts"`
-	Sign      string            `json:"sign"`
+	PublicKey string    `json:"public_key"`
+	Msg       Msg       `json:"msg"`
+	ModCerts  []ModCert `json:"modCerts"`
+	Sign      string    `json:"sign"`
 }
 
 type DataToSign struct {
@@ -27,7 +25,7 @@ type DataToSign struct {
 }
 
 type Mod struct {
-	IP        string            `json:"ip"`
-	Port      string            `json:"port"`
-	PublicKey ed25519.PublicKey `json:"public_key"`
+	IP        string `json:"ip"`
+	Port      string `json:"port"`
+	PublicKey string `json:"public_key"`
 }

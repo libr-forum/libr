@@ -1,4 +1,3 @@
-// keycache/cache.go
 package keycache
 
 import (

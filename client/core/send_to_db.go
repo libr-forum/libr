@@ -28,7 +28,6 @@ func SendToDb(msgcert types.MsgCert) string {
 		}
 		resDB, ok := response.(string)
 		if ok {
-			log.Printf("DB %s responded: %s", DBnode, resDB)
 			return resDB
 		}
 	}

@@ -1,12 +1,15 @@
 package network
 
 import (
+	"crypto/ed25519"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"libr/keycache"
 	"libr/types"
 	util "libr/utils"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
@@ -16,8 +19,9 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 	// Simulate network delay
 	time.Sleep(300 * time.Millisecond)
 
-	pub := keycache.PubKey
-	priv := keycache.PrivKey
+	// Decode base64
+	privBytes, _ := base64.StdEncoding.DecodeString("4TTsKvk1eUVdSibEDa5EKj30ecAZX7cVbTSNx/E9rkAwVAp84v7Zec7UitlhanRzE5Xs/gM3IQ5Ord1C+OBLmg==")
+	priv := ed25519.PrivateKey(privBytes)
 
 	switch expect {
 	case "mod":
@@ -27,16 +31,13 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 		}
 
 		msgString, err := util.CanonicalizeMsg(msg)
-		fmt.Println("🖊️  Signing this exact string:", msgString)
 
 		if err != nil {
 			log.Printf("Failed to generate canonical JSON: %v", err)
 			return nil, err
 		}
 
-		fmt.Println("🔏 Mod is signing:", msgString)
-
-		sign, err := cryptoutils.SignMessage(priv, msgString)
+		pubKeyStr, sign, err := cryptoutils.SignMessage(priv, msgString)
 		if err != nil {
 			return nil, err
 		}
@@ -45,9 +46,9 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 		if time.Now().Unix()%2 == 1 {
 			status = "rejected"
 		}
-
+		fmt.Println("Status: ", status)
 		response := types.ModCert{
-			PublicKey: pub,
+			PublicKey: pubKeyStr,
 			Sign:      sign,
 			Status:    status,
 		}
@@ -55,6 +56,32 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 
 	case "db":
 		// simulate DB acknowledgement
+		msgcert, ok := data.(types.MsgCert)
+		if !ok {
+			return nil, errors.New("expected MsgCert struct for db")
+		}
+
+		// Sort mod certs before verification
+		sort.SliceStable(msgcert.ModCerts, func(i, j int) bool {
+			return msgcert.ModCerts[i].PublicKey < msgcert.ModCerts[j].PublicKey
+		})
+
+		dataToVerify := types.DataToSign{
+			Content:   msgcert.Msg.Content,
+			Timestamp: msgcert.Msg.Ts,
+			ModCerts:  msgcert.ModCerts,
+		}
+
+		jsonBytes, err := json.Marshal(dataToVerify)
+		if err != nil {
+			log.Printf("DB failed to marshal DataToSign: %v", err)
+			return nil, err
+		}
+
+		if !cryptoutils.VerifySignature(msgcert.PublicKey, string(jsonBytes), msgcert.Sign) {
+			return nil, fmt.Errorf("invalid MsgCert signature")
+		}
+
 		return "Message received and stored successfully", nil
 
 	default:
