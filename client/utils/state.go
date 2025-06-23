@@ -5,15 +5,22 @@ import (
 )
 
 func GetOnlineMods() ([]types.Mod, error) {
-	const publicKeyStr = "MFQKfOL+2XnO1IrZYWp0cxOV7P4DNyEOTq3dQvjgS5o="
-
 	mods := []types.Mod{
 		{
 			IP:        "127.0.0.1",
 			Port:      "5000",
-			PublicKey: publicKeyStr,
+			PublicKey: "ZXLvgdRKGT467Y9QCjxyaEvG40Ryvh4nPDoHjLYYE6E=",
+		},
+		{
+			IP:        "127.0.0.1",
+			Port:      "5001",
+			PublicKey: "uLSLJAx+noFAfz0mSIxonc6aD336vmSrgODwtiN1tpI=",
+		},
+		{
+			IP:        "127.0.0.1",
+			Port:      "5002",
+			PublicKey: "vuBnetbCJpcHHdEYj8aZAYEvhf6Yg0PZXwjs9A5XNmA=",
 		},
 	}
-
 	return mods, nil
 }

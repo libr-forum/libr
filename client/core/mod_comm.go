@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"libr/network"
 	"libr/types"
 	util "libr/utils"
@@ -30,6 +29,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 		rejCount    int
 		mu          sync.Mutex
 		wg          sync.WaitGroup
+		once        sync.Once
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -40,7 +40,6 @@ func SendToMods(message string, ts int64) []types.ModCert {
 		go func(mod types.Mod) {
 			defer wg.Done()
 
-			addr := fmt.Sprintf("%s:%s", mod.IP, mod.Port)
 			modCtx, modCancel := context.WithTimeout(ctx, 3*time.Second)
 			defer modCancel()
 
@@ -48,20 +47,20 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			// Send the request to the mod
 			go func() {
-				response, err := network.SendTo(addr, msg, "mod")
+				response, err := network.SendTo(mod.IP, mod.Port, "mod", msg, "mod")
 				if err != nil {
-					log.Printf("Failed to contact mod at %s: %v", addr, err)
+					log.Printf("Failed to contact mod at %s:%s: %v", mod.IP, mod.Port, err)
 					return
 				}
 
 				modcert, ok := response.(types.ModCert)
 				if !ok {
-					log.Printf("Invalid mod response format from %s", addr)
+					log.Printf("Invalid mod response format from %s:%s", mod.IP, mod.Port)
 					return
 				}
 
-				if string(modcert.PublicKey) != string(mod.PublicKey) {
-					log.Printf("Response public key mismatch from mod %s", mod.IP)
+				if modcert.PublicKey != mod.PublicKey {
+					log.Printf("Response public key mismatch from mod %s:%s", mod.IP, mod.Port)
 					return
 				}
 
@@ -69,7 +68,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 				if cryptoutils.VerifySignature(modcert.PublicKey, msgString, modcert.Sign) {
 					responseChan <- modcert
 				} else {
-					log.Printf("Invalid signature from mod %s", mod.IP)
+					log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)
 				}
 			}()
 
@@ -87,13 +86,15 @@ func SendToMods(message string, ts int64) []types.ModCert {
 					mu.Unlock()
 
 					if curRej > (curTotal / 2) {
-						log.Println("🚫 Majority rejected — cancelling.")
-						cancel()
+						once.Do(func() {
+							log.Println("🚫 Majority rejected — cancelling.")
+							cancel()
+						})
 					}
 				}
 
 			case <-modCtx.Done():
-				log.Printf("Mod %s timed out or cancelled", mod.IP)
+				log.Printf("Mod %s:%s timed out or cancelled", mod.IP, mod.Port)
 				mu.Lock()
 				totalMods--
 				curRej := rejCount
@@ -101,8 +102,10 @@ func SendToMods(message string, ts int64) []types.ModCert {
 				mu.Unlock()
 
 				if curRej > (curTotal / 2) {
-					log.Println("🚫 Majority rejected after timeouts — cancelling.")
-					cancel()
+					once.Do(func() {
+						log.Println("🚫 Majority rejected after timeouts — cancelling.")
+						cancel()
+					})
 				}
 			}
 		}(mod)
