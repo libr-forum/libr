@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Arnav-Agrawal-987/crypto/config"
+	"github.com/devlup-labs/Libr/core/crypto/config"
 )
 
 // GenerateKeyPair generates a new Ed25519 key pair,
@@ -42,6 +42,7 @@ func GenerateKeyPair() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 // If the private key is missing or invalid, a new key pair is generated.
 // If the public key is missing or invalid, it is regenerated from the private key and saved.
 func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
+	// Read private key from file
 	privData, err := os.ReadFile(config.PrivateKeyPath)
 	if err != nil {
 		log.Println("Private key not found, generating new key pair.")
@@ -81,20 +82,48 @@ func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 }
 
 // SignMessage signs a string message using the provided private key,
-// and returns a base64-encoded signature string.
-func SignMessage(privateKey ed25519.PrivateKey, message string) (string, error) {
+// and returns the base64-encoded public key, base64-encoded signature, and error if any.
+func SignMessage(privateKey ed25519.PrivateKey, message string) (string, string, error) {
+	// Check private key length
+	if len(privateKey) != ed25519.PrivateKeySize {
+		return "", "", errors.New("invalid private key size")
+	}
+
+	// Sign the message
 	sign := ed25519.Sign(privateKey, []byte(message))
-	return base64.StdEncoding.EncodeToString(sign), nil
+	publicKey := privateKey.Public().(ed25519.PublicKey)
+
+	// Encode both to base64
+	return base64.StdEncoding.EncodeToString(publicKey), base64.StdEncoding.EncodeToString(sign), nil
 }
 
 // VerifySignature checks whether the given base64-encoded signature
 // matches the message using the public key.
-func VerifySignature(publicKey ed25519.PublicKey, message string, sign string) bool {
-	// Decode the base64-encoded signature
-	decodedSign, err := base64.StdEncoding.DecodeString(sign)
+// Returns true if the signature is valid, false otherwise.
+func VerifySignature(publicKeyStr string, message string, signStr string) bool {
+	// Decode base64-encoded public key
+	publicKeyDecoded, err := base64.StdEncoding.DecodeString(publicKeyStr)
 	if err != nil {
+		log.Println("Error decoding public key:", err)
 		return false
 	}
+	if len(publicKeyDecoded) != ed25519.PublicKeySize {
+		log.Println("Invalid public key size")
+		return false
+	}
+	publicKey := ed25519.PublicKey(publicKeyDecoded)
+
+	// Decode the base64-encoded signature
+	sign, err := base64.StdEncoding.DecodeString(signStr)
+	if err != nil {
+		log.Println("Error decoding signature:", err)
+		return false
+	}
+	if len(sign) != ed25519.SignatureSize {
+		log.Println("Invalid signature size")
+		return false
+	}
+
 	// Verify the signature
-	return ed25519.Verify(publicKey, []byte(message), decodedSign)
+	return ed25519.Verify(publicKey, []byte(message), sign)
 }
