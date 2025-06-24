@@ -1,7 +1,7 @@
 package util
 
 import (
-	"libr/types"
+	"github.com/devlup-labs/Libr/core/client/types"
 )
 
 func GetOnlineMods() ([]types.Mod, error) {

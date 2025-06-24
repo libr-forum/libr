@@ -3,10 +3,12 @@ package handler
 import (
 	"bufio"
 	"fmt"
-	"libr/core"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/devlup-labs/Libr/core/client/core"
 )
 
 func RunInputLoop() {
@@ -25,6 +27,16 @@ func RunInputLoop() {
 		if msg == "exit" {
 			fmt.Println("👋 Exiting LIBR client.")
 			break
+		}
+
+		if strings.HasPrefix(msg, "fetch") {
+			if msg == "fetch all" {
+				core.FetchMsgAll()
+				continue
+			} else {
+				ts, _ := strconv.Atoi(msg[6:])
+				core.Fetch(int64(ts))
+			}
 		}
 
 		if !core.IsValidMessage(msg) {

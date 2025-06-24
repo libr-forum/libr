@@ -29,3 +29,9 @@ type Mod struct {
 	Port      string `json:"port"`
 	PublicKey string `json:"public_key"`
 }
+
+type StoredMsg struct {
+	PublicKey string `json:"public_key"`
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
+}

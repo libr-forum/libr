@@ -2,8 +2,9 @@ package util
 
 import (
 	"encoding/json"
-	"libr/types"
 	"sort"
+
+	"github.com/devlup-labs/Libr/core/client/types"
 )
 
 func CanonicalizeMsg(msg types.Msg) (string, error) {

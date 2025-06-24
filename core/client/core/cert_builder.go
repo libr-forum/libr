@@ -2,12 +2,13 @@ package core
 
 import (
 	"encoding/json"
-	"libr/keycache"
-	"libr/types"
 	"log"
 	"sort"
 
-	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
+	"github.com/devlup-labs/Libr/core/client/keycache"
+	"github.com/devlup-labs/Libr/core/client/types"
+
+	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
 func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.MsgCert {

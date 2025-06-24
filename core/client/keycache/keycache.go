@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 	"log"
 
-	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
+	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
 var (

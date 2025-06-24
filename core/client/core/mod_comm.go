@@ -3,14 +3,15 @@ package core
 import (
 	"context"
 	"fmt"
-	"libr/network"
-	"libr/types"
-	util "libr/utils"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
+	util "github.com/devlup-labs/Libr/core/client/utils"
+
+	"github.com/devlup-labs/Libr/core/client/network"
+	"github.com/devlup-labs/Libr/core/client/types"
+	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
 func SendToMods(message string, ts int64) []types.ModCert {

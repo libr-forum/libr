@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Arnav-Agrawal-987/crypto/config"
+	"github.com/devlup-labs/Libr/core/crypto/config"
 )
 
 // GenerateKeyPair generates a new Ed25519 key pair,

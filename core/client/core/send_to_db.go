@@ -2,10 +2,11 @@ package core
 
 import (
 	"encoding/json"
-	"libr/network"
-	"libr/types"
 	"log"
 	"os"
+
+	"github.com/devlup-labs/Libr/core/client/network"
+	"github.com/devlup-labs/Libr/core/client/types"
 )
 
 func SendToDb(msgcert types.MsgCert) string {

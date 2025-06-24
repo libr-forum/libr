@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"libr/types"
-	util "libr/utils"
 	"log"
 	"sort"
 	"time"
 
-	"github.com/Arnav-Agrawal-987/crypto/cryptoutils"
+	"github.com/devlup-labs/Libr/core/client/types"
+	util "github.com/devlup-labs/Libr/core/client/utils"
+	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
 func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
@@ -81,7 +81,7 @@ func SendTo(addr string, data interface{}, expect string) (interface{}, error) {
 		if !cryptoutils.VerifySignature(msgcert.PublicKey, string(jsonBytes), msgcert.Sign) {
 			return nil, fmt.Errorf("invalid MsgCert signature")
 		}
-
+		util.Store(msgcert)
 		return "Message received and stored successfully", nil
 
 	default:

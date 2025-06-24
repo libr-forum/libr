@@ -2,8 +2,9 @@ package core
 
 import (
 	"encoding/json"
-	"libr/types"
 	"strings"
+
+	"github.com/devlup-labs/Libr/core/client/types"
 )
 
 func IsValidMessage(content string) bool {
