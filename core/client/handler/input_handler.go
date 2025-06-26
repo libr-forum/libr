@@ -36,6 +36,7 @@ func RunInputLoop() {
 			} else {
 				ts, _ := strconv.Atoi(msg[6:])
 				core.Fetch(int64(ts))
+				continue
 			}
 		}
 
