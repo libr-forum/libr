@@ -27,10 +27,12 @@ client/
 ├── core/
 │   ├── mod_comm.go               # Orchestrates SendToMods
 │   ├── cert_builder.go           # Builds MsgCert after quorum
+│   ├── msg_fetch.go              # Fetches messages from DB
 │   ├── send_to_db.go             # Sends MsgCert to selected DBs
 │   └── validator.go              # Implements isValidMessage
 │
 ├── utils/
+│   ├── db_msgs.go                # Mock DB
 │   ├── state.go                  # Reads MOD_JOINED, DB_JOINED
 │   └── logger.go                 # Optional: Logging helpers
 │

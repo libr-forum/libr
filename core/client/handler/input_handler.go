@@ -30,13 +30,22 @@ func RunInputLoop() {
 		}
 
 		if strings.HasPrefix(msg, "fetch") {
-			if msg == "fetch all" {
-				core.FetchMsgAll()
-				continue
+			fields := strings.Fields(msg)
+			if len(fields) == 2 {
+				if fields[1] == "all" {
+					core.FetchMsgAll()
+				} else {
+					ts, err := strconv.ParseInt(fields[1], 10, 64)
+					if err != nil {
+						fmt.Println("[!] Invalid timestamp format.")
+					} else {
+						core.Fetch(ts)
+					}
+				}
 			} else {
-				ts, _ := strconv.Atoi(msg[6:])
-				core.Fetch(int64(ts))
+				fmt.Println("[!] Usage: fetch <timestamp> or fetch all")
 			}
+			continue // ✅ this prevents further processing
 		}
 
 		if !core.IsValidMessage(msg) {
