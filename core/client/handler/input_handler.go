@@ -45,7 +45,7 @@ func RunInputLoop() {
 			} else {
 				fmt.Println("[!] Usage: fetch <timestamp> or fetch all")
 			}
-			continue // ✅ <- this line prevents further processing
+			continue // ✅ this prevents further processing
 		}
 
 		if !core.IsValidMessage(msg) {
