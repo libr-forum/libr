@@ -7,19 +7,18 @@ import (
 func GetOnlineMods() ([]types.Mod, error) {
 	mods := []types.Mod{
 		{
-			IP:        "127.0.0.1",
+			IP:        "localhost",
+			Port:      "3000",
+			PublicKey: "Jl6u0CVdfVDfP9I56praRtqwn6uUuo4K3Wnt69aOwWo=",
+		},
+		{
+			IP:        "localhost",
+			Port:      "4000",
+			PublicKey: "Jl6u0CVdfVDfP9I56praRtqwn6uUuo4K3Wnt69aOwWo=",
+		}, {
+			IP:        "localhost",
 			Port:      "5000",
-			PublicKey: "ZXLvgdRKGT467Y9QCjxyaEvG40Ryvh4nPDoHjLYYE6E=",
-		},
-		{
-			IP:        "127.0.0.1",
-			Port:      "5001",
-			PublicKey: "uLSLJAx+noFAfz0mSIxonc6aD336vmSrgODwtiN1tpI=",
-		},
-		{
-			IP:        "127.0.0.1",
-			Port:      "5002",
-			PublicKey: "vuBnetbCJpcHHdEYj8aZAYEvhf6Yg0PZXwjs9A5XNmA=",
+			PublicKey: "Jl6u0CVdfVDfP9I56praRtqwn6uUuo4K3Wnt69aOwWo=",
 		},
 	}
 	return mods, nil

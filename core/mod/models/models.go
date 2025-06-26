@@ -2,17 +2,17 @@ package models
 
 type UserMsg struct {
 	Content   string `json:"content"`
-	TimeStamp string `json:"timestamp"`
+	TimeStamp int64  `json:"ts"`
 }
 
 type ModSign struct {
 	Content   string `json:"content"`
-	TimeStamp string `json:"timestamp"`
+	TimeStamp int64  `json:"timestamp"`
 	Status    string `json:"status"`
 }
 
 type ModResponse struct {
 	Sign      string `json:"sign"`
-	Status    string `json:"status"` //--> to check
-	PublicKey string `json:"pub_key"`
+	PublicKey string `json:"public_key"`
+	Status    string `json:"status"`
 }

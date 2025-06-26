@@ -12,8 +12,8 @@ func Routers() *mux.Router {
 
 	R := mux.NewRouter()
 	R.HandleFunc("/", handlers.HomeHandler).Methods("GET")
-	R.HandleFunc("/submit", handlers.MsgIN).Methods("POST")            
-	R.HandleFunc("/fetch/{timestamp}", handlers.MsgOUT).Methods("GET") 
+	R.HandleFunc("/submit", handlers.MsgIN).Methods("POST")
+	//R.HandleFunc("/fetch/{timestamp}", handlers.MsgOUT).Methods("GET")
 
 	return R
 }

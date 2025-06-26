@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -48,7 +50,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			// Send the request to the mod
 			go func() {
-				response, err := network.SendTo(mod.IP, mod.Port, "mod", msg, "mod")
+				response, err := network.SendTo(mod.IP, mod.Port, "submit", msg, "mod")
 				if err != nil {
 					log.Printf("Failed to contact mod at %s:%s: %v", mod.IP, mod.Port, err)
 					return
@@ -65,8 +67,10 @@ func SendToMods(message string, ts int64) []types.ModCert {
 					return
 				}
 
-				msgString, _ := util.CanonicalizeMsg(msg)
-				if cryptoutils.VerifySignature(modcert.PublicKey, msgString, modcert.Sign) {
+				//msgString, _ := util.CanonicalizeMsg(msg)
+				//fmt.Println(msgString)
+				fmt.Println(msg.Content + strconv.FormatInt(msg.Ts, 10) + modcert.Status)
+				if cryptoutils.VerifySignature(modcert.PublicKey, msg.Content+strconv.FormatInt(msg.Ts, 10)+modcert.Status, modcert.Sign) {
 					responseChan <- modcert
 				} else {
 					log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)
@@ -75,7 +79,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 
 			select {
 			case res := <-responseChan:
-				if res.Status == "approved" {
+				if res.Status == "1" {
 					mu.Lock()
 					modcertList = append(modcertList, res)
 					mu.Unlock()

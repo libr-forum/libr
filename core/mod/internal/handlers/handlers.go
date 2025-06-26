@@ -2,12 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
-
-	"github.com/gorilla/mux"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod/internal/service"
@@ -40,8 +39,8 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Basic validation
-	if req.TimeStamp == "0" || strings.TrimSpace(req.Content) == "" {
-		http.Error(w, "timestamp or content missing", http.StatusBadRequest)
+	if strings.TrimSpace(req.Content) == "" {
+		http.Error(w, "content missing", http.StatusBadRequest)
 		return
 	}
 
@@ -68,29 +67,27 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error signing message", http.StatusInternalServerError)
 		return
 	}
-
-	mu.Lock()
-	msgStore[req.TimeStamp] = signed
-	mu.Unlock()
-
+	var response models.ModResponse
+	json.Unmarshal([]byte(signed), &response)
+	fmt.Println(response)
 	// Respond
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(signed)
+	json.NewEncoder(w).Encode(response)
 }
 
-func MsgOUT(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	timestamp := vars["timestamp"]
+// func MsgOUT(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	timestamp := vars["timestamp"]
 
-	mu.RLock()
-	msg, exists := msgStore[timestamp]
-	mu.RUnlock()
+// 	mu.RLock()
+// 	msg, exists := msgStore[timestamp]
+// 	mu.RUnlock()
 
-	if !exists {
-		http.Error(w, "message not found", http.StatusNotFound)
-		return
-	}
+// 	if !exists {
+// 		http.Error(w, "message not found", http.StatusNotFound)
+// 		return
+// 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msg)
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(msg)
+// }
