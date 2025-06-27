@@ -47,7 +47,8 @@ db/
   "mod_cert": [
     {
       "public_key": "moderator_public_key",
-      "sign":       "signature_string"
+      "sign":       "signature_string",
+      "status":     "status"
     }
   ]
 }
