@@ -18,7 +18,8 @@
 
 <!-- Put an 'x' in the boxes that apply -->
 
-- [ ] 🟢 Core Protocol (Go code in `src/core/`)
+- [ ] � Core Protocol (Go code in `src/core-protocol/`)
+- [ ] 🌐 Network Layer (Go code in `src/network/`)
 - [ ] 🔵 Web Client (React code in `src/web-client/`)
 - [ ] 🟣 Mobile Client (Flutter code in `src/mobile-client/`)
 - [ ] 🟡 Smart Contracts (Solidity code in `src/contracts/`)

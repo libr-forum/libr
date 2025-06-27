@@ -27,11 +27,10 @@ LIBR strikes a balance by using a replicated DHT (Distributed Hash Table) settin
 
 LIBR is built with the following components:
 
-1. **Core Protocol (Go)**: The backbone of the system, implementing the DHT, cryptographic operations, and moderation quorum mechanisms.
-2. **Blockchain Layer (Solidity)**: Smart contracts that manage global state, moderator registry, and community governance.
+1. **Protocol and Networking Layer (Go)**: The backbone of the system, implementing the DHT, cryptographic operations, moderation quorum mechanisms, and peer-to-peer communication.
+2. **Blockchain Layer (Solidity)**: Smart contracts that manage global state, moderator registry, and community governance and incentivization.
 3. **Web Client (React)**: User-friendly interface for interacting with LIBR communities.
 4. **Mobile Client (Flutter)**: Native mobile experience for broader accessibility.
-5. **Networking Layer (libp2p)**: Handles peer-to-peer communication between nodes.
 
 ## Tech Stack
 
@@ -58,7 +57,8 @@ All source code is organized under the `src/` directory:
 
 ```
 src/
-├── core/           # Go - Core protocol implementation
+├── core-protocol/  # Go - Core LIBR protocol and moderation logic
+├── network/        # Go - P2P networking and DHT operations
 ├── web-client/     # React/TypeScript - Web interface
 ├── mobile-client/  # Flutter/Dart - Mobile application
 ├── contracts/      # Solidity - Smart contracts
@@ -67,7 +67,8 @@ src/
 
 ### Language Guidelines by Directory
 
-- **`src/core/`**: Go (1.21+) - Implements the core LIBR protocol, DHT operations, cryptographic functions, and peer-to-peer networking
+- **`src/core-protocol/`**: Go (1.21+) - Core LIBR protocol implementation, moderation logic, and data structures
+- **`src/network/`**: Go (1.21+) - Peer-to-peer networking, DHT operations, and node discovery
 - **`src/web-client/`**: React with TypeScript - User-facing web application with modern UI/UX
 - **`src/mobile-client/`**: Flutter/Dart - Cross-platform mobile application
 - **`src/contracts/`**: Solidity - Ethereum smart contracts for global state management
@@ -77,7 +78,11 @@ src/
 
 ```bash
 # Core protocol
-cd src/core
+cd src/core-protocol
+go run main.go
+
+# Network layer
+cd src/network
 go run main.go
 
 # Web client

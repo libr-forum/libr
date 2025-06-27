@@ -186,9 +186,14 @@ src/
 
 ### Language Guidelines by Directory
 
-- **`src/core/`**: 
+- **`src/core-protocol/`**: 
   - **Language**: Go 1.21+
-  - **Purpose**: Core LIBR protocol, DHT operations, cryptographic functions, peer-to-peer networking
+  - **Purpose**: Core LIBR protocol implementation, moderation logic, consensus mechanisms
+  - **Standards**: Follow Go official style guide and effective Go practices
+
+- **`src/network/`**: 
+  - **Language**: Go 1.21+
+  - **Purpose**: Peer-to-peer networking, DHT operations, node discovery, message routing
   - **Standards**: Follow Go official style guide and effective Go practices
 
 - **`src/web-client/`**: 
@@ -214,7 +219,14 @@ src/
 ### Core Protocol
 
 ```bash
-cd src/core
+cd src/core-protocol
+go mod download
+```
+
+### Network Layer
+
+```bash
+cd src/network
 go mod download
 ```
 
@@ -244,7 +256,14 @@ npm install
 ### Core Protocol
 
 ```bash
-cd src/core
+cd src/core-protocol
+go test -v ./...
+```
+
+### Network Layer
+
+```bash
+cd src/network
 go test -v ./...
 ```
 

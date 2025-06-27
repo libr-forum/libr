@@ -18,7 +18,8 @@ assignees: ''
 
 - [ ] 🌐 Website (React web client)
 - [ ] 📱 Mobile app (Flutter mobile client)
-- [ ] ⚙️ Backend/Server (Go core)
+- [ ] 🔧 Core Protocol (Go - main LIBR logic)
+- [ ] 🌐 Network Layer (Go - P2P networking)
 - [ ] 🔗 Smart contracts (Blockchain)
 - [ ] 📚 Documentation
 - [ ] 🧪 Testing

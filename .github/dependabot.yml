@@ -31,6 +31,7 @@ updates:
       include: "scope"
 
 # Note: Additional ecosystems can be added when files are created:
-# - Add "gomod" ecosystem for "/src/core" when go.mod is created
+# - Add "gomod" ecosystem for "/src/core-protocol" when go.mod is created
+# - Add "gomod" ecosystem for "/src/network" when go.mod is created  
 # - Add "npm" ecosystem for "/src/web-client" when package.json is created
 # - Add "pub" ecosystem for "/src/mobile-client" when pubspec.yaml is created
