@@ -72,7 +72,7 @@ db/
 }   
 ```
 ### 2. **FindNodeHandler/FindValueHandler**
-**Response**
+**Response**\ 
 Returns array of **Node** up to k closest nodes to the queried ID.
 
 Structure of Node:
