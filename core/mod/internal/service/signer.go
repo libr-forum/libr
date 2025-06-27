@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
@@ -13,7 +12,6 @@ import (
 func ModSign(req models.UserMsg, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (string, error) {
 
 	payload := req.Content + strconv.FormatInt(req.TimeStamp, 10) + status
-	fmt.Println(payload)
 	public_key, sign, err := cryptoutils.SignMessage(privateKey, payload)
 	if err != nil {
 		return "", err

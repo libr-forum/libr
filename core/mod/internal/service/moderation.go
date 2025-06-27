@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/devlup-labs/Libr/core/mod/models"
@@ -18,8 +19,10 @@ func ModerateMsg(msg models.UserMsg) (string, error) {
 		return "", err
 	}
 	if clean {
+		fmt.Println("Message:", msg.Content, "\nStatus: Approved")
 		return "1", nil
 	}
+	fmt.Println("Message:", msg.Content, "\nStatus: Rejected")
 	return "0", nil
 }
 

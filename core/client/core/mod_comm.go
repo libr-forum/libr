@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -67,9 +66,6 @@ func SendToMods(message string, ts int64) []types.ModCert {
 					return
 				}
 
-				//msgString, _ := util.CanonicalizeMsg(msg)
-				//fmt.Println(msgString)
-				fmt.Println(msg.Content + strconv.FormatInt(msg.Ts, 10) + modcert.Status)
 				if cryptoutils.VerifySignature(modcert.PublicKey, msg.Content+strconv.FormatInt(msg.Ts, 10)+modcert.Status, modcert.Sign) {
 					responseChan <- modcert
 				} else {

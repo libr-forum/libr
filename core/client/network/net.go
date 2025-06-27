@@ -53,7 +53,6 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 		var response types.ModCert
 
 		json.NewDecoder(resp.Body).Decode(&response)
-		fmt.Println(response)
 
 		return response, nil
 

@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod/internal/service"
@@ -20,11 +18,6 @@ func HandleMsg() {
 	// 4. sign
 	// 5. respond
 }
-
-var (
-	msgStore = make(map[string]models.ModResponse)
-	mu       sync.RWMutex
-)
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Welcome to LIBR prototype"))
@@ -69,7 +62,7 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 	}
 	var response models.ModResponse
 	json.Unmarshal([]byte(signed), &response)
-	fmt.Println(response)
+
 	// Respond
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

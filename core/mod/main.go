@@ -7,25 +7,16 @@ import (
 
 	"github.com/devlup-labs/Libr/core/mod/config"
 	"github.com/devlup-labs/Libr/core/mod/internal/service"
-	"github.com/devlup-labs/Libr/core/mod/models"
 	"github.com/devlup-labs/Libr/core/mod/routers"
 )
 
 func main() {
-
-	input := models.UserMsg{
-		Content:   "Hello, world!",
-		TimeStamp: 1749914634,
-	}
-	fmt.Println(input)
-
-	//cryptoutils.LoadKeys()
-
-	load, nil := config.LoadConfig()
-	fmt.Println(load, nil)
+	load, _ := config.LoadConfig()
+	fmt.Println(load)
 
 	r := routers.Routers()
-	log.Fatal(http.ListenAndServe(":5000", r))
+	fmt.Println("Listening on http://localhost:3000")
+	log.Fatal(http.ListenAndServe(":3000", r))
 
 	clean, err := service.AnalyzeContent("helloo", service.AnalyzeWithKeywordFilter)
 	if err != nil {
