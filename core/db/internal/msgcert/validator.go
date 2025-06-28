@@ -1,4 +1,4 @@
-package msgcert
+package internal
 
 import (
 	"encoding/json"
