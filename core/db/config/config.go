@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/devlup-labs/Libr/core/db/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -52,9 +51,10 @@ func EnsureDatabaseExists(uri string) {
 	createTableSQL := `
 	CREATE TABLE IF NOT EXISTS MsgCert (
 				sender TEXT NOT NULL,
-				msg TEXT NOT NULL,
+				content TEXT NOT NULL,
 				ts TIMESTAMPTZ NOT NULL,
-				mod_cert JSONB NOT NULL
+				mod_cert JSONB NOT NULL,
+				sign TEXT NOT NULL
 	)`
 	_, err = Pool.Exec(ctx, createTableSQL)
 	if err != nil {
@@ -82,43 +82,7 @@ func InitConnection() {
 
 }
 
-func InsertMsgCert(msgcert models.MsgCert) (string, error) {
-	query := "INSERT INTO MsgCert(sender,msg,ts,mod_cert) VALUES ($1,$2,$3,$4)"
-	_, err := Pool.Exec(context.Background(), query, msgcert.Sender, msgcert.Msg, msgcert.Timestamp, msgcert.ModCert)
-	if err != nil {
-		fmt.Printf("error inserting Message certificate: %v", err)
-		return "Error", err
-	}
-	return "Message certificate Successfully Inserted", nil
-}
-
-func GetMsgCert(ts int64) []models.MsgCert {
-	query := "SELECT * FROM MsgCert WHERE ts = $3"
-	rows, err := Pool.Query(context.Background(), query, ts)
-	if err != nil {
-		fmt.Printf("error getting MsgCert from db: %v", err)
-		return nil
-	}
-	defer rows.Close()
-
-	var msgCerts []models.MsgCert
-	for rows.Next() {
-		var msgCert models.MsgCert
-		if err := rows.Scan(&msgCert.Sender, &msgCert.Msg, &msgCert.Timestamp, &msgCert.ModCert); err != nil {
-			log.Fatalf("Error scanning row: %v", err)
-			continue
-		}
-		msgCerts = append(msgCerts, msgCert)
-	}
-	fmt.Println(msgCerts)
-	return msgCerts
-}
-
-
-// --> timestamp: check and set as int 
-
-
-
+// --> timestamp: check and set as int
 
 // func main() {
 // 	InitConnection()
@@ -132,14 +96,13 @@ func GetMsgCert(ts int64) []models.MsgCert {
 //             Status:    "approved",
 //         }},
 //     }
-	
+
 //     if msg, err := InsertMsgCert(sample); err != nil {
 //         log.Printf("Insert error: %v", err)
 //     } else {
 //         log.Println(msg)
 //     }
-	
+
 // 	defer Pool.Close()
 
 // }
-
