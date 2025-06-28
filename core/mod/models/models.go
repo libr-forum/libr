@@ -1,8 +1,8 @@
 package models
 
-type UserMsg struct {
-	Content   string `json:"content"`
-	TimeStamp string `json:"timestamp"`
+type Msg struct {
+	Content string `json:"content"`
+	Ts      int64  `json:"ts"`
 }
 
 type ModSign struct {
@@ -13,6 +13,6 @@ type ModSign struct {
 
 type ModResponse struct {
 	Sign      string `json:"sign"`
-	Status    string `json:"status"` //--> to check
+	Status    string `json:"status"`
 	PublicKey string `json:"pub_key"`
 }

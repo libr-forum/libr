@@ -8,9 +8,9 @@ import (
 	"github.com/devlup-labs/Libr/core/mod/models"
 )
 
-func ModSign(req models.UserMsg, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (models.ModResponse, error) {
+func ModSign(req models.Msg, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (models.ModResponse, error) {
 
-	payload := fmt.Sprintf("%s|%s|%s", req.Content, req.TimeStamp, status)
+	payload := fmt.Sprintf("%s|%d|%s", req.Content, req.Ts, status)
 
 	public_key, sign, err := cryptoutils.SignMessage(privateKey, payload)
 	if err != nil {

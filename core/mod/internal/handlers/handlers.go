@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -32,7 +33,8 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func MsgIN(w http.ResponseWriter, r *http.Request) {
-	var req models.UserMsg
+	var req models.Msg
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Invalid user message: %v", err)
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -40,7 +42,7 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Basic validation
-	if req.TimeStamp == "0" || strings.TrimSpace(req.Content) == "" {
+	if req.Ts == 0 || strings.TrimSpace(req.Content) == "" {
 		http.Error(w, "timestamp or content missing", http.StatusBadRequest)
 		return
 	}
@@ -69,8 +71,9 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Store the signed mod response using ts as key
 	mu.Lock()
-	msgStore[req.TimeStamp] = signed
+	msgStore[fmt.Sprintf("%d", req.Ts)] = signed
 	mu.Unlock()
 
 	// Respond

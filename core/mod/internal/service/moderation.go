@@ -12,7 +12,7 @@ var forbidden = []string{
 
 type ModelFunc func(content string) (bool, error)
 
-func ModerateMsg(msg models.UserMsg) (string, error) {
+func ModerateMsg(msg models.Msg) (string, error) {
 	clean, err := AnalyzeWithKeywordFilter(msg.Content)
 	if err != nil {
 		return "", err

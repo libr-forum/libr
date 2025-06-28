@@ -14,9 +14,9 @@ import (
 
 func main() {
 
-	input := models.UserMsg{
-		Content:   "Hello, world!",
-		TimeStamp: "4234242",
+	input := models.Msg{
+		Content: "Hello, world!",
+		Ts:      4234242,
 	}
 	fmt.Println(input)
 
