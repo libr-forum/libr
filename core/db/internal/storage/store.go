@@ -1,4 +1,4 @@
-package internal
+package storage
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/models"
+	"github.com/devlup-labs/Libr/core/db/internal/models"
 )
 
 func StoreMsgCert(msgcert models.MsgCert) (string, error) {
