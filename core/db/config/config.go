@@ -10,6 +10,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const K = 4
+
 var Pool *pgxpool.Pool
 
 func EnsureDatabaseExists(uri string) {
@@ -84,28 +86,3 @@ func InitConnection() {
 	log.Println("connected to db")
 
 }
-
-// --> timestamp: check and set as int
-
-// func main() {
-// 	InitConnection()
-// 	    sample := models.MsgCert{
-//         Sender:    "sender_public_key_example",
-//         Msg:       "Hello, Libr!",
-//         Timestamp: "1711578607",
-//         ModCert: []models.ModCert{{
-//             PublicKey: "mod_public_key_example",
-//             Sign:      "signature_example",
-//             Status:    "approved",
-//         }},
-//     }
-
-//     if msg, err := InsertMsgCert(sample); err != nil {
-//         log.Printf("Insert error: %v", err)
-//     } else {
-//         log.Println(msg)
-//     }
-
-// 	defer Pool.Close()
-
-// }

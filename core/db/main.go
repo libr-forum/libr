@@ -3,32 +3,58 @@ package main
 import (
 	"fmt"
 
+	"net/http"
+	"os"
+
 	"github.com/devlup-labs/Libr/core/db/config"
-	internal "github.com/devlup-labs/Libr/core/db/internal/msgcert"
-	"github.com/devlup-labs/Libr/core/db/models"
+	"github.com/devlup-labs/Libr/core/db/internal/network"
+	"github.com/devlup-labs/Libr/core/db/internal/node"
+	"github.com/devlup-labs/Libr/core/db/internal/routing"
+	"github.com/devlup-labs/Libr/core/db/internal/server"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables (like BOOTSTRAP_ADDR)
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Warning: .env file not found.")
+	}
+
+	// Initialize PostgreSQL connection
 	config.InitConnection()
-	msgcert := models.MsgCert{
-		PublicKey: "Jl6u0CVdfVDfP9I56praRtqwn6uUuo4K3Wnt69aOwWo=",
-		Msg: models.Msg{
-			Content: "Hello",
-			Ts:      1751113043,
-		},
-		ModCerts: []models.ModCert{{
-			Sign:      "htkVG1bdGvKo+FPkTgmJL6XO+fWtk9Waz1OLIoq2/0ZP5DEPJaXCkOGqiaZo2eNqWqLLWmquyDrmbcSEDl+pAw==",
-			PublicKey: "Jl6u0CVdfVDfP9I56praRtqwn6uUuo4K3Wnt69aOwWo=",
-			Status:    "1",
-		}},
-		Sign: "zUJPOWJjCnMFISqbsbubsonJ6gBxqEWWuU0trjwUbInF65JRBdq+AX2n+thNGb6o0L3v2R/F+8wZi1U472vpDw==",
+
+	const rtFile = "routing_table.json"
+	ip := "127.0.0.1"
+	port := "8001"
+
+	// Create local node
+	localNode := &node.Node{
+		NodeId: node.GenerateNodeID(ip + ":" + port),
+		IP:     ip,
+		Port:   port,
 	}
-	err := internal.ValidateMsgCert(msgcert)
-	if err == nil {
-		internal.StoreMsgCert(msgcert)
+
+	// Load or create routing table
+	rt, err := routing.LoadRoutingTable(rtFile)
+	if err != nil {
+		fmt.Println("No existing routing table found. Creating new.")
+		rt = routing.NewRoutingTable(localNode.NodeId)
+	} else {
+		fmt.Println("Loaded existing routing table.")
 	}
-	res := internal.GetMsgCert(1751113043)
-	for _, cert := range res {
-		fmt.Println(cert)
+
+	// Bootstrap if another node is provided
+	bootstrapAddr := os.Getenv("BOOTSTRAP_ADDR")
+	if bootstrapAddr != "" && bootstrapAddr != ip+":"+port {
+		fmt.Println("Bootstrapping from:", bootstrapAddr)
+		network.Bootstrap(bootstrapAddr, localNode, rt)
+	}
+
+	// Setup all HTTP routes
+	server.SetupRoutes(localNode, rt)
+
+	fmt.Printf("✅ Node running at http://%s:%s\n", ip, port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		fmt.Println("❌ Server error:", err)
 	}
 }

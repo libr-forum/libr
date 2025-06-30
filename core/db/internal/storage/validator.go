@@ -1,4 +1,4 @@
-package internal
+package storage
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/db/models"
+	"github.com/devlup-labs/Libr/core/db/internal/models"
 )
 
 func ValidateMsgCert(msgcert models.MsgCert) error {
