@@ -34,6 +34,9 @@ func GetBucketIndex(selfID, targetID [20]byte) int {
 }
 
 func (rt *RoutingTable) InsertNode(newNode *node.Node, pinger Pinger) string {
+	if rt.SelfID == newNode.NodeId && rt.SelfPort == newNode.Port {
+		return "Can't add self node"
+	}
 	index := GetBucketIndex(rt.SelfID, newNode.NodeId)
 
 	if rt.Buckets[index] == nil {
@@ -63,7 +66,7 @@ func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *node.Node, buc
 		}
 	}
 
-	if len(bucket.Nodes) < config.K {
+	if len(bucket.Nodes) <= config.K {
 		bucket.Nodes = append(bucket.Nodes, newNode)
 		fmt.Printf("➕ Appended new node: %x | Port: %s\n", newNode.NodeId, newNode.Port)
 		return "Appended new node (bucket had space)"

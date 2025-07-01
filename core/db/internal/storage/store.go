@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,6 +18,7 @@ func StoreMsgCert(msgcert models.MsgCert) (string, error) {
 	if err != nil {
 		return "Error marshaling modCerts", err
 	}
+	fmt.Println(msgcert)
 
 	_, err = config.Pool.Exec(context.Background(), query,
 		msgcert.PublicKey,

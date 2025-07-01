@@ -14,14 +14,14 @@ type ModCert struct {
 type MsgCert struct {
 	PublicKey string    `json:"public_key"`
 	Msg       Msg       `json:"msg"`
-	ModCerts  []ModCert `json:"modCerts"`
+	ModCerts  []ModCert `json:"mod_certs"`
 	Sign      string    `json:"sign"`
 }
 
 type DataToSign struct {
 	Content   string    `json:"message"`
 	Timestamp int64     `json:"timestamp"`
-	ModCerts  []ModCert `json:"modcerts"`
+	ModCerts  []ModCert `json:"mod_certs"`
 }
 
 type Mod struct {

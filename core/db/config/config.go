@@ -20,7 +20,13 @@ func EnsureDatabaseExists(uri string) {
 	ctx := context.Background()
 	var exists bool
 
-	newURI := fmt.Sprintf("postgres://%s:%s@localhost:5432/postgres?sslmode=disable", os.Getenv("DB_USER"), os.Getenv("DB_PASS"))
+	// First connect to the default "postgres" DB to check/create "libr"
+	newURI := fmt.Sprintf(
+		"postgres://%s:%s@localhost:%s/postgres?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"),
+		os.Getenv("DB_PORT"),
+	)
 
 	var err error
 	Pool, err = pgxpool.New(ctx, newURI)
@@ -48,24 +54,26 @@ func EnsureDatabaseExists(uri string) {
 		log.Printf("Database %q already exists.", dbName)
 	}
 
-	// Connect to the new 'libr' database
+	// Reconnect to the newly created (or existing) "libr" database
 	Pool, err = pgxpool.New(ctx, uri)
 	if err != nil {
 		log.Fatalf("Unable to connect to 'libr' database: %v", err)
 	}
 
+	// Create MsgCert table
 	createMsgCertSQL := `
 	CREATE TABLE IF NOT EXISTS MsgCert (
 		sender TEXT NOT NULL,
 		content TEXT NOT NULL,
 		ts TIMESTAMPTZ NOT NULL,
-		mod_cert JSONB NOT NULL,
+		mod_certs JSONB NOT NULL,
 		sign TEXT NOT NULL
 	)`
 	if _, err := Pool.Exec(ctx, createMsgCertSQL); err != nil {
 		log.Fatalf("Failed to create MsgCert table: %v", err)
 	}
 
+	// Create RoutingTable table
 	createRoutingSQL := `
 	CREATE TABLE IF NOT EXISTS RoutingTable (
 		id SERIAL PRIMARY KEY,
@@ -77,14 +85,19 @@ func EnsureDatabaseExists(uri string) {
 }
 
 func InitConnection() {
+	// Load .env variables
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("error loading .env file:", err)
 	}
+
+	// Construct connection URI for "libr" DB
 	uri := fmt.Sprintf(
-		"postgres://%s:%s@localhost:5432/libr?sslmode=disable",
+		"postgres://%s:%s@localhost:%s/libr?sslmode=disable",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASS"),
+		os.Getenv("DB_PORT"),
 	)
+
 	EnsureDatabaseExists(uri)
 
 	var err error

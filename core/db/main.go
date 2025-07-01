@@ -20,7 +20,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8000" // default
+		port = "10000" // default
 	}
 	ip := "127.0.0.1"
 	address := ip + ":" + port
