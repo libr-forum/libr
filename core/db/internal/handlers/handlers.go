@@ -15,6 +15,7 @@ import (
 
 type PingRequest struct {
 	NodeID string `json:"node_id"`
+	Port   string `json:"port"`
 }
 
 type PingResponse struct {
@@ -41,13 +42,15 @@ func HandlePing(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFunc
 		senderNode := &node.Node{
 			NodeId: dedID,
 			IP:     r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")],
-			Port:   "",
+			Port:   pingReq.Port,
 		}
 
 		pinger := &network.RealPinger{}
 		rt.InsertNode(senderNode, pinger)
 
 		json.NewEncoder(w).Encode(PingResponse{Status: "ok"})
+		fmt.Printf("Ping from node ID: %x, IP: %s\n", dedID, senderNode.IP)
+
 	}
 }
 
