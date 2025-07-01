@@ -54,7 +54,7 @@ func EnsureDatabaseExists(uri string) {
 		log.Fatalf("Unable to connect to 'libr' database: %v", err)
 	}
 
-	createTableSQL := `
+	createMsgCertSQL := `
 	CREATE TABLE IF NOT EXISTS MsgCert (
 		sender TEXT NOT NULL,
 		content TEXT NOT NULL,
@@ -62,8 +62,17 @@ func EnsureDatabaseExists(uri string) {
 		mod_cert JSONB NOT NULL,
 		sign TEXT NOT NULL
 	)`
-	if _, err := Pool.Exec(ctx, createTableSQL); err != nil {
+	if _, err := Pool.Exec(ctx, createMsgCertSQL); err != nil {
 		log.Fatalf("Failed to create MsgCert table: %v", err)
+	}
+
+	createRoutingSQL := `
+	CREATE TABLE IF NOT EXISTS RoutingTable (
+		id SERIAL PRIMARY KEY,
+		rt JSONB NOT NULL
+	)`
+	if _, err := Pool.Exec(ctx, createRoutingSQL); err != nil {
+		log.Fatalf("Failed to create RoutingTable table: %v", err)
 	}
 }
 
@@ -84,5 +93,4 @@ func InitConnection() {
 		log.Fatal("failed to create pool:", err)
 	}
 	log.Println("connected to db")
-
 }

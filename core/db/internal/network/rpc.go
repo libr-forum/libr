@@ -18,6 +18,7 @@ import (
 
 type PingRequest struct {
 	NodeID string `json:"node_id"`
+	Port   string `json:"port"`
 }
 
 type PingResponse struct {
@@ -26,17 +27,19 @@ type PingResponse struct {
 
 type RealPinger struct{}
 
-func (p *RealPinger) Ping(selfID [20]byte, target node.Node) error {
-	return SendPing(selfID, target)
+func (p *RealPinger) Ping(selfID [20]byte, selfPort string, target node.Node) error {
+	return SendPing(selfID, selfPort, target)
 }
 
-func SendPing(SelfID [20]byte, node node.Node) error {
+func SendPing(SelfID [20]byte, SelfPort string, node node.Node) error {
 	addr := "http://" + node.IP + ":" + node.Port + "/ping"
 
 	SelfIDhex := hex.EncodeToString(SelfID[:])
 	body := map[string]string{
 		"node_id": SelfIDhex,
+		"port":    SelfPort,
 	}
+
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return err

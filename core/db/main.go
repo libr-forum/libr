@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
-
+	"log"
 	"net/http"
 	"os"
 
@@ -11,50 +13,45 @@ import (
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
 	"github.com/devlup-labs/Libr/core/db/internal/server"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables (like BOOTSTRAP_ADDR)
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Warning: .env file not found.")
-	}
-
-	// Initialize PostgreSQL connection
 	config.InitConnection()
 
-	const rtFile = "routing_table.json"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000" // default
+	}
 	ip := "127.0.0.1"
-	port := "8001"
+	address := ip + ":" + port
 
-	// Create local node
 	localNode := &node.Node{
-		NodeId: node.GenerateNodeID(ip + ":" + port),
+		NodeId: node.GenerateNodeID(address),
 		IP:     ip,
 		Port:   port,
 	}
+	id := node.GenerateNodeID(address)
+	fmt.Println(hex.EncodeToString(id[:]))
 
-	// Load or create routing table
-	rt, err := routing.LoadRoutingTable(rtFile)
-	if err != nil {
-		fmt.Println("No existing routing table found. Creating new.")
-		rt = routing.NewRoutingTable(localNode.NodeId)
-	} else {
-		fmt.Println("Loaded existing routing table.")
-	}
-
-	// Bootstrap if another node is provided
-	bootstrapAddr := os.Getenv("BOOTSTRAP_ADDR")
-	if bootstrapAddr != "" && bootstrapAddr != ip+":"+port {
-		fmt.Println("Bootstrapping from:", bootstrapAddr)
+	rt := routing.GetOrCreateRoutingTable(localNode)
+	fmt.Println("Routing table created with port:", rt.SelfPort)
+	// Optional: Bootstrap to known node
+	bootstrapAddr := os.Getenv("BOOTSTRAP")
+	if bootstrapAddr != "" {
+		fmt.Println("Bootstrapping with", bootstrapAddr)
 		network.Bootstrap(bootstrapAddr, localNode, rt)
 	}
 
-	// Setup all HTTP routes
 	server.SetupRoutes(localNode, rt)
-
-	fmt.Printf("✅ Node running at http://%s:%s\n", ip, port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		fmt.Println("❌ Server error:", err)
+	data, err := json.MarshalIndent(rt, "", "  ")
+	if err != nil {
+		log.Println("Error marshalling routing table:", err)
+		return
 	}
+	fmt.Println(string(data))
+	fmt.Println("Kademlia node running at http://" + address)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		fmt.Println("Failed to start server:", err)
+	}
+	fmt.Println(rt)
 }
