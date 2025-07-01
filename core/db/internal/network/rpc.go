@@ -68,13 +68,16 @@ func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*node.Node {
 func StoreValue(key [20]byte, cert models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
 	closest := rt.FindClosest(key, config.K)
 
+	selfDist := node.XORBigInt(self.NodeId, key)
+
+	// Check if self is closer than any of the closest nodes
 	for _, n := range closest {
-		if n.IP == self.IP && n.Port == self.Port {
-			// Only store if current node is one of the k closest
+		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
 			storage.StoreMsgCert(cert)
 			return nil
 		}
 	}
+
 	return closest
 }
 

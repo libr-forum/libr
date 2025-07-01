@@ -39,6 +39,7 @@ func HandlePing(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFunc
 			return
 		}
 
+		fmt.Println("Ping Req: ", pingReq)
 		senderNode := &node.Node{
 			NodeId: dedID,
 			IP:     r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")],
@@ -49,7 +50,19 @@ func HandlePing(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFunc
 		rt.InsertNode(senderNode, pinger)
 
 		json.NewEncoder(w).Encode(PingResponse{Status: "ok"})
-		fmt.Printf("Ping from node ID: %x, IP: %s\n", dedID, senderNode.IP)
+		fmt.Printf("Ping from node ID: %x, IP: %s Port:%s\n", dedID, senderNode.IP, senderNode.Port)
+
+		fmt.Println("🔍 Routing Table Dump:")
+		for i, bucket := range rt.Buckets {
+			if bucket == nil || len(bucket.Nodes) == 0 {
+				continue
+			}
+			fmt.Printf("Bucket %2d:\n", i)
+			for _, n := range bucket.Nodes {
+				fmt.Printf("  - ID: %x | IP: %s | Port: %s | LastSeen: %d\n",
+					n.NodeId, n.IP, n.Port, n.LastSeen)
+			}
+		}
 
 	}
 }
@@ -100,17 +113,17 @@ func StoreHandler(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFu
 			return
 		}
 
-		var cert models.MsgCert
-		if err := json.NewDecoder(r.Body).Decode(&cert); err != nil {
+		var Msgcert models.MsgCert
+		if err := json.NewDecoder(r.Body).Decode(&Msgcert); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
 		defer r.Body.Close()
 
-		key := strconv.FormatInt(cert.Msg.Ts, 10)
+		key := strconv.FormatInt(Msgcert.Msg.Ts, 10)
 		keyBytes := node.GenerateNodeID(key)
 
-		closest := network.StoreValue(keyBytes, cert, localNode, rt)
+		closest := network.StoreValue(keyBytes, Msgcert, localNode, rt)
 		if closest != nil {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(closest)

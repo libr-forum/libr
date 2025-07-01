@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 func Bootstrap(addr string, localNode *node.Node, rt *routing.RoutingTable) {
 	// 1. Ping
 	resp, err := http.Post("http://"+addr+"/ping", "application/json", strings.NewReader(
-		fmt.Sprintf(`{"node_id": "%x"}`, localNode.NodeId[:]),
+		fmt.Sprintf(`{"node_id": "%x","port": "%s"}`, localNode.NodeId[:], localNode.Port),
 	))
 	if err != nil {
 		fmt.Println("Ping failed:", err)
@@ -36,9 +37,22 @@ func Bootstrap(addr string, localNode *node.Node, rt *routing.RoutingTable) {
 		return
 	}
 
+	bootstrapIP, bootstrapPort, err := net.SplitHostPort(addr)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	bootstrapNode := node.Node{
+		NodeId: node.GenerateNodeID(addr),
+		IP:     bootstrapIP,
+		Port:   bootstrapPort,
+	}
+	nodes = append(nodes, &bootstrapNode)
 	// 3. Insert into routing table
 	pinger := &RealPinger{}
 	for _, n := range nodes {
+		fmt.Println(n)
 		rt.InsertNode(n, pinger)
 	}
 	fmt.Printf("Bootstrapped from %s. %d nodes added.\n", addr, len(nodes))
