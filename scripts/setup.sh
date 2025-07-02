@@ -105,18 +105,32 @@ echo ""
 echo "🔧 Setting up project components..."
 echo ""
 
-# Core (Go)
-if [ -d "src/core" ] && [ -f "src/core/go.mod" ]; then
-    echo "📦 Setting up Go core..."
-    cd src/core
+# Core Protocol (Go)
+if [ -d "src/core-protocol" ] && [ -f "src/core-protocol/go.mod" ]; then
+    echo "📦 Setting up Core Protocol..."
+    cd src/core-protocol
     go mod download
-    print_status "Go dependencies installed"
+    print_status "Core Protocol dependencies installed"
     cd ../..
-elif [ -d "src/core" ]; then
-    echo "⚠️  Go core directory exists but no go.mod found"
+elif [ -d "src/core-protocol" ]; then
+    echo "⚠️  Core Protocol directory exists but no go.mod found"
     echo "   This is normal if the Go project isn't set up yet"
 else
-    echo "ℹ️  No Go core directory found (that's okay!)"
+    echo "ℹ️  No Core Protocol directory found (that's okay!)"
+fi
+
+# Network Layer (Go)
+if [ -d "src/network" ] && [ -f "src/network/go.mod" ]; then
+    echo "📦 Setting up Network Layer..."
+    cd src/network
+    go mod download
+    print_status "Network Layer dependencies installed"
+    cd ../..
+elif [ -d "src/network" ]; then
+    echo "⚠️  Network Layer directory exists but no go.mod found"
+    echo "   This is normal if the Go project isn't set up yet"
+else
+    echo "ℹ️  No Network Layer directory found (that's okay!)"
 fi
 
 # Web client (Node.js)

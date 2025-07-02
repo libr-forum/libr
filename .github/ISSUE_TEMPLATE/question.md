@@ -24,7 +24,8 @@ assignees: ''
 - [ ] 🚀 Getting started / Setup
 - [ ] 🌐 Website development (React)
 - [ ] 📱 Mobile app development (Flutter)
-- [ ] ⚙️ Backend development (Go)
+- [ ] 🔧 Core Protocol development (Go)
+- [ ] 🌐 Network Layer development (Go)
 - [ ] 🔗 Blockchain/Smart contracts
 - [ ] 🐛 Debugging / Fixing errors
 - [ ] 🤝 How to contribute

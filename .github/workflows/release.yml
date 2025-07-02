@@ -42,23 +42,42 @@ jobs:
           go-version: '1.21'
       - name: Build
         run: |
-          cd src/core
-          if [ -f "go.mod" ]; then
-            GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o libr-${{ matrix.goos }}-${{ matrix.goarch }}
-          else
-            echo "No Go modules found, skipping build"
-            exit 0
+          # Build core-protocol if it exists
+          if [ -d "src/core-protocol" ] && [ -f "src/core-protocol/go.mod" ]; then
+            cd src/core-protocol
+            GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
+            cd ..
           fi
-      - name: Upload Release Asset
+          
+          # Build network layer if it exists
+          if [ -d "src/network" ] && [ -f "src/network/go.mod" ]; then
+            cd src/network
+            GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+            cd ..
+          fi
+      - name: Upload Core Protocol Binary
         if: ${{ success() && matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./src/core/libr-${{ matrix.goos }}-${{ matrix.goarch }}
-          asset_name: libr-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_path: ./src/core-protocol/libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
           asset_content_type: application/octet-stream
+        continue-on-error: true
+      
+      - name: Upload Network Binary
+        if: ${{ success() && matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./src/network/libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_content_type: application/octet-stream
+        continue-on-error: true
 
   build-web:
     name: Build Web Client
