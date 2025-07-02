@@ -5,28 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"sort"
 
 	"github.com/devlup-labs/Libr/core/client/types"
 	util "github.com/devlup-labs/Libr/core/client/utils"
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
-// Map to simulate different mod behaviors
-// var modProbabilities = map[string]float64{
-// 	"127.0.0.1:5000": 0.8, // Mod 0: mostly approves
-// 	"127.0.0.1:5001": 0.5, // Mod 1: 50/50
-// 	"127.0.0.1:5002": 0.2, // Mod 2: mostly rejects
-// }
-
-// Simulated private key store
-// var ModPrivateKeys = map[string]string{
-// 	"127.0.0.1:5000/mod": "uRG3nLqh2CHKMP2oRPndz2jeFa9rbGpVB4Eq6nY2LGFlcu+B1EoZPjrtj1AKPHJoS8bjRHK+Hic8OgeMthgToQ==",
-// 	"127.0.0.1:5001/mod": "D+2jcJ42F5V/M71epF9NbnVFj9uIq+SAEKgjdXojI/S4tIskDH6egUB/PSZIjGidzpoPffq+ZKuA4PC2I3W2kg==",
-// 	"127.0.0.1:5002/mod": "npUG5NkTCCd3x7HJa1A26OaFRCEWGGmCXl/tR1Jp+/++4Gd61sImlwcd0RiPxpkBgS+F/piDQ9lfCOz0Dlc2YA==",
-// }
+type BaseResponse struct {
+	Type string `json:"type"`
+}
 
 func SendTo(ip string, port string, route string, data interface{}, expect string) (interface{}, error) {
 	addr := fmt.Sprintf("http://%s:%s/%s", ip, port, route)
@@ -62,30 +51,25 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 			return nil, errors.New("expected MsgCert struct for db")
 		}
 
-		sort.SliceStable(msgcert.ModCerts, func(i, j int) bool {
-			return msgcert.ModCerts[i].PublicKey < msgcert.ModCerts[j].PublicKey
-		})
+		msgcertJSON, _ := util.CanonicalizeMsgCert(msgcert)
 
-		dataToVerify := types.DataToSign{
-			Content:   msgcert.Msg.Content,
-			Timestamp: msgcert.Msg.Ts,
-			ModCerts:  msgcert.ModCerts,
-		}
-
-		jsonBytes, err := json.Marshal(dataToVerify)
+		resp, err := http.Post(addr, "application/json", bytes.NewBuffer([]byte(msgcertJSON)))
 		if err != nil {
-			log.Printf("DB failed to marshal DataToSign: %v", err)
 			return nil, err
 		}
+		defer resp.Body.Close()
 
-		if !cryptoutils.VerifySignature(msgcert.PublicKey, string(jsonBytes), msgcert.Sign) {
-			return nil, fmt.Errorf("❌ Invalid MsgCert signature")
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read body: %v", err)
 		}
 
-		// ✅ From Version 1 — store the message
-		util.Store(msgcert)
+		var base BaseResponse
+		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&base); err != nil {
+			return nil, fmt.Errorf("failed to decode base response: %v", err)
+		}
 
-		return "Message received and stored successfully", nil
+		return bodyBytes, nil
 
 	default:
 		return nil, errors.New("unknown response type requested")

@@ -22,6 +22,11 @@ type PingResponse struct {
 	Status string `json:"status"`
 }
 
+type StoredResponse struct {
+	Type   string `json:"type"`
+	Status string `json:"status"`
+}
+
 func HandlePing(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Received /ping from:", r.RemoteAddr)
@@ -99,9 +104,25 @@ func FindValueHandler(localNode *node.Node, rt *routing.RoutingTable) http.Handl
 		w.Header().Set("Content-Type", "application/json")
 
 		if values != nil {
-			json.NewEncoder(w).Encode(values)
+			type FoundResponse struct {
+				Type   string           `json:"type"`
+				Values []models.MsgCert `json:"values"`
+			}
+			resp := FoundResponse{
+				Type:   "found",
+				Values: values,
+			}
+			json.NewEncoder(w).Encode(resp)
 		} else {
-			json.NewEncoder(w).Encode(closest)
+			type RedirectResponse struct {
+				Type  string       `json:"type"`
+				Nodes []*node.Node `json:"nodes"`
+			}
+			resp := RedirectResponse{
+				Type:  "redirect",
+				Nodes: closest,
+			}
+			json.NewEncoder(w).Encode(resp)
 		}
 	}
 }
@@ -124,13 +145,26 @@ func StoreHandler(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFu
 		keyBytes := node.GenerateNodeID(key)
 
 		closest := network.StoreValue(keyBytes, Msgcert, localNode, rt)
+
+		w.Header().Set("Content-Type", "application/json")
+
 		if closest != nil {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(closest)
+			type RedirectResponse struct {
+				Type  string       `json:"type"`
+				Nodes []*node.Node `json:"nodes"`
+			}
+			resp := RedirectResponse{
+				Type:  "redirect",
+				Nodes: closest,
+			}
+			json.NewEncoder(w).Encode(resp)
 			return
 		}
 
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintln(w, "Stored successfully on k-closest node")
+		resp := StoredResponse{
+			Type:   "stored",
+			Status: "ok",
+		}
+		json.NewEncoder(w).Encode(resp)
 	}
 }

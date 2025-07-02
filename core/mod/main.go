@@ -15,8 +15,8 @@ func main() {
 	fmt.Println(load)
 
 	r := routers.Routers()
-	fmt.Println("Listening on http://localhost:3000")
-	log.Fatal(http.ListenAndServe(":3000", r))
+	fmt.Println("Listening on http://localhost:4000")
+	log.Fatal(http.ListenAndServe(":4000", r))
 
 	clean, err := service.AnalyzeContent("helloo", service.AnalyzeWithKeywordFilter)
 	if err != nil {

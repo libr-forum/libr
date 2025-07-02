@@ -22,23 +22,14 @@ func CanonicalizeMsg(msg types.Msg) (string, error) {
 	return string(canonical), nil
 }
 
-func CanonicalizeMsgCert(msg types.Msg, modCerts []types.ModCert) (string, error) {
-	// Step 1: Sort the ModCerts by PublicKey (to ensure deterministic signing)
-	sort.SliceStable(modCerts, func(i, j int) bool {
-		return modCerts[i].PublicKey < modCerts[j].PublicKey
+func CanonicalizeMsgCert(msgcert types.MsgCert) (string, error) {
+
+	sort.SliceStable(msgcert.ModCerts, func(i, j int) bool {
+		return msgcert.ModCerts[i].PublicKey < msgcert.ModCerts[j].PublicKey
 	})
 
-	// Step 2: Build a canonical struct
-	canonical := struct {
-		Msg      types.Msg       `json:"msg"`
-		ModCerts []types.ModCert `json:"modCerts"`
-	}{
-		Msg:      msg,
-		ModCerts: modCerts,
-	}
-
 	// Step 3: Marshal to JSON
-	canonicalBytes, err := json.Marshal(canonical)
+	canonicalBytes, err := json.Marshal(msgcert)
 	if err != nil {
 		return "", err
 	}

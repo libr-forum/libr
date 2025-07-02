@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/client/core"
+	util "github.com/devlup-labs/Libr/core/client/utils"
 )
 
 func RunInputLoop() {
@@ -64,7 +65,8 @@ func RunInputLoop() {
 
 			msgCert := core.CreateMsgCert(msg, ts, modcertlist)
 
-			response := core.SendToDb(msgCert)
+			key := util.GenerateNodeID(strconv.FormatInt(msgCert.Msg.Ts, 10))
+			response := core.SendToDb(key, msgCert)
 
 			fmt.Printf("Response by DB: %v\n", response)
 		}

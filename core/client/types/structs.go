@@ -35,3 +35,9 @@ type StoredMsg struct {
 	Content   string `json:"content"`
 	Timestamp int64  `json:"timestamp"`
 }
+
+type Node struct {
+	NodeId [20]byte `json:"nodeid"`
+	IP     string   `json:"ip"`
+	Port   string   `json:"port"`
+}
