@@ -14,6 +14,7 @@ Thumbs.db
 *.dll
 *.so
 *.dylib
+*.sh
 
 # Test binary, built with `go test -c`
 *.test
@@ -81,6 +82,8 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.[0-9]*
+
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

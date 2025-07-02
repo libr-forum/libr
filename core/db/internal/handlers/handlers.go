@@ -149,6 +149,7 @@ func StoreHandler(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFu
 		w.Header().Set("Content-Type", "application/json")
 
 		if closest != nil {
+			fmt.Println("Sending list of k closest nodes")
 			type RedirectResponse struct {
 				Type  string       `json:"type"`
 				Nodes []*node.Node `json:"nodes"`
@@ -161,6 +162,7 @@ func StoreHandler(localNode *node.Node, rt *routing.RoutingTable) http.HandlerFu
 			return
 		}
 
+		fmt.Println("Store at: ", localNode)
 		resp := StoredResponse{
 			Type:   "stored",
 			Status: "ok",

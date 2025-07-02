@@ -75,3 +75,26 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 		return nil, errors.New("unknown response type requested")
 	}
 }
+
+func GetFrom(ip string, port string, route string, key string) (interface{}, error) {
+	addr := fmt.Sprintf("http://%s:%s/%s?key=%s", ip, port, route, key)
+
+	resp, err := http.Get(addr)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read body: %v", err)
+	}
+
+	var base BaseResponse
+	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&base); err != nil {
+		return nil, fmt.Errorf("failed to decode base response: %v", err)
+	}
+
+	return bodyBytes, nil
+
+}

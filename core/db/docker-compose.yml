@@ -3,1451 +3,651 @@ services:
   db0:
     image: postgres:15
     container_name: db_0
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5433:5432"
-    volumes:
-      - pgdata0:/var/lib/postgresql/data
-
-  node0:
-    build: .
-    container_name: kademlia_node_0
-    depends_on:
-      - db0
     environment:
-      - DB_HOST=db0
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8000
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8000:8000"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database0
+    volumes:
+      - db_data_0:/var/lib/postgresql/data
 
   db1:
     image: postgres:15
     container_name: db_1
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5434:5432"
-    volumes:
-      - pgdata1:/var/lib/postgresql/data
-
-  node1:
-    build: .
-    container_name: kademlia_node_1
-    depends_on:
-      - db1
     environment:
-      - DB_HOST=db1
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8001
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8001:8001"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database1
+    volumes:
+      - db_data_1:/var/lib/postgresql/data
 
   db2:
     image: postgres:15
     container_name: db_2
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5435:5432"
-    volumes:
-      - pgdata2:/var/lib/postgresql/data
-
-  node2:
-    build: .
-    container_name: kademlia_node_2
-    depends_on:
-      - db2
     environment:
-      - DB_HOST=db2
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8002
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8002:8002"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database2
+    volumes:
+      - db_data_2:/var/lib/postgresql/data
 
   db3:
     image: postgres:15
     container_name: db_3
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5436:5432"
-    volumes:
-      - pgdata3:/var/lib/postgresql/data
-
-  node3:
-    build: .
-    container_name: kademlia_node_3
-    depends_on:
-      - db3
     environment:
-      - DB_HOST=db3
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8003
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8003:8003"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database3
+    volumes:
+      - db_data_3:/var/lib/postgresql/data
 
   db4:
     image: postgres:15
     container_name: db_4
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5437:5432"
-    volumes:
-      - pgdata4:/var/lib/postgresql/data
-
-  node4:
-    build: .
-    container_name: kademlia_node_4
-    depends_on:
-      - db4
     environment:
-      - DB_HOST=db4
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8004
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8004:8004"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database4
+    volumes:
+      - db_data_4:/var/lib/postgresql/data
 
   db5:
     image: postgres:15
     container_name: db_5
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5438:5432"
-    volumes:
-      - pgdata5:/var/lib/postgresql/data
-
-  node5:
-    build: .
-    container_name: kademlia_node_5
-    depends_on:
-      - db5
     environment:
-      - DB_HOST=db5
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8005
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8005:8005"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database5
+    volumes:
+      - db_data_5:/var/lib/postgresql/data
 
   db6:
     image: postgres:15
     container_name: db_6
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5439:5432"
-    volumes:
-      - pgdata6:/var/lib/postgresql/data
-
-  node6:
-    build: .
-    container_name: kademlia_node_6
-    depends_on:
-      - db6
     environment:
-      - DB_HOST=db6
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8006
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8006:8006"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database6
+    volumes:
+      - db_data_6:/var/lib/postgresql/data
 
   db7:
     image: postgres:15
     container_name: db_7
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5440:5432"
-    volumes:
-      - pgdata7:/var/lib/postgresql/data
-
-  node7:
-    build: .
-    container_name: kademlia_node_7
-    depends_on:
-      - db7
     environment:
-      - DB_HOST=db7
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8007
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8007:8007"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database7
+    volumes:
+      - db_data_7:/var/lib/postgresql/data
 
   db8:
     image: postgres:15
     container_name: db_8
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5441:5432"
-    volumes:
-      - pgdata8:/var/lib/postgresql/data
-
-  node8:
-    build: .
-    container_name: kademlia_node_8
-    depends_on:
-      - db8
     environment:
-      - DB_HOST=db8
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8008
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8008:8008"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database8
+    volumes:
+      - db_data_8:/var/lib/postgresql/data
 
   db9:
     image: postgres:15
     container_name: db_9
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5442:5432"
-    volumes:
-      - pgdata9:/var/lib/postgresql/data
-
-  node9:
-    build: .
-    container_name: kademlia_node_9
-    depends_on:
-      - db9
     environment:
-      - DB_HOST=db9
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8009
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8009:8009"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database9
+    volumes:
+      - db_data_9:/var/lib/postgresql/data
 
   db10:
     image: postgres:15
     container_name: db_10
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5443:5432"
-    volumes:
-      - pgdata10:/var/lib/postgresql/data
-
-  node10:
-    build: .
-    container_name: kademlia_node_10
-    depends_on:
-      - db10
     environment:
-      - DB_HOST=db10
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8010
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8010:8010"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database10
+    volumes:
+      - db_data_10:/var/lib/postgresql/data
 
   db11:
     image: postgres:15
     container_name: db_11
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5444:5432"
-    volumes:
-      - pgdata11:/var/lib/postgresql/data
-
-  node11:
-    build: .
-    container_name: kademlia_node_11
-    depends_on:
-      - db11
     environment:
-      - DB_HOST=db11
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8011
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8011:8011"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database11
+    volumes:
+      - db_data_11:/var/lib/postgresql/data
 
   db12:
     image: postgres:15
     container_name: db_12
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5445:5432"
-    volumes:
-      - pgdata12:/var/lib/postgresql/data
-
-  node12:
-    build: .
-    container_name: kademlia_node_12
-    depends_on:
-      - db12
     environment:
-      - DB_HOST=db12
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8012
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8012:8012"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database12
+    volumes:
+      - db_data_12:/var/lib/postgresql/data
 
   db13:
     image: postgres:15
     container_name: db_13
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5446:5432"
-    volumes:
-      - pgdata13:/var/lib/postgresql/data
-
-  node13:
-    build: .
-    container_name: kademlia_node_13
-    depends_on:
-      - db13
     environment:
-      - DB_HOST=db13
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8013
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8013:8013"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database13
+    volumes:
+      - db_data_13:/var/lib/postgresql/data
 
   db14:
     image: postgres:15
     container_name: db_14
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5447:5432"
-    volumes:
-      - pgdata14:/var/lib/postgresql/data
-
-  node14:
-    build: .
-    container_name: kademlia_node_14
-    depends_on:
-      - db14
     environment:
-      - DB_HOST=db14
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8014
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8014:8014"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database14
+    volumes:
+      - db_data_14:/var/lib/postgresql/data
 
   db15:
     image: postgres:15
     container_name: db_15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5448:5432"
-    volumes:
-      - pgdata15:/var/lib/postgresql/data
-
-  node15:
-    build: .
-    container_name: kademlia_node_15
-    depends_on:
-      - db15
     environment:
-      - DB_HOST=db15
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8015
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8015:8015"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database15
+    volumes:
+      - db_data_15:/var/lib/postgresql/data
 
   db16:
     image: postgres:15
     container_name: db_16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5449:5432"
-    volumes:
-      - pgdata16:/var/lib/postgresql/data
-
-  node16:
-    build: .
-    container_name: kademlia_node_16
-    depends_on:
-      - db16
     environment:
-      - DB_HOST=db16
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8016
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8016:8016"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database16
+    volumes:
+      - db_data_16:/var/lib/postgresql/data
 
   db17:
     image: postgres:15
     container_name: db_17
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5450:5432"
-    volumes:
-      - pgdata17:/var/lib/postgresql/data
-
-  node17:
-    build: .
-    container_name: kademlia_node_17
-    depends_on:
-      - db17
     environment:
-      - DB_HOST=db17
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8017
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8017:8017"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database17
+    volumes:
+      - db_data_17:/var/lib/postgresql/data
 
   db18:
     image: postgres:15
     container_name: db_18
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5451:5432"
-    volumes:
-      - pgdata18:/var/lib/postgresql/data
-
-  node18:
-    build: .
-    container_name: kademlia_node_18
-    depends_on:
-      - db18
     environment:
-      - DB_HOST=db18
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8018
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8018:8018"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database18
+    volumes:
+      - db_data_18:/var/lib/postgresql/data
 
   db19:
     image: postgres:15
     container_name: db_19
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5452:5432"
-    volumes:
-      - pgdata19:/var/lib/postgresql/data
-
-  node19:
-    build: .
-    container_name: kademlia_node_19
-    depends_on:
-      - db19
     environment:
-      - DB_HOST=db19
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8019
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8019:8019"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database19
+    volumes:
+      - db_data_19:/var/lib/postgresql/data
 
   db20:
     image: postgres:15
     container_name: db_20
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5453:5432"
-    volumes:
-      - pgdata20:/var/lib/postgresql/data
-
-  node20:
-    build: .
-    container_name: kademlia_node_20
-    depends_on:
-      - db20
     environment:
-      - DB_HOST=db20
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8020
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8020:8020"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database20
+    volumes:
+      - db_data_20:/var/lib/postgresql/data
 
   db21:
     image: postgres:15
     container_name: db_21
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5454:5432"
-    volumes:
-      - pgdata21:/var/lib/postgresql/data
-
-  node21:
-    build: .
-    container_name: kademlia_node_21
-    depends_on:
-      - db21
     environment:
-      - DB_HOST=db21
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8021
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8021:8021"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database21
+    volumes:
+      - db_data_21:/var/lib/postgresql/data
 
   db22:
     image: postgres:15
     container_name: db_22
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5455:5432"
-    volumes:
-      - pgdata22:/var/lib/postgresql/data
-
-  node22:
-    build: .
-    container_name: kademlia_node_22
-    depends_on:
-      - db22
     environment:
-      - DB_HOST=db22
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8022
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8022:8022"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database22
+    volumes:
+      - db_data_22:/var/lib/postgresql/data
 
   db23:
     image: postgres:15
     container_name: db_23
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5456:5432"
-    volumes:
-      - pgdata23:/var/lib/postgresql/data
-
-  node23:
-    build: .
-    container_name: kademlia_node_23
-    depends_on:
-      - db23
     environment:
-      - DB_HOST=db23
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8023
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8023:8023"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database23
+    volumes:
+      - db_data_23:/var/lib/postgresql/data
 
   db24:
     image: postgres:15
     container_name: db_24
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5457:5432"
-    volumes:
-      - pgdata24:/var/lib/postgresql/data
-
-  node24:
-    build: .
-    container_name: kademlia_node_24
-    depends_on:
-      - db24
     environment:
-      - DB_HOST=db24
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8024
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8024:8024"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database24
+    volumes:
+      - db_data_24:/var/lib/postgresql/data
 
   db25:
     image: postgres:15
     container_name: db_25
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5458:5432"
-    volumes:
-      - pgdata25:/var/lib/postgresql/data
-
-  node25:
-    build: .
-    container_name: kademlia_node_25
-    depends_on:
-      - db25
     environment:
-      - DB_HOST=db25
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8025
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8025:8025"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database25
+    volumes:
+      - db_data_25:/var/lib/postgresql/data
 
   db26:
     image: postgres:15
     container_name: db_26
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5459:5432"
-    volumes:
-      - pgdata26:/var/lib/postgresql/data
-
-  node26:
-    build: .
-    container_name: kademlia_node_26
-    depends_on:
-      - db26
     environment:
-      - DB_HOST=db26
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8026
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8026:8026"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database26
+    volumes:
+      - db_data_26:/var/lib/postgresql/data
 
   db27:
     image: postgres:15
     container_name: db_27
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5460:5432"
-    volumes:
-      - pgdata27:/var/lib/postgresql/data
-
-  node27:
-    build: .
-    container_name: kademlia_node_27
-    depends_on:
-      - db27
     environment:
-      - DB_HOST=db27
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8027
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8027:8027"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database27
+    volumes:
+      - db_data_27:/var/lib/postgresql/data
 
   db28:
     image: postgres:15
     container_name: db_28
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5461:5432"
-    volumes:
-      - pgdata28:/var/lib/postgresql/data
-
-  node28:
-    build: .
-    container_name: kademlia_node_28
-    depends_on:
-      - db28
     environment:
-      - DB_HOST=db28
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8028
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8028:8028"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database28
+    volumes:
+      - db_data_28:/var/lib/postgresql/data
 
   db29:
     image: postgres:15
     container_name: db_29
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5462:5432"
-    volumes:
-      - pgdata29:/var/lib/postgresql/data
-
-  node29:
-    build: .
-    container_name: kademlia_node_29
-    depends_on:
-      - db29
     environment:
-      - DB_HOST=db29
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8029
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8029:8029"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database29
+    volumes:
+      - db_data_29:/var/lib/postgresql/data
 
   db30:
     image: postgres:15
     container_name: db_30
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5463:5432"
-    volumes:
-      - pgdata30:/var/lib/postgresql/data
-
-  node30:
-    build: .
-    container_name: kademlia_node_30
-    depends_on:
-      - db30
     environment:
-      - DB_HOST=db30
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8030
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8030:8030"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database30
+    volumes:
+      - db_data_30:/var/lib/postgresql/data
 
   db31:
     image: postgres:15
     container_name: db_31
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5464:5432"
-    volumes:
-      - pgdata31:/var/lib/postgresql/data
-
-  node31:
-    build: .
-    container_name: kademlia_node_31
-    depends_on:
-      - db31
     environment:
-      - DB_HOST=db31
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8031
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8031:8031"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database31
+    volumes:
+      - db_data_31:/var/lib/postgresql/data
 
   db32:
     image: postgres:15
     container_name: db_32
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5465:5432"
-    volumes:
-      - pgdata32:/var/lib/postgresql/data
-
-  node32:
-    build: .
-    container_name: kademlia_node_32
-    depends_on:
-      - db32
     environment:
-      - DB_HOST=db32
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8032
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8032:8032"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database32
+    volumes:
+      - db_data_32:/var/lib/postgresql/data
 
   db33:
     image: postgres:15
     container_name: db_33
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5466:5432"
-    volumes:
-      - pgdata33:/var/lib/postgresql/data
-
-  node33:
-    build: .
-    container_name: kademlia_node_33
-    depends_on:
-      - db33
     environment:
-      - DB_HOST=db33
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8033
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8033:8033"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database33
+    volumes:
+      - db_data_33:/var/lib/postgresql/data
 
   db34:
     image: postgres:15
     container_name: db_34
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5467:5432"
-    volumes:
-      - pgdata34:/var/lib/postgresql/data
-
-  node34:
-    build: .
-    container_name: kademlia_node_34
-    depends_on:
-      - db34
     environment:
-      - DB_HOST=db34
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8034
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8034:8034"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database34
+    volumes:
+      - db_data_34:/var/lib/postgresql/data
 
   db35:
     image: postgres:15
     container_name: db_35
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5468:5432"
-    volumes:
-      - pgdata35:/var/lib/postgresql/data
-
-  node35:
-    build: .
-    container_name: kademlia_node_35
-    depends_on:
-      - db35
     environment:
-      - DB_HOST=db35
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8035
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8035:8035"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database35
+    volumes:
+      - db_data_35:/var/lib/postgresql/data
 
   db36:
     image: postgres:15
     container_name: db_36
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5469:5432"
-    volumes:
-      - pgdata36:/var/lib/postgresql/data
-
-  node36:
-    build: .
-    container_name: kademlia_node_36
-    depends_on:
-      - db36
     environment:
-      - DB_HOST=db36
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8036
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8036:8036"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database36
+    volumes:
+      - db_data_36:/var/lib/postgresql/data
 
   db37:
     image: postgres:15
     container_name: db_37
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5470:5432"
-    volumes:
-      - pgdata37:/var/lib/postgresql/data
-
-  node37:
-    build: .
-    container_name: kademlia_node_37
-    depends_on:
-      - db37
     environment:
-      - DB_HOST=db37
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8037
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8037:8037"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database37
+    volumes:
+      - db_data_37:/var/lib/postgresql/data
 
   db38:
     image: postgres:15
     container_name: db_38
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5471:5432"
-    volumes:
-      - pgdata38:/var/lib/postgresql/data
-
-  node38:
-    build: .
-    container_name: kademlia_node_38
-    depends_on:
-      - db38
     environment:
-      - DB_HOST=db38
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8038
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8038:8038"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database38
+    volumes:
+      - db_data_38:/var/lib/postgresql/data
 
   db39:
     image: postgres:15
     container_name: db_39
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5472:5432"
-    volumes:
-      - pgdata39:/var/lib/postgresql/data
-
-  node39:
-    build: .
-    container_name: kademlia_node_39
-    depends_on:
-      - db39
     environment:
-      - DB_HOST=db39
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8039
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8039:8039"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database39
+    volumes:
+      - db_data_39:/var/lib/postgresql/data
 
   db40:
     image: postgres:15
     container_name: db_40
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5473:5432"
-    volumes:
-      - pgdata40:/var/lib/postgresql/data
-
-  node40:
-    build: .
-    container_name: kademlia_node_40
-    depends_on:
-      - db40
     environment:
-      - DB_HOST=db40
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8040
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8040:8040"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database40
+    volumes:
+      - db_data_40:/var/lib/postgresql/data
 
   db41:
     image: postgres:15
     container_name: db_41
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5474:5432"
-    volumes:
-      - pgdata41:/var/lib/postgresql/data
-
-  node41:
-    build: .
-    container_name: kademlia_node_41
-    depends_on:
-      - db41
     environment:
-      - DB_HOST=db41
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8041
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8041:8041"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database41
+    volumes:
+      - db_data_41:/var/lib/postgresql/data
 
   db42:
     image: postgres:15
     container_name: db_42
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5475:5432"
-    volumes:
-      - pgdata42:/var/lib/postgresql/data
-
-  node42:
-    build: .
-    container_name: kademlia_node_42
-    depends_on:
-      - db42
     environment:
-      - DB_HOST=db42
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8042
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8042:8042"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database42
+    volumes:
+      - db_data_42:/var/lib/postgresql/data
 
   db43:
     image: postgres:15
     container_name: db_43
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5476:5432"
-    volumes:
-      - pgdata43:/var/lib/postgresql/data
-
-  node43:
-    build: .
-    container_name: kademlia_node_43
-    depends_on:
-      - db43
     environment:
-      - DB_HOST=db43
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8043
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8043:8043"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database43
+    volumes:
+      - db_data_43:/var/lib/postgresql/data
 
   db44:
     image: postgres:15
     container_name: db_44
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5477:5432"
-    volumes:
-      - pgdata44:/var/lib/postgresql/data
-
-  node44:
-    build: .
-    container_name: kademlia_node_44
-    depends_on:
-      - db44
     environment:
-      - DB_HOST=db44
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8044
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8044:8044"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database44
+    volumes:
+      - db_data_44:/var/lib/postgresql/data
 
   db45:
     image: postgres:15
     container_name: db_45
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5478:5432"
-    volumes:
-      - pgdata45:/var/lib/postgresql/data
-
-  node45:
-    build: .
-    container_name: kademlia_node_45
-    depends_on:
-      - db45
     environment:
-      - DB_HOST=db45
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8045
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8045:8045"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database45
+    volumes:
+      - db_data_45:/var/lib/postgresql/data
 
   db46:
     image: postgres:15
     container_name: db_46
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5479:5432"
-    volumes:
-      - pgdata46:/var/lib/postgresql/data
-
-  node46:
-    build: .
-    container_name: kademlia_node_46
-    depends_on:
-      - db46
     environment:
-      - DB_HOST=db46
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8046
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8046:8046"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database46
+    volumes:
+      - db_data_46:/var/lib/postgresql/data
 
   db47:
     image: postgres:15
     container_name: db_47
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5480:5432"
-    volumes:
-      - pgdata47:/var/lib/postgresql/data
-
-  node47:
-    build: .
-    container_name: kademlia_node_47
-    depends_on:
-      - db47
     environment:
-      - DB_HOST=db47
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8047
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8047:8047"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database47
+    volumes:
+      - db_data_47:/var/lib/postgresql/data
 
   db48:
     image: postgres:15
     container_name: db_48
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5481:5432"
-    volumes:
-      - pgdata48:/var/lib/postgresql/data
-
-  node48:
-    build: .
-    container_name: kademlia_node_48
-    depends_on:
-      - db48
     environment:
-      - DB_HOST=db48
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8048
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8048:8048"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database48
+    volumes:
+      - db_data_48:/var/lib/postgresql/data
 
   db49:
     image: postgres:15
     container_name: db_49
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: msgcertdb
     ports:
       - "5482:5432"
-    volumes:
-      - pgdata49:/var/lib/postgresql/data
-
-  node49:
-    build: .
-    container_name: kademlia_node_49
-    depends_on:
-      - db49
     environment:
-      - DB_HOST=db49
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=msgcertdb
-      - PORT=8049
-      - BOOTSTRAP=127.0.0.1:8000
-    ports:
-      - "8049:8049"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database49
+    volumes:
+      - db_data_49:/var/lib/postgresql/data
 
 volumes:
-  pgdata0:
-  pgdata1:
-  pgdata2:
-  pgdata3:
-  pgdata4:
-  pgdata5:
-  pgdata6:
-  pgdata7:
-  pgdata8:
-  pgdata9:
-  pgdata10:
-  pgdata11:
-  pgdata12:
-  pgdata13:
-  pgdata14:
-  pgdata15:
-  pgdata16:
-  pgdata17:
-  pgdata18:
-  pgdata19:
-  pgdata20:
-  pgdata21:
-  pgdata22:
-  pgdata23:
-  pgdata24:
-  pgdata25:
-  pgdata26:
-  pgdata27:
-  pgdata28:
-  pgdata29:
-  pgdata30:
-  pgdata31:
-  pgdata32:
-  pgdata33:
-  pgdata34:
-  pgdata35:
-  pgdata36:
-  pgdata37:
-  pgdata38:
-  pgdata39:
-  pgdata40:
-  pgdata41:
-  pgdata42:
-  pgdata43:
-  pgdata44:
-  pgdata45:
-  pgdata46:
-  pgdata47:
-  pgdata48:
-  pgdata49:
+  db_data_0:
+  db_data_1:
+  db_data_2:
+  db_data_3:
+  db_data_4:
+  db_data_5:
+  db_data_6:
+  db_data_7:
+  db_data_8:
+  db_data_9:
+  db_data_10:
+  db_data_11:
+  db_data_12:
+  db_data_13:
+  db_data_14:
+  db_data_15:
+  db_data_16:
+  db_data_17:
+  db_data_18:
+  db_data_19:
+  db_data_20:
+  db_data_21:
+  db_data_22:
+  db_data_23:
+  db_data_24:
+  db_data_25:
+  db_data_26:
+  db_data_27:
+  db_data_28:
+  db_data_29:
+  db_data_30:
+  db_data_31:
+  db_data_32:
+  db_data_33:
+  db_data_34:
+  db_data_35:
+  db_data_36:
+  db_data_37:
+  db_data_38:
+  db_data_39:
+  db_data_40:
+  db_data_41:
+  db_data_42:
+  db_data_43:
+  db_data_44:
+  db_data_45:
+  db_data_46:
+  db_data_47:
+  db_data_48:
+  db_data_49:

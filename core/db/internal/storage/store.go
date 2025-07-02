@@ -12,7 +12,7 @@ import (
 )
 
 func StoreMsgCert(msgcert models.MsgCert) (string, error) {
-	query := "INSERT INTO MsgCert(sender,content,ts,mod_cert,sign) VALUES ($1,$2,$3,$4,$5)"
+	query := "INSERT INTO MsgCert(sender,content,ts,mod_certs,sign) VALUES ($1,$2,$3,$4,$5)"
 
 	modCertsJSON, err := json.Marshal(msgcert.ModCerts)
 	if err != nil {
@@ -35,7 +35,7 @@ func StoreMsgCert(msgcert models.MsgCert) (string, error) {
 }
 
 func GetMsgCert(ts int64) []models.MsgCert {
-	query := "SELECT * FROM MsgCert WHERE ts = $1"
+	query := "SELECT sender, content, ts, mod_certs, sign FROM MsgCert WHERE ts = $1"
 
 	rows, err := config.Pool.Query(context.Background(), query, time.Unix(ts, 0))
 	if err != nil {
@@ -57,6 +57,7 @@ func GetMsgCert(ts int64) []models.MsgCert {
 		}
 
 		msgCert.Msg.Content = content
+		fmt.Println(content, msgCert.Msg.Content)
 		msgCert.Msg.Ts = dbTime.Unix()
 
 		if err := json.Unmarshal(modCertsJSON, &msgCert.ModCerts); err != nil {

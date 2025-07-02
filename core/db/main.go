@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/devlup-labs/Libr/core/db/config"
 	"github.com/devlup-labs/Libr/core/db/internal/network"
@@ -20,7 +21,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "10000" // default
+		port = "8000" // default
 	}
 	ip := "127.0.0.1"
 	address := ip + ":" + port
@@ -36,10 +37,16 @@ func main() {
 	rt := routing.GetOrCreateRoutingTable(localNode)
 	fmt.Println("Routing table created with port:", rt.SelfPort)
 	// Optional: Bootstrap to known node
-	bootstrapAddr := os.Getenv("BOOTSTRAP")
-	if bootstrapAddr != "" {
-		fmt.Println("Bootstrapping with", bootstrapAddr)
-		network.Bootstrap(bootstrapAddr, localNode, rt)
+	bootstrapAddrs := os.Getenv("BOOTSTRAP")
+	if bootstrapAddrs != "" {
+		addrs := strings.Split(bootstrapAddrs, ",")
+		for _, addr := range addrs {
+			addr = strings.TrimSpace(addr)
+			if addr != "" {
+				fmt.Println("Bootstrapping with", addr)
+				network.Bootstrap(addr, localNode, rt)
+			}
+		}
 	}
 
 	server.SetupRoutes(localNode, rt)

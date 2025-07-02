@@ -34,7 +34,7 @@ func RunInputLoop() {
 			fields := strings.Fields(msg)
 			if len(fields) == 2 {
 				if fields[1] == "all" {
-					core.FetchMsgAll()
+					core.FetchRecent(50)
 				} else {
 					ts, err := strconv.ParseInt(fields[1], 10, 64)
 					if err != nil {
