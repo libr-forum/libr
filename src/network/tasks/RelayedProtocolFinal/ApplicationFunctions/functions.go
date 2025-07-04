@@ -18,7 +18,7 @@ func StartNode() {
 	// Initialize the node which thus can use get and post functions to manage data. Here by Node we mean every participant like client mod kademlia etc which interacts with the network. It also cobnencts the node with the relay server.
 	fmt.Println("Starting Node...")
 
-	relayAddr := "/p2p/relay" // have to build logic about getting Multiple Relays
+	relayAddr := "tcp://0.tcp.in.ngrok.io:13168" // have to build logic about getting Multiple Relays
 
 	//doubt: Will a single node connected to multiple relays or just a single relay.If multiple relays then how to connect the node to them as each connection will give a new peerID as if a new peer is joining.
 

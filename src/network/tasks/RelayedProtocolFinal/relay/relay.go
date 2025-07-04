@@ -1,7 +1,8 @@
 package main
 
 import (
-	signalling "chatprotocol/signallingServer"
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,9 +10,17 @@ import (
 	"syscall"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relay "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 )
+
+type reqFormat struct {
+	Type  string `json:"type"`
+	PubIP string `json:"pubip"`
+}
+
+var IDmap map[string]string
 
 func main() {
 	fmt.Println("[DEBUG] Starting relay node...")
@@ -53,8 +62,8 @@ func main() {
 	for _, addr := range relayHost.Addrs() {
 		fmt.Printf("[INFO] Relay Address: %s/p2p/%s\n", addr, relayHost.ID())
 	}
-	fmt.Println("[DEBUG]Starting the signalling server")
-	signalling.StartServer(":9009") // assign a port to this server
+
+	relayHost.SetStreamHandler("/chat/1.0.0", handleChatStream)
 	// Wait for interrupt signal
 	fmt.Println("[DEBUG] Waiting for interrupt signal...")
 	c := make(chan os.Signal, 1)
@@ -62,5 +71,40 @@ func main() {
 	<-c
 
 	fmt.Println("[INFO] Shutting down relay...")
+
+}
+
+func handleChatStream(s network.Stream) {
+	fmt.Println("[DEBUG] Incoming chat stream from", s.Conn().RemoteMultiaddr())
+	defer s.Close()
+	reader := bufio.NewReader(s)
+	for {
+		var req reqFormat
+		buf := new([]byte)
+		_, err := reader.Read(*buf)
+		if err!=nil{
+			fmt.Println("[DEBUG]Error vreating reader at relay")
+		}
+
+		err = json.Unmarshal(*buf, &req)
+
+		if err != nil {
+			fmt.Printf("[DEBUG]Error getting req as json at relay")
+			return
+		}
+
+		if req.Type == "register" {
+			remoteAddr := s.Conn().RemoteMultiaddr()
+			 peerID := s.Conn().RemotePeer()
+   			// Combine to full multiaddress string
+   			fullMultiAddr := fmt.Sprintf("%s/p2p/%s", remoteAddr.String(), peerID.String())
+			fmt.Println("[INFO]Registering the peer into relay map")
+			IDmap[req.PubIP] = fullMultiAddr
+		}
+		if req.Type == "getID" {
+			s.Write([]byte(IDmap[req.PubIP]+"\n"))
+		}
+		
+	}
 
 }

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pion/stun"
 )
 
 const ChatProtocol = protocol.ID("/chat/1.0.0")
@@ -32,8 +33,8 @@ type ChatPeer struct {
 }
 
 type reqFormat struct {
-	Type string `json:"type"`
-	Addr string
+	Type  string `json:"type"`
+	pubIP string
 }
 
 func NewChatPeer(relayAddr string) (*ChatPeer, error) {
@@ -155,28 +156,30 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 	circuitAddr := cp.relayAddr.Encapsulate(
 		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", cp.Host.ID())))
 
-	listener, _ := net.Listen("tcp", "relayAddr") //signalling server address to be added
-	conn, err := listener.Accept()
-
-	if err != nil {
-		fmt.Println("[DEBUG]Error connecting with signalling server")
-	}
-
-	var req reqFormat
-	req.Addr = circuitAddr.String()
-	req.Type = "register"
-
-	reqJson, err := json.Marshal(req)
-	if err != nil {
-		fmt.Println("[DEBUG]Error converting to json signalling request")
-	}
-	conn.Write([]byte(reqJson))
-	conn.Close()
 	fmt.Printf("[INFO] Circuit Address (share this with other peers): %s\n", circuitAddr)
 
 	// Start a goroutine to periodically refresh reservations
 	go cp.refreshReservations(ctx, *relayInfo)
 
+	var reqSent reqFormat
+	reqSent.Type = "register"
+	reqSent.pubIP = GetPublicIP()// have too use a stun server to get public ip first and then send register command
+
+	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID)
+
+	if err != nil {
+		fmt.Println("[DEBUG]Error Opening stream to relay")
+	}
+
+	reqJson, err := json.Marshal(reqSent)
+	if err != nil {
+		fmt.Println("[DEBUG]Error marshalling the req to be sent")
+	}
+	stream.Write([]byte(reqJson))
+
+	time.Sleep(1 * time.Second)
+
+	stream.Close()
 	return nil
 }
 
@@ -256,18 +259,28 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 
 func (cp *ChatPeer) ConnectToPeer(ctx context.Context, TargetIP string, targetPort string, nickname string) (peer.ID, error) {
 	completeIP := TargetIP + ":" + targetPort
-	var req reqFormat
-	req.Addr = completeIP
-	req.Type = "getID"
-	listener, err := net.Listen("tcp", "signallingServerIP")
-	conn, err := listener.Accept()
-	jsonReq, _ := json.Marshal(req)
-	_, err = conn.Write([]byte(jsonReq))
-	buf := new([]byte)
-	conn.Read(*buf)
-	targetPeerID := string(*buf)
-	peerAddr := fmt.Sprintf("/%s/<RELAY_IP>/tcp/<RELAY_PORT>/p2p/<RELAY_PEER_ID>/p2p-circuit/p2p/%s", completeIP, targetPeerID)
 
+	var req reqFormat
+	req.Type = "getID"
+	req.pubIP = completeIP
+	stream, err := cp.Host.NewStream(ctx, cp.relayID)
+	if err != nil {
+		fmt.Println("[DEBUG]Error opneing a fetch ID stream to relay")
+	}
+	reqJson, err := json.Marshal(req)
+	if err != nil {
+		fmt.Println("[DEBUG]Error marshalling the get ID req ")
+		return "", err
+	}
+
+	stream.Write([]byte(reqJson))
+
+	reader := bufio.NewReader(stream)
+	peerAddr, err := reader.ReadString('\n')
+
+	if err != nil {
+		fmt.Println("[DEBUG]Error getting addr of target node from relay")
+	}
 	fmt.Printf("[DEBUG] Parsing peer address: %s\n", peerAddr)
 	peerMA, err := multiaddr.NewMultiaddr(peerAddr)
 	if err != nil {
@@ -337,6 +350,34 @@ func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 func (cp *ChatPeer) Close() error {
 	fmt.Println("[DEBUG] Closing Host")
 	return cp.Host.Close()
+}
+
+func GetPublicIP() string {
+	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close()
+
+	var xorAddr stun.XORMappedAddress
+	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	if err := c.Do(message, func(res stun.Event) {
+		if res.Error != nil {
+			panic(res.Error)
+		}
+		if err := xorAddr.GetFrom(res.Message); err != nil {
+			panic(err)
+		}
+	}); err != nil {
+		panic(err)
+	}
+
+	if xorAddr.IP.To4() == nil {
+		panic("STUN returned an IPv6 address; IPv4 not available")
+	}
+
+	peerAd := xorAddr.IP.String() + ":" + strconv.Itoa(xorAddr.Port)
+	return peerAd
 }
 
 // func main() {
