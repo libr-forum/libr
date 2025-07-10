@@ -1,7 +1,8 @@
-package Node
+package Peers
 
 import (
 	"bufio"
+	
 	"context"
 	"encoding/json"
 	"fmt"
@@ -34,7 +35,9 @@ type ChatPeer struct {
 
 type reqFormat struct {
 	Type  string `json:"type"`
-	pubIP string
+	PubIP string `json:"pubip"`
+	ReqParams []byte 
+	Body []byte `json:"body,omitempty"`
 }
 
 func NewChatPeer(relayAddr string) (*ChatPeer, error) {
@@ -64,7 +67,7 @@ func NewChatPeer(relayAddr string) (*ChatPeer, error) {
 		libp2p.ConnectionManager(connMgr),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelay(),
-		libp2p.EnableHolePunching(),
+		//libp2p.EnableHolePunching(),
 	)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create Host:", err)
@@ -129,6 +132,7 @@ func isPrivateAddr(addr multiaddr.Multiaddr) bool {
 		strings.Contains(addrStr, "172.31.")
 }
 
+// why????
 func (cp *ChatPeer) Start(ctx context.Context) error {
 	fmt.Println("[DEBUG] Connecting to relay:", cp.relayAddr)
 	relayInfo, _ := peer.AddrInfoFromP2pAddr(cp.relayAddr)
@@ -163,14 +167,14 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	var reqSent reqFormat
 	reqSent.Type = "register"
-	reqSent.pubIP = GetPublicIP()// have too use a stun server to get public ip first and then send register command
-
-	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID)
+	reqSent.PubIP = GetPublicIP() // have too use a stun server to get public ip first and then send register command
+	fmt.Println(reqSent.PubIP)
+	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
 
 	if err != nil {
 		fmt.Println("[DEBUG]Error Opening stream to relay")
 	}
-
+	fmt.Println("[DEBUG]Opened atream to relay successsfully")
 	reqJson, err := json.Marshal(reqSent)
 	if err != nil {
 		fmt.Println("[DEBUG]Error marshalling the req to be sent")
@@ -214,8 +218,10 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 
 	reader := bufio.NewReader(s)
 	for {
-		message, err := reader.ReadString('\n')
+		var req = make([]byte, 1024*4)
 
+		_,err := reader.Read(req)
+		
 		if err != nil {
 			// io.EOF means the end of the input stream was reached (e.g., connection closed gracefully).
 			if err == io.EOF {
@@ -226,114 +232,87 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 			}
 			return
 		}
+		var reqStruct reqFormat
+		err = json.Unmarshal(req, &reqStruct)
+		if err!=nil{
+			fmt.Println("[DEBUG]Error unmarshalling to reqStruc")
+		}
+		var reqData map[string]interface{}
+		if err := json.Unmarshal(reqStruct.ReqParams, &reqData); err != nil {
+			fmt.Printf("[ERROR] Failed to unmarshal incoming request: %v\n", err)
+			return
+		}
+		
+		fmt.Printf("[DEBUG]ReqData is : %+v \n", reqData)
 
-		message = strings.TrimSpace(message)
 
-		if message == "" {
-			//fmt.Printf("[DEBUG] Skipped empty message from %s.\n", nickname)
-			continue
+		if reqData["Method"] == "GET" {
+			resp := ServeGetReq(reqStruct.ReqParams)
+			_, err = s.Write(resp)
+			if err!=nil {
+				fmt.Println("[DEBUG]Error writing resp bytes to relay")
+				return 
+			}
 		}
 
-		fmt.Printf("[%s] Received Raw: %s\n", nickname, message)
-
-		// 5. Unmarshal the JSON string into a Go data structure.
-		//    We use map[string]interface{} for flexibility, allowing any valid JSON object.
-		var jsonData map[string]interface{}
-		err = json.Unmarshal([]byte(message), &jsonData) // Convert string to []byte for unmarshaling
-
-		if err != nil {
-			fmt.Printf("[ERROR] Failed to unmarshal JSON for %s: %v. Message: \"%s\"\n", nickname, err, message)
-
-			continue
-		}
-
-		//fmt.Printf("[%s] Successfully Unmarshaled JSON: %+v\n", nickname, jsonData)
-
-		if jsonData["Method"] == "GET" {
-			s.Write([]byte("Serving your GET request"))
-			//actual logic to be added
+		if reqData["Method"] == "POST" {
+			resp := ServePostReq(reqStruct.ReqParams, reqStruct.Body)
+			_, err = s.Write(resp)
+			if err!=nil {
+				fmt.Println("[DEBUG]Error writing resp bytes to relay")
+				return 
+			}
 		}
 
 	}
 }
 
-func (cp *ChatPeer) ConnectToPeer(ctx context.Context, TargetIP string, targetPort string, nickname string) (peer.ID, error) {
+func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string, jsonReq []byte, body []byte ) ([]byte,error) {
 	completeIP := TargetIP + ":" + targetPort
 
 	var req reqFormat
-	req.Type = "getID"
-	req.pubIP = completeIP
-	stream, err := cp.Host.NewStream(ctx, cp.relayID)
+	req.Type = "SendMsg"
+	req.PubIP = completeIP
+	req.ReqParams = jsonReq
+	req.Body = body
+	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
 	if err != nil {
 		fmt.Println("[DEBUG]Error opneing a fetch ID stream to relay")
-	}
-	reqJson, err := json.Marshal(req)
-	if err != nil {
-		fmt.Println("[DEBUG]Error marshalling the get ID req ")
-		return "", err
+		return nil, err
 	}
 
-	stream.Write([]byte(reqJson))
+	jsonReqRelay, err := json.Marshal(req)
+	if err!=nil{
+		fmt.Println("[DEBUG]Error marshalling get req to be sent to relay")
+		return nil, err
+	}
+
+	stream.Write([]byte(jsonReqRelay))
+
+	fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
 
 	reader := bufio.NewReader(stream)
-	peerAddr, err := reader.ReadString('\n')
+	ack , err := reader.ReadString('\n')
 
-	if err != nil {
-		fmt.Println("[DEBUG]Error getting addr of target node from relay")
+	if err!=nil{
+		fmt.Println("[DEBUG]Error getting the acknowledgement")
+		return nil, err
 	}
-	fmt.Printf("[DEBUG] Parsing peer address: %s\n", peerAddr)
-	peerMA, err := multiaddr.NewMultiaddr(peerAddr)
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to parse peer multiaddr:", err)
-		return "", err
-	}
-
-	peerInfo, err := peer.AddrInfoFromP2pAddr(peerMA)
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to extract peer info:", err)
-		return "", err
+	if ack == "Success" {
+		fmt.Println("[DEBUg]Msg sent successfully, Waiting for response bytes")
+	}else {
+	fmt.Println("[DEBUG]error sending the req")
+	return nil, err
 	}
 
-	cp.peers[peerInfo.ID] = nickname
+	var resp = make([]byte, 1024*4)
+	reader.Read(resp)
 
-	fmt.Printf("[DEBUG] Connecting to peer %s (%s)...\n", nickname, peerInfo.ID)
-
-	// Create a context with timeout for connection
-	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	if err := cp.Host.Connect(connectCtx, *peerInfo); err != nil {
-		fmt.Println("[DEBUG] Failed to connect to peer:", err)
-		return "", fmt.Errorf("failed to connect to peer: %w", err)
-	}
-
-	fmt.Printf("[DEBUG] Connected to %s!\n", nickname)
-
-	conns := cp.Host.Network().ConnsToPeer(peerInfo.ID)
-	if len(conns) > 0 {
-		fmt.Printf("[DEBUG] Connection type: %s\n", conns[0].RemoteMultiaddr())
-	} else {
-		fmt.Println("[DEBUG] No connection found after connect")
-	}
-
-	return peerInfo.ID, nil
-}
-
-func (cp *ChatPeer) SendMessage(peerID peer.ID, message string) error {
-	fmt.Printf("[DEBUG] Sending message to %s: %s\n", peerID, message)
-	stream, err := cp.Host.NewStream(context.Background(), peerID, ChatProtocol)
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to open stream:", err)
-		return err
-	}
 	defer stream.Close()
-
-	_, err = stream.Write([]byte(message + "\n"))
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to write to stream:", err)
-	}
-	return err
+	
+	return resp, err
 }
+
 
 func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	var peers []peer.ID
@@ -380,104 +359,3 @@ func GetPublicIP() string {
 	return peerAd
 }
 
-// func main() {
-// 	if len(os.Args) < 2 {
-// 		fmt.Println("Usage: go run peer/main.go <relay_address>")
-// 		fmt.Println("Example: go run peer/main.go /ip4/127.0.0.1/tcp/12345/p2p/12D3KooW...")
-// 		os.Exit(1)
-// 	}
-
-// 	relayAddr := os.Args[1]
-
-// 	ctx := context.Background()
-
-// 	fmt.Println("[DEBUG] Creating ChatPeer")
-// 	Peer, err := NewChatPeer(relayAddr)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer Peer.Close()
-
-// 	fmt.Println("[DEBUG] Starting ChatPeer")
-// 	if err := Peer.Start(ctx); err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	scanner := bufio.NewScanner(os.Stdin)
-// 	fmt.Println("\nCommands:")
-// 	fmt.Println("  connect <peer_circuit_address> <nickname> - Connect to a peer")
-// 	fmt.Println("  msg <message> - Send message to all connected peers")
-// 	fmt.Println("  peers - List connected peers")
-// 	fmt.Println("  quit - Exit")
-// 	fmt.Println("\nNote: Use the circuit address printed by the other peer to connect")
-
-// 	for {
-// 		fmt.Print("> ")
-// 		if !scanner.Scan() {
-// 			break
-// 		}
-
-// 		input := strings.TrimSpace(scanner.Text())
-// 		parts := strings.SplitN(input, " ", 3)
-
-// 		switch parts[0] {
-// 		case "connect":
-// 			if len(parts) < 3 {
-// 				fmt.Println("Usage: connect <peer_circuit_address> <nickname>")
-// 				continue
-// 			}
-// 			fmt.Printf("[DEBUG] Command: connect %s %s\n", parts[1], parts[2])
-// 			if err := Peer.ConnectToPeer(ctx, parts[1], parts[2]); err != nil {
-// 				fmt.Printf("Failed to connect: %v\n", err)
-// 			}
-
-// 		case "msg":
-// 			if len(parts) < 2 {
-// 				fmt.Println("Usage: msg <message>")
-// 				continue
-// 			}
-// 			message := strings.Join(parts[1:], " ")
-// 			fmt.Printf("[DEBUG] Command: msg %s\n", message)
-// 			connectedPeers := Peer.GetConnectedPeers()
-
-// 			if len(connectedPeers) == 0 {
-// 				fmt.Println("No peers connected")
-// 				continue
-// 			}
-
-// 			for _, peerID := range connectedPeers {
-// 				if err := Peer.SendMessage(peerID, message); err != nil {
-// 					fmt.Printf("Failed to send to %s: %v\n", peerID, err)
-// 				}
-// 			}
-
-// 		case "peers":
-// 			fmt.Println("[DEBUG] Command: peers")
-// 			connectedPeers := Peer.GetConnectedPeers()
-// 			if len(connectedPeers) == 0 {
-// 				fmt.Println("No peers connected")
-// 			} else {
-// 				fmt.Printf("Connected peers (%d):\n", len(connectedPeers))
-// 				for _, peerID := range connectedPeers {
-// 					nickname := Peer.peers[peerID]
-// 					if nickname == "" {
-// 						nickname = "Unknown"
-// 					}
-// 					conns := Peer.Host.Network().ConnsToPeer(peerID)
-// 					connType := "direct"
-// 					if len(conns) > 0 && strings.Contains(conns[0].RemoteMultiaddr().String(), "p2p-circuit") {
-// 						connType = "relayed"
-// 					}
-// 					fmt.Printf("  %s (%s) - %s connection\n", nickname, peerID, connType)
-// 				}
-// 			}
-
-// 		case "quit":
-// 			fmt.Println("[DEBUG] Command: quit")
-// 			return
-
-// 		default:
-// 			fmt.Println("Unknown command. Available: connect, msg, peers, quit")
-// 		}
-// 	}
-// }

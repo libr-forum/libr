@@ -2,25 +2,46 @@ package main
 
 import (
 	"bufio"
+	Peers "chatprotocol/peer"
+
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relay "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 type reqFormat struct {
 	Type  string `json:"type"`
 	PubIP string `json:"pubip"`
+	ReqParams []byte
+	Body []byte `json:"body,omitempty"`
 }
 
-var IDmap map[string]string
+var (
+	IDmap = make(map[string]string)
+	mu    sync.RWMutex
+)
+
+var RelayHost host.Host
+
+type respFormat struct {
+	Type string `json:"type"`
+	Resp []byte `json:"resp"`
+}
 
 func main() {
 	fmt.Println("[DEBUG] Starting relay node...")
@@ -34,8 +55,8 @@ func main() {
 
 	// Create the relay host
 	fmt.Println("[DEBUG] Creating relay host...")
-	relayHost, err := libp2p.New(
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
+	RelayHost, err = libp2p.New(
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4567"),
 		libp2p.ConnectionManager(connMgr),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelayService(),
@@ -45,25 +66,32 @@ func main() {
 	}
 	defer func() {
 		fmt.Println("[DEBUG] Closing relay host...")
-		relayHost.Close()
+		RelayHost.Close()
 	}()
 
 	// Enable circuit relay service
 	fmt.Println("[DEBUG] Enabling circuit relay service...")
-	_, err = relay.New(relayHost)
+	_, err = relay.New(RelayHost)
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to enable relay service: %v", err)
 	}
 
 	fmt.Printf("[INFO] Relay started!\n")
-	fmt.Printf("[INFO] Peer ID: %s\n", relayHost.ID())
+	fmt.Printf("[INFO] Peer ID: %s\n", RelayHost.ID())
 
 	// Print all addresses
-	for _, addr := range relayHost.Addrs() {
-		fmt.Printf("[INFO] Relay Address: %s/p2p/%s\n", addr, relayHost.ID())
+	for _, addr := range RelayHost.Addrs() {
+		fmt.Printf("[INFO] Relay Address: %s/p2p/%s\n", addr, RelayHost.ID())
 	}
 
-	relayHost.SetStreamHandler("/chat/1.0.0", handleChatStream)
+	RelayHost.SetStreamHandler("/chat/1.0.0", handleChatStream)
+	go func() {
+		for {
+			fmt.Println(IDmap)
+			time.Sleep(30 * time.Second)
+		}
+	}()
+
 	// Wait for interrupt signal
 	fmt.Println("[DEBUG] Waiting for interrupt signal...")
 	c := make(chan os.Signal, 1)
@@ -71,7 +99,6 @@ func main() {
 	<-c
 
 	fmt.Println("[INFO] Shutting down relay...")
-
 }
 
 func handleChatStream(s network.Stream) {
@@ -79,32 +106,107 @@ func handleChatStream(s network.Stream) {
 	defer s.Close()
 	reader := bufio.NewReader(s)
 	for {
+
 		var req reqFormat
-		buf := new([]byte)
-		_, err := reader.Read(*buf)
-		if err!=nil{
-			fmt.Println("[DEBUG]Error vreating reader at relay")
-		}
-
-		err = json.Unmarshal(*buf, &req)
-
+		buf := make([]byte, 1024*4) // or size based on expected message
+		n, err := reader.Read(buf)
 		if err != nil {
-			fmt.Printf("[DEBUG]Error getting req as json at relay")
+			fmt.Println("[DEBUG] Error reading from connection at relay:", err)
 			return
 		}
 
+		err = json.Unmarshal(buf[:n], &req)
+		if err != nil {
+			fmt.Printf("[DEBUG] Error parsing JSON at relay: %v\n", err)
+			fmt.Printf("[DEBUG] Received Data: %s\n", string(buf[:n]))
+			return
+		}
+
+		fmt.Printf("req by user is : %+v \n", req)
+
 		if req.Type == "register" {
-			remoteAddr := s.Conn().RemoteMultiaddr()
-			 peerID := s.Conn().RemotePeer()
-   			// Combine to full multiaddress string
-   			fullMultiAddr := fmt.Sprintf("%s/p2p/%s", remoteAddr.String(), peerID.String())
+			peerID := s.Conn().RemotePeer()
+			fmt.Printf("[INFO]Given public IP is %s \n", req.PubIP)
 			fmt.Println("[INFO]Registering the peer into relay map")
-			IDmap[req.PubIP] = fullMultiAddr
+			mu.Lock()
+			IDmap[req.PubIP] = peerID.String()
+			mu.Unlock()
 		}
-		if req.Type == "getID" {
-			s.Write([]byte(IDmap[req.PubIP]+"\n"))
+
+		if req.Type == "SendMsg" {
+			mu.RLock()
+			targetPeerID := IDmap[req.PubIP]
+			mu.RUnlock()
+			fmt.Println(targetPeerID)
+
+			relayID := RelayHost.ID() 
+			targetID, err := peer.Decode(targetPeerID)
+			if err != nil {
+				log.Printf("[ERROR] Invalid Peer ID: %v", err)
+				s.Write([]byte("invalid peer id"))
+				return
+			}
+			
+			relayBaseAddr, err := ma.NewMultiaddr("/p2p/" + relayID.String())
+			if err != nil { log.Fatal("relayBaseAddr error:", err) }
+			circuitAddr, _ := ma.NewMultiaddr("/p2p-circuit")
+			targetAddr, _ := ma.NewMultiaddr("/p2p/" + targetID.String())
+			fullAddr := relayBaseAddr.Encapsulate(circuitAddr).Encapsulate(targetAddr)
+
+			addrInfo, err := peer.AddrInfoFromP2pAddr(fullAddr)
+				if err != nil {
+				log.Printf("Invalid relayed multiaddr: %s", fullAddr)
+				s.Write([]byte("bad relayed addr"))
+				return
+			}
+
+			// Add the relayed address to the peerstore. PeerStore is a mapping in which peer ID is mapped to multiaddr for that peer. This is used whenever we want to open a stream. Once added then we should connect to the peer and open a stream to send message to the relay
+			RelayHost.Peerstore().AddAddrs(addrInfo.ID, addrInfo.Addrs, peerstore.PermanentAddrTTL)
+
+			err = RelayHost.Connect(context.Background(), *addrInfo)
+			if err != nil {
+				log.Printf("[ERROR] Failed to connect to relayed peer: %v", err)
+			}
+
+
+			sendStream, err := RelayHost.NewStream(context.Background(), targetID, Peers.ChatProtocol)
+			if err != nil {
+				fmt.Println("[DEBUG]Error opening stream to target peer")
+				fmt.Println(err)
+				s.Write([]byte("failed"))
+				return
+			}
+			jsonReqServer, err := json.Marshal(req)
+			if err!=nil{
+				fmt.Println("[DEBUG]Error marshalling the req for server ")
+			}
+			_,err = sendStream.Write(jsonReqServer)
+
+			if err!=nil{
+				fmt.Println("[DEBUG]Error sending messgae despite stream opened")
+				return
+			}
+			s.Write([]byte("Success"))
+
+			buf := make([]byte, 1024)
+			RespReader := bufio.NewReader(sendStream)
+			RespReader.Read(buf)
+
+			var resp respFormat
+			resp.Type = "GET"
+			resp.Resp = buf
+			fmt.Printf("[Debug]Resp from %s : %+v \n", targetID.String(), resp)
+
+			jsonResp, err := json.Marshal(resp)
+			if err!=nil{
+				fmt.Println("[DEBUG]Error marshalling the response at relay")
+			}
+			s.Write(jsonResp)
+
+			defer s.Close()
+			defer sendStream.Close()
 		}
-		
+
 	}
 
 }
