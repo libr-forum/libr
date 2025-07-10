@@ -2,7 +2,8 @@ package main
 
 import (
 	"bufio"
-	Peers "chatprotocol/peer"
+	"bytes"
+	//Peers "chatprotocol/peer"
 
 	"context"
 	"encoding/json"
@@ -19,16 +20,20 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	relay "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+const ChatProtocol = protocol.ID("/chat/1.0.0")
+
+
 type reqFormat struct {
-	Type  string `json:"type"`
-	PubIP string `json:"pubip"`
+	Type      string `json:"type"`
+	PubIP     string `json:"pubip"`
 	ReqParams []byte
-	Body []byte `json:"body,omitempty"`
+	Body      []byte `json:"body,omitempty"`
 }
 
 var (
@@ -114,7 +119,8 @@ func handleChatStream(s network.Stream) {
 			fmt.Println("[DEBUG] Error reading from connection at relay:", err)
 			return
 		}
-
+		buf = bytes.TrimRight(buf, "\x00")
+		
 		err = json.Unmarshal(buf[:n], &req)
 		if err != nil {
 			fmt.Printf("[DEBUG] Error parsing JSON at relay: %v\n", err)
@@ -139,22 +145,24 @@ func handleChatStream(s network.Stream) {
 			mu.RUnlock()
 			fmt.Println(targetPeerID)
 
-			relayID := RelayHost.ID() 
+			relayID := RelayHost.ID()
 			targetID, err := peer.Decode(targetPeerID)
 			if err != nil {
 				log.Printf("[ERROR] Invalid Peer ID: %v", err)
 				s.Write([]byte("invalid peer id"))
 				return
 			}
-			
+
 			relayBaseAddr, err := ma.NewMultiaddr("/p2p/" + relayID.String())
-			if err != nil { log.Fatal("relayBaseAddr error:", err) }
+			if err != nil {
+				log.Fatal("relayBaseAddr error:", err)
+			}
 			circuitAddr, _ := ma.NewMultiaddr("/p2p-circuit")
 			targetAddr, _ := ma.NewMultiaddr("/p2p/" + targetID.String())
 			fullAddr := relayBaseAddr.Encapsulate(circuitAddr).Encapsulate(targetAddr)
-
+			fmt.Println("[DENUG]", fullAddr.String())
 			addrInfo, err := peer.AddrInfoFromP2pAddr(fullAddr)
-				if err != nil {
+			if err != nil {
 				log.Printf("Invalid relayed multiaddr: %s", fullAddr)
 				s.Write([]byte("bad relayed addr"))
 				return
@@ -168,8 +176,7 @@ func handleChatStream(s network.Stream) {
 				log.Printf("[ERROR] Failed to connect to relayed peer: %v", err)
 			}
 
-
-			sendStream, err := RelayHost.NewStream(context.Background(), targetID, Peers.ChatProtocol)
+			sendStream, err := RelayHost.NewStream(context.Background(), targetID, ChatProtocol)
 			if err != nil {
 				fmt.Println("[DEBUG]Error opening stream to target peer")
 				fmt.Println(err)
@@ -177,31 +184,32 @@ func handleChatStream(s network.Stream) {
 				return
 			}
 			jsonReqServer, err := json.Marshal(req)
-			if err!=nil{
+			if err != nil {
 				fmt.Println("[DEBUG]Error marshalling the req for server ")
 			}
-			_,err = sendStream.Write(jsonReqServer)
+			 _, err = sendStream.Write(jsonReqServer)
 
-			if err!=nil{
+			if err != nil {
 				fmt.Println("[DEBUG]Error sending messgae despite stream opened")
 				return
 			}
-			s.Write([]byte("Success"))
+			s.Write([]byte("Success\n"))
 
 			buf := make([]byte, 1024)
 			RespReader := bufio.NewReader(sendStream)
 			RespReader.Read(buf)
-
+			buf = bytes.TrimRight(buf, "\x00")
 			var resp respFormat
 			resp.Type = "GET"
 			resp.Resp = buf
 			fmt.Printf("[Debug]Resp from %s : %+v \n", targetID.String(), resp)
 
 			jsonResp, err := json.Marshal(resp)
-			if err!=nil{
+			if err != nil {
 				fmt.Println("[DEBUG]Error marshalling the response at relay")
 			}
-			s.Write(jsonResp)
+			_=jsonResp // if required whole jsonResp can be sent but it makes unmarhsalling the response harder for the client
+			s.Write(resp.Resp)
 
 			defer s.Close()
 			defer sendStream.Close()
