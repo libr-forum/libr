@@ -1,0 +1,14 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "libr-client",
+  "outputfilename": "libr-client",
+  "frontend": {
+    "dir": "frontend",
+    "install": "",
+    "build": ""
+  },
+  "author": {
+    "name": "Arnav Agrawal",
+    "email": "arnav.agrawal.2609@gmail.com"
+  }
+}

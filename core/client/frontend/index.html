@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LIBR Client</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="main.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>LIBR</h1>
+
+      <div class="input-row">
+        <span id="timestamp" class="timestamp-label"></span>
+        <input id="msgInput" placeholder="Type your message..." onkeydown="handleKey(event, 'send')" />
+        <button id="sendBtn" onclick="sendInput()">Send</button>
+        <span id="status" class="status-label"></span>
+      </div>
+
+      <div class="fetch-row">
+        <button id="fetchBtn" onclick="fetchTimestamp()">Fetch</button>
+        <input id="tsInput" placeholder="Enter timestamp" onkeydown="handleKey(event, 'fetch')" />
+      </div>
+
+      <div class="fetch-row">
+        <button onclick="fetchAll()">Fetch All</button>
+        <button onclick="clearOutput()">Clear</button>
+      </div>
+
+      <pre id="output" class="output-box"></pre>
+    </div>
+  </body>
+</html>

@@ -9,7 +9,7 @@ import (
 
 	"github.com/devlup-labs/Libr/core/client/network"
 	"github.com/devlup-labs/Libr/core/client/types"
-	util "github.com/devlup-labs/Libr/core/client/util"
+	util "github.com/devlup-labs/Libr/core/client/utils"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/client/core"
-	util "github.com/devlup-labs/Libr/core/client/util"
+	util "github.com/devlup-labs/Libr/core/client/utils"
 )
 
 func RunInputLoop() {
@@ -35,7 +34,7 @@ func RunInputLoop() {
 			fields := strings.Fields(msg)
 			if len(fields) == 2 {
 				if fields[1] == "all" {
-					core.FetchRecent(context.Background(), 50)
+					core.FetchRecent(50)
 				} else {
 					ts, err := strconv.ParseInt(fields[1], 10, 64)
 					if err != nil {
