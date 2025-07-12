@@ -30,10 +30,10 @@ const ChatProtocol = protocol.ID("/chat/1.0.0")
 
 
 type reqFormat struct {
-	Type      string `json:"type"`
-	PubIP     string `json:"pubip"`
-	ReqParams []byte
-	Body      []byte `json:"body,omitempty"`
+	Type  string `json:"type,omitempty"`
+	PubIP string `json:"pubip,omitempty"`
+	ReqParams json.RawMessage `json:"reqparams,omitempty"`
+	Body json.RawMessage `json:"body,omitempty"`
 }
 
 var (
@@ -47,6 +47,27 @@ type respFormat struct {
 	Type string `json:"type"`
 	Resp []byte `json:"resp"`
 }
+
+type RelayEvents struct{}
+
+func (re *RelayEvents) Listen(net network.Network, addr ma.Multiaddr) {}
+func (re *RelayEvents) ListenClose(net network.Network, addr ma.Multiaddr) {}
+func (re *RelayEvents) Connected(net network.Network, conn network.Conn) {
+	fmt.Printf("[INFO] Peer connected: %s\n", conn.RemotePeer())
+}
+func (re *RelayEvents) Disconnected(net network.Network, conn network.Conn) {
+	fmt.Printf("[INFO] Peer disconnected: %s\n", conn.RemotePeer())
+	// Remove peer from IDmap if needed
+	mu.Lock()
+	for pubip, pid := range IDmap {
+		if pid == conn.RemotePeer().String() {
+			delete(IDmap, pubip)
+			break
+		}
+	}
+	mu.Unlock()
+}
+
 
 func main() {
 	fmt.Println("[DEBUG] Starting relay node...")
@@ -69,6 +90,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to create relay host: %v", err)
 	}
+	RelayHost.Network().Notify(&RelayEvents{})
+
 	defer func() {
 		fmt.Println("[DEBUG] Closing relay host...")
 		RelayHost.Close()
@@ -187,7 +210,7 @@ func handleChatStream(s network.Stream) {
 			if err != nil {
 				fmt.Println("[DEBUG]Error marshalling the req for server ")
 			}
-			 _, err = sendStream.Write(jsonReqServer)
+			 _, err = sendStream.Write(append(jsonReqServer, '\n'))
 
 			if err != nil {
 				fmt.Println("[DEBUG]Error sending messgae despite stream opened")
@@ -209,8 +232,11 @@ func handleChatStream(s network.Stream) {
 				fmt.Println("[DEBUG]Error marshalling the response at relay")
 			}
 			_=jsonResp // if required whole jsonResp can be sent but it makes unmarhsalling the response harder for the client
-			s.Write(resp.Resp)
-
+			fmt.Println("[DEBUG]Raw Resp :", string(resp.Resp))
+			_,err = s.Write(resp.Resp)
+			if(err!=nil){
+				fmt.Println("[DEBUG]Error sending response back")
+			}
 			defer s.Close()
 			defer sendStream.Close()
 		}
