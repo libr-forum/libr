@@ -1,0 +1,574 @@
+                  LIBR : A Moderated, Censorship-Resilient Social Network
+
+
+
+
+                         Abstract                                   On the other hand, fully decentralized forums pose their
+                                                                 own set of challenges. While they resist centralized censor-
+    Digital public forums are central to fostering open dia-     ship, their unmoderated nature can enable the proliferation
+logue and building inclusive communities, but existing cen-      of harmful, offensive, or malicious content. This creates
+tralized and decentralized models each face critical limita-     a risk of anti-social elements disrupting the sense of com-
+tions. Centralized forums are prone to censorship, often un-     munity, turning forums into chaotic or even hostile spaces
+dermining free expression, while decentralized forums lack       rather than safe havens for public discourse.
+adequate moderation, exposing users to harmful or disrup-           Balancing these opposing challenges—preventing un-
+tive content. Striking a balance between censorship resis-       due censorship while maintaining a healthy and inclusive
+tance and community-driven moderation is essential to ad-        community—requires a new approach. A moderated yet
+dress these challenges.                                          censorship-resilient digital forum could preserve the spirit
+    In this paper, we present LIBR, a novel framework for        of open dialogue while ensuring the platform remains con-
+creating a censorship-resilient yet moderated public fo-         ducive to constructive interactions.
+rum. Leveraging a hybrid approach, LIBR combines con-               In this paper, we present LIBR, a framework that aims
+cepts from decentralized networks, distributed hash tables       to solve the inherent issues with centralized forums while
+(DHTs), and consensus protocols such as proof-of-work            providing a community-moderated environment for discus-
+blockchains. It employs a role-based architecture with dis-      sions.
+tinct types of nodes—clients, database nodes, and moder-
+ators—to ensure efficient message storage, community-led         1.1. Addressed Issues
+moderation, and robust governance. Key innovations in-              The proposed solution aims to bridge the gap between
+clude a mechanism for partial immutability of stored mes-        centralized and decentralized forum models by addressing
+sages, moderation certificates for content validation, and a     the following key issues:
+dynamic global state that adapts to network participation.
+    By addressing issues of censorship, moderation, and            • Censorship in Centralized Forums: Ensuring that
+governance through innovative use of decentralized tech-             user-generated content is not arbitrarily removed or
+nologies, LIBR demonstrates the potential for a balanced             suppressed due to the biases or control of centralized
+platform that upholds both free expression and construc-             authorities. This preserves the core principles of free
+tive dialogue. This work provides a blueprint for designing          speech and transparency in public discourse.
+next-generation public forums that prioritize inclusivity, re-
+silience, and community trust.                                     • Lack of Moderation in Decentralized Forums: Miti-
+                                                                     gating the risk of harmful, illegal, or disruptive content
+                                                                     that can arise in fully decentralized systems. Such con-
+                                                                     tent can degrade the community experience and under-
+1. Introduction                                                      mine the forum’s purpose as a safe and inclusive space
+    Public forums are meant to foster open dialogue, en-             for discussion.
+courage diverse perspectives, and empower communities to
+                                                                   • Balancing Resilience and Responsibility: Striking a
+thrive through collaboration and shared knowledge. How-
+                                                                     balance where the platform is censorship-resilient yet
+ever, the traditional centralized model of digital forums of-
+                                                                     maintains community-driven moderation to safeguard
+ten falls short of this ideal. Centralized platforms are sus-
+                                                                     its integrity and ensure productive engagement.
+ceptible to censorship, where content deemed unfavorable
+by authorities or platform owners can be removed arbitrar-
+                                                                 1.2. Challenges
+ily. This undermines the principles of free expression and
+community-driven engagement, eroding trust in the plat-             Building a platform that balances censorship resistance
+form and its governance.                                         with effective moderation poses several challenges, partic-
+ularly when compared to conventional centralized systems.            user feedback to assess node reliability and perfor-
+These include:                                                       mance, enabling adaptive governance. The design
+                                                                     must balance automated processes with community-
+  • Message Storage: Traditional platforms rely on                   driven input while safeguarding against malicious ac-
+    centralized databases, which are not suitable for a              tors and ensuring network integrity.
+    censorship-resilient system. While a Distributed Hash
+    Table (DHT) offers a trivial solution for decentralized     2. Overview
+    storage, building a fault-tolerant system that ensures
+    partial immutability of forum messages requires ad-             We propose the creation of a public forum that upholds
+    ditional mechanisms and safeguards to maintain data         community-driven moderation guidelines while being re-
+    integrity and availability.                                 silient to censorship risks associated with centralization.
+                                                                Our approach leverages concepts from Decentralized Net-
+  • Partial Immutability of Message Storage: Pure im-           works, Peer-to-Peer Architecture, Blockchain, and related
+    mutability can be trivially achieved using a hash chain-    technologies. L IBR employs a consensus protocol, such as
+    based implementation, as seen in blockchain systems         a Proof-of-Work Blockchain, as a black-box mechanism to
+    like Bitcoin. However, this approach is cost-inefficient    compute a globally agreed-upon state. This section pro-
+    and impractical for a forum, where every message            vides a brief overview of the underlying concepts and tech-
+    would function as a transaction. Since forum mes-           nologies, along with the rationale for their inclusion in our
+    sages do not alter the system state as significantly as     protocol.
+    blockchain transactions, total immutability is unnec-
+    essary. Instead, a replicated DHT setup provides a
+                                                                3. Underlying Theoretical Concepts
+    more efficient and suitable solution to achieve partial
+    immutability.                                                  Several core components of the LIBR protocol rely
+                                                                on well-established distributed systems and cryptographic
+  • Proof of State Transaction: Due to lack of a central-
+                                                                primitives. This section summarizes two key underlying
+    ized figure, or a reliant governance or Proof of Stake
+                                                                theoretical concepts that enable censorship resistance, de-
+    mechanism, it is difficult to validate whether a resource
+                                                                centralized storage, and consistency despite adversarial be-
+    like Storage Provided, promised through a State Trans-
+                                                                havior: Distributed Hash Tables (DHTs) and Byzantine
+    action, is actually available for use.
+                                                                Consistent Broadcast (BCB).
+  • Network Dynamics: The platform must be resilient
+    to dynamic network participation, where nodes fre-
+                                                                3.1. Distributed Hash Tables (DHTs)
+    quently join or leave. Addressing the challenges of            DHTs are decentralized systems that provide efficient
+    churn while ensuring data consistency, availability, and    key-based lookup by distributing data across a set of nodes.
+    seamless functionality across the network is critical for   Each node is responsible for a portion of the keyspace, de-
+    system reliability.                                         termined by a consistent hashing function. The LIBR pro-
+                                                                tocol uses a replicated DHT setup to achieve:
+  • Dynamic Global State: The platform must respond
+    dynamically upon changes in the network. As more              • Deterministic and decentralized mapping of user mes-
+    resource intensive nodes join (or leave) the network,           sages to database nodes.
+    the overall factors like replication and fault tolerance
+    (for moderation and storage) should change in corre-          • Redundant storage via the replication factor R, en-
+    spondence. This would require a consensus mecha-                abling fault tolerance.
+    nism among different nodes to access and modify the
+    global state.                                                 • Efficient discovery and retrieval of data without a cen-
+                                                                    tral coordinator.
+  • Moderation: Unlike centralized systems, this plat-
+    form requires a decentralized, weighted moderation             This mechanism draws inspiration from systems like
+    mechanism. Such a system must fairly evaluate and in-       Chord and Kademlia, which offer logarithmic lookup times
+    centivize user contributions, aligning moderation prac-     and resilience to node churn.
+    tices with community interests while minimizing the
+    risk of misuse or biased actions.                           3.2. Byzantine Consistent Broadcast (BCB)
+  • Governance Model for Node Behavior: A decentral-               To ensure that messages are correctly validated and
+    ized governance scheme is essential to monitor and          stored even in the presence of malicious nodes, LIBR em-
+    regulate node behavior. This involves incorporating         ploys Byzantine Consistent Broadcast. In this protocol:
+   • A message broadcast by a client is received consis-           • Moderators: Moderator nodes (Mods) are tasked
+     tently by all honest moderator nodes.                           with evaluating and moderating messages based on the
+                                                                     community’s moderation scheme. They validate the
+   • If any honest node accepts a message, all others even-          content of messages received from Clients if they find
+     tually do as well.                                              it suitable with the community guidelines.
+   • Messages not conforming to community moderation
+     policy are still consistently rejected.                        The LIBR protocol does not rely on any communica-
+                                                                 tive Consensus Mechanism, and the only Consensus, to be
+   This guarantees consensus on which messages receive           acheived among moderators, is handled using Byzantine
+valid moderation certificates, even under the assumption         Consistent Broadcast. Though role of a Blockchain like
+that some moderators may act arbitrarily or maliciously.         Ethereum may be required in order to store key information
+The concept is derived from classical results in Byzantine       regarding community, carry out incentivization and gover-
+agreement and reliable broadcast protocols.                      nance.
+3.3. Hashchains for State Reconstruction
+    LIBR nodes maintain a local hashchain that records state
+transitions such as moderator joins/leaves and database par-
+ticipation. Each transaction is hashed with a link to the pre-
+vious one, forming an immutable ledger. This structure:
+   • Enables reconstruction of the global community state
+     at any point in time.
+   • Provides tamper-evidence and ordering for control op-
+     erations.
+   • Supports auditability of participation and moderation
+     history.
+   These hashchains form the foundation for global con-
+figuration resolution and are compatible with block-based
+consensus protocols such as Tendermint or Bitcoin.
+
+4. The LIBR System Architecture
+   The core protocol is fully described by the overall con-
+nections between different participating nodes. Unlike con-
+ventional peer-to-peer distributed systems, or traditional
+stake-based implementations, the protocol consists of sev-
+eral types of participating nodes. This section describes the
+architectural implementation of the LIBR protocol in detail.
+4.1. Roles of Different Participating Nodes
+   • Clients: Client Nodes (Clients) act as the primary in-
+     terface for users to interact with the protocol. They,
+     and only they, allow the users to create and read mes-
+     sages on the forum. They are also crucial to facilitate
+     governance actions that require user input. Clients are
+     also responsible to broadcast messages, collect moder-
+     ation signatures, create moderation certificates and in-
+     teract with database nodes to store and fetch messages.
+   • Database: Database Nodes (DBs) are responsible for
+     storing forum messages. They participate as nodes of
+     the Replicated DHT Setup to manage storage while en-
+     suring partial immutability and data availability.
+Figure 1. Detailed System Architecture of LIBR
+4.2. What is a Community?                                          • DB Replication Factor (R):
+    A Community is a group of Moderators and Database                  R = Number of DBs where each message is initially stored
+Nodes that collectively contribute their hardware and net-
+work resources to support a given set of Clients. These par-           Messages are sent to R database nodes for redundancy.
+ticipants help maintain message integrity, moderation con-             If the number of available DB nodes is less than R, the
+sistency, and data availability within their respective Com-           message is sent to all.
+munities.
+    Communities are the fundamental administrative units         4.3. System Model
+within the protocol. Each Community operates indepen-              • Moderation Signature (ModSign): A LIBR modera-
+dently but adheres to the same base protocol, and may co-            tor node, upon validating a User Message, returns a
+exist with others on the same blockchain.                            Moderation Signature. Each ModSign consists of:
+
+Incentivization: Contributors (Mods and DBs) may be                        – public key: The public key of the moderator who
+incentivized through off-chain or blockchain-native reward                   issued the signature.
+mechanisms to offer their services to the protocol.                        – sign: A digital signature over the message con-
+   Incentivization may require cryptographically verifiable                  tent and timestamp, created using the modera-
+and cheap ”Proof of Storage” and ”Proof of Moderation”                       tor’s private key.
+in order to verify that a given mod or db node is to be in-
+centivized. Possible solutions involve Provable Data Pos-              This signature binds a moderator’s validation to a spe-
+session at Untrusted Stores by Ateniese et al. which works             cific User Message and its timestamp. All moderators
+good for Archival Storage. Since LIBR uses more of an                  signing the same message will generate identical sig-
+Active Storage where content is accessed more often, an-               natures if honest. The ModSign structure is:
+other solution might be though of, like Raising Tickets, ac-
+                                                                   Listing 1. Structure of a Moderation Signature (ModSign)
+cumulating raised tickets, verifying those tickets at the gov-
+                                                                   1   {
+ernance level, and slashing mods/dbs which fail to provide.        2       "public_key": "pubkey",
+                                                                   3       "sign": "sign"
+Synchronization and Configuration: The blockchain                  4   }
+layer is used to globally synchronize Community config-
+urations and store key metadata required to validate and in-       • Message Certificate (MsgCert): A MsgCert binds a
+teract with that Community.                                          User Message to its validation record. It is a cryp-
+                                                                     tographic envelope that proves the message has been
+Global Parameters for a Community: Each Commu-                       validated by at least 2f + 1 moderators (in a system
+nity is uniquely identified and governed by a set of global          with a fault tolerance threshold f ). The structure in-
+parameters stored on-chain:                                          cludes:
+
+   • Community Public Key: A cryptographic identifier                      – sender: Public key of the user sending the mes-
+     for the Community used to validate transactions and                     sage.
+     associate metadata.                                                   – msg: The actual message content.
+                                                                           – ts: Timestamp of when the message was sent.
+   • Contribution (C): A key ”physical” parameter to es-
+     timate other parameters like replication and fault toler-             – mod cert: A linear array of ModSign entries.
+     ance                                                                  – sign: A user-generated signature over msg and
+                                                                             ts.
+     C = Estimated number of DB nodes in a Community
+                                                                       Listing 2. Structure of a Message Certificate (MsgCert)
+   • Moderator Fault Tolerance (M ):                               1   {
+                                                                   2       "sender": "senderpk",
+     M = Minimum number of moderator signatures required           3       "msg": "msg",
+                                                                   4       "ts": "timestamp",
+     The message must be sent to 2M + 1 moderators to              5       "mod_cert": [
+                                                                   6         {
+     tolerate up to M faulty or malicious nodes. If the total      7           "public_key": "pubkey",
+     number of moderators is less than 2M +1, the message          8           "sign": "sign"
+     is sent to all.                                               9         }
+  10       ],                                                            – data: A nested object containing the transaction
+  11       "sign": "sign"                                                  type and any relevant metadata.
+  12   }
+                                                                         – nonce: A monotonically increasing number from
+                                                                           the sender to ensure uniqueness.
+  • Stored Messages (StoredMsg): These are the persis-
+    tently stored objects in the database nodes. Each entry              – sign: Signature by the sender over the transaction
+    consists of:                                                           body.
+                                                                      [UPDATE REQ: The Core Protocol (of storage and re-
+            – sender: The public key of the message originator.
+                                                                      trieval) no longer requires state transactions to main-
+            – content: The message body.                              tain a list of database nodes or moderators. Can a
+            – timestamp: A 64-bit integer representing the time       scheme be created that eliminates need of state trans-
+              of submission.                                          action from Governance and Incentivization too?]
+                                                                      [IDEA 1] : DB must provide a succint, verifiable on-
+       Stored messages are extracted from valid MsgCerts af-
+                                                                      chain, Proof of Storage to the Smart Contract, to get
+       ter verification.
+                                                                      incentivized
+4.4. Protocol Messages                                                Problems: Complicated to write, on-chain verifica-
+                                                                      tions are tough and expensive
+  • User Messages (Msg): User Messages are generated
+    by clients and form the core data unit in the system. A           [IDEA 2] : DB must provide a succint Proof of Ser-
+    User Message is sent to moderators for validation. It             vice to a client (Trivial by providing the required files).
+    includes:                                                         Client submits a receipt (or a Merkle Aggregate of
+                                                                      many Receipts, and relocating the actual receipts to the
+            – message: The content submitted by the user.             network itself??) to the Smart Contract, and the con-
+            – timestamp: A Unix timestamp representing the            tract verifies the receipt on-chain (or just aggregates
+              client’s local time of submission.                      the proofs from others??)
+                                                                      This should be cheaper
+              Listing 3. User Message sent to moderators
+                                                                      Problems: Again, difficult to write, malicious client?
+  1    {                                                              – asks the same file again and again to get his own
+  2        "message": "hello",
+  3        "timestamp": "1744219507"
+                                                                      database incentivized
+  4    }
+                                                                  4.5. Data Structures
+  • Moderation Response (ModSign): Once a moderator                 • Message Database: The Message Database (Mes-
+    approves a User Message, it returns a cryptographic               sageDB) is the primary data structure used to
+    signature over the message and timestamp. This con-               store Stored Messages in the databases.          It is
+    stitutes a Moderation Signature.                                  abstracted as a key-value pair structure, where
+                                                                      MessageDB[timestamp] maps a Timestamp
+           Listing 4. Moderation Response from a moderator            (key) to an array of Stored Messages (value). The
+  1    {                                                              LIBR protocol does not place significant emphasis on
+  2        "public_key": "02227547a108c40745cf479c54e4                the absolute ordering of messages and treats all mes-
+               30da76a75f2350772370020c10832d4de14409"                sages received within the same second equivalently.
+               ,
+  3        "sign": "3045022100b7caecd571414dad964fcf41
+                                                                      However, to ensure consistency, correct databases
+               aeac03a9be2eb56d0c30f24107db2713e2763f9                store the array of Stored Messages in a deterministic
+               b0220786ee3321cddced6d49cf96f2436f55bba                manner, such as sorting them alphabetically.
+               657cd6f16481abdec462f0f2869fea"
+  4    }                                                            • Hashchain Instance: The LIBR protocol employs
+                                                                      a Hashchain data structure to store consensus-based
+  • State Transactions: These are broadcasted by partici-             data, particularly State Transactions. The immutabil-
+    pating nodes to initiate or reflect changes in the global         ity and widespread utility of Hashchains in known and
+    system state. All transactions share the following gen-           implemented consensus protocols make them an ideal
+    eral structure:                                                   choice for this purpose. Each node, irrespective of its
+                                                                      contribution or participation type, maintains a local in-
+            – sender, recipient, amt: Base fields, where amt is       stance of the Hashchain. This Hashchain is used to
+              kept zero for control messages.                         reconstruct the Global State when required.
+The UML Class Diagram shows the System Model in
+detail
+Figure 2. UML Class diagram illustrating the system model of LIBR.
+Figure 3. Sequence diagram illustrating the message storage and fetching process in LIBR.
+4.6. Core Protocol                                               • Step 3: Fetching the messages: When a correct
+                                                                   DB node receives a timestamp query from a client,
+   The core protocol of LIBR defines the foundational steps
+                                                                   it fetches and responds with all the Stored Messages
+and mechanisms required to achieve its objectives. This
+                                                                   keyed by the queried timestamp. The client, after re-
+subsection outlines the process of message storage and
+                                                                   ceiving enough responses can then choose to deliver
+fetching in a structured, step-by-step manner.
+                                                                   the user with the majority response.
+
+4.6.1   Message Storage                                       5. Incentivization and Governance Model
+                                                                 The incentivization and governance mechanisms of
+  • Step 1: Message Submission: The process begins
+                                                              our system are designed to ensure fair compensation for
+    when the user submits a message to the forum through
+                                                              database nodes while maintaining a robust community-
+    a client. The user may act as their own client or rely
+                                                              driven moderation structure. These mechanisms operate on
+    on a trusted third party to submit the message on their
+                                                              a foundation of cryptographically secured smart contracts
+    behalf.
+                                                              deployed on the Ethereum blockchain. Note that this sec-
+  • Step 2: Message Moderation: The client employs            tion does not focus on the actual source of revenue genera-
+    a Byzantine Consistent Broadcast protocol to broad-       tion, just using a part of it in governance and incentivization
+    cast the submitted message to a quorum of Moderator       5.1. Incentivization Mechanism
+    Nodes. Honest Moderators validate messages that ad-
+    here to community guidelines and reject those that do        The incentivization scheme ensures that database nodes
+    not. In either case, the Moderator generates a Moder-     (DB nodes) are rewarded based on their contribution to the
+    ation Signature (M OD S IGN), which is returned to the    network. The core components of the incentivization mech-
+    client as proof of validation.                            anism are as follows:
+
+  • Step 3: Identifying Database Nodes: Based on the          5.1.1   Proof of Service for Database Nodes
+    community’s defined replication factor (k), the user
+    message is redundantly stored on k Database Nodes         A Proof of Service (PoSe) is established to quantify the con-
+    (DB nodes). The LIBR client uses a Distributed Hash       tributions of each DB node. This is achieved through the
+    Table (DHT) to deterministically locate the appropri-     maintenance of a service score, computed and verified by
+    ate k DB nodes. Each DB node is then approached by        moderators (acting as governors in the governance model).
+    the client with a Stored Message, which is a tuple com-   The process includes:
+    prising the user message and its corresponding Moder-      1. Acknowledgements: Each time a DB node stores a
+    ation Certificate.                                            message, it sends an acknowledgment to the corre-
+                                                                  sponding moderator.
+  • Step 4: Storing the Message: When a DB node re-
+    ceives a Stored Message, it performs several verifica-     2. Random Queries: Moderators randomly query stored
+    tion steps. First, it validates the attached Moderation       messages to verify the DB node’s service over time,
+    Certificate to ensure its authenticity. Then, it checks       initially with higher frequency and gradually decreas-
+    whether the message is assigned to its storage based on       ing.
+    the community’s allocation rules. If both verifications    3. Score Calculation: Moderators maintain and period-
+    succeed, the message is stored in the local Message           ically update scores for each DB node based on ac-
+    Database (MessageDB), keyed by its timestamp.                 knowledgements and query results.
+
+4.6.2   Message Retrieval                                     5.1.2   Token Distribution
+
+  • Step 1: Query Submission: The process begins when         At the end of each epoch (e.g., one month), tokens from
+    the user queries a timestamp to the forum through a       a shared community revenue pool are distributed to DB
+    client. The user may act as their own client or rely on   nodes. The process is as follows:
+    a trusted party to query on their behalf.                  1. Score Submission: Moderators submit scores for DB
+                                                                  nodes to the blockchain.
+  • Step 2: Identifying Database Nodes: Based on the
+    timestamp queried, the client finds the k nodes to re-     2. Transparency Window: A public review period al-
+    trieve the message. The Client then queries all the k         lows moderators and the community to audit scores for
+    DB nodes for the messages                                     potential bias or inaccuracies.
+ 3. Challenge Mechanism: If a score is disputed and a             • Penalties: Moderators found guilty of biased actions
+    majority of moderators agree, the score is invalidated          are penalized, including loss of tokens and disqualifi-
+    and the responsible moderator is penalized.                     cation from future elections.
+
+ 4. Salary Collection: DB nodes collect their tokens by         5.3. Integration of Incentivization and Governance
+    submitting an Aggregated Proof of Service Docu-
+    ment, cryptographically verifiable, which includes:            The incentivization and governance systems are inter-
+                                                                connected:
+        • The initial date of service.
+        • The total tokens received to date.                      • DB nodes are incentivized to maintain high service
+                                                                    quality to improve their eligibility for moderatorship.
+     The smart contract verifies this document, updates it
+     with the new salary, and transfers the tokens to the DB      • Moderators ensure fairness in scoring and salary dis-
+     node.                                                          tribution, which directly impacts DB nodes’ reputation
+                                                                    and rewards.
+5.2. Governance Model
+   The governance model integrates incentivization with            This dual-layered approach ensures a balanced, self-
+moderator elections and oversight mechanisms to ensure          regulating ecosystem that aligns individual incentives with
+balanced power distribution and fairness.                       community goals.
+
+5.2.1   Eligibility for Voter and Moderatorship                 6. Implementation
+A DB node qualifies as a valid elector for moderation elec-        The LIBR protocol is implemented entirely in the Go pro-
+tions after providing a minimum PoSe threshold (e.g., three     gramming language. Go’s strong support for concurrency,
+epochs of service and a specific number of tokens earned).      lightweight goroutines, and native channels allows for effi-
+   Any potential voter can contest for the elections by stak-   cient and scalable network communication between nodes,
+ing a fixed amount of tokens on the chain                       while retaining code simplicity. Critical components such
+                                                                as broadcasting, message validation, and DHT coordina-
+5.2.2   Election Process                                        tion extensively use sync.WaitGroups and Go channels
+                                                                to handle asynchronous behavior, minimizing latency and
+Elections for moderators occur at the end of each epoch.        maximizing throughput.
+The process includes public voting by the valid electors and
+previous moderators (excluding those penalized to vote).        6.1. Modular Architecture
+   This scheme relies on public voting, as anonymous vot-
+ing might be expensive and non-scalable for the use-case.          The architecture is deliberately modular, with a clear
+Though alternatives are being explored                          separation of concerns between Clients, Moderators, and
+   To vote, a valid elector need not interact with the chain    Database Nodes. Each component is implemented as an in-
+previously, but in just one transaction, providing its vote     dependent Go module, capable of being compiled and run
+along with the Proof of Service.                                separately. Shared logic—such as message schemas, signa-
+   The elected moderators (or governors) are stored on-         ture verification, and blockchain communication—is main-
+chain for already discussed reasons.                            tained in remote, versioned Go modules and imported using
+                                                                go get. This promotes code reuse and enforces loose cou-
+                                                                pling between system components, allowing upgrades or re-
+5.2.3   Moderator Oversight                                     configuration of any module without impacting the others.
+Mechanisms are in place to prevent arbitrary actions by
+moderators:                                                     6.2. Client Interface
+
+  • Ticketing System: Clients can raise tickets for content        The Client module offers a Command Line Interface
+    they believe was wrongly censored. The raised ticket is     (CLI) built using the cobra library. This design provides
+    broadcasted to the moderators. Each moderate returns        users with a simple and powerful tool for interacting with
+    a signed message finding the ticket’s ”actionability”       the protocol. Users can post messages, request moderation
+                                                                certificates, query data, or trigger governance actions—all
+  • Consensus Verification: If a majority of moderators         through terminal commands. The CLI is well-suited for
+    find the ticket actionable, the client can escalated the    early-stage experimentation and scripting, while being ex-
+    ticket on-chain.                                            tendable to GUI or web clients in the future.
+6.3. Database Layer                                               7.1. 1. Validity of State Transactions
+   For storage, the system currently uses a Dockerized in-            Ensuring the authenticity and integrity of state transac-
+stance of PostgreSQL. This choice provides a balance be-          tions—such as moderator join/leave requests, message ap-
+tween SQL-based reliability and ease of deployment across         provals, and DB updates—was a non-trivial problem in a
+environments. Each Database Node in the network oper-             decentralized and permissionless setup. Traditional dis-
+ates independently but conforms to the replication strat-         tributed systems often rely on a trusted server or consensus
+egy defined by the community parameters. The container-           framework to validate such transitions.
+ized setup ensures that nodes can be deployed consistently            To overcome this, we developed a custom fork,
+across platforms and updated in a controlled manner.              Blockshare-LIBR of a lightweight blockchain framework
+                                                                  named Blockshare (github.com/Aradhya2708/Blockshare).
+6.4. Moderation Engine                                            Blockshare-LIBR provides a minimal Proof-of-Work con-
+    The moderation layer is powered by Google Cloud Natu-         sensus layer to securely log and synchronize all critical
+ral Language Processing (NLP) services, which analyze and         state changes across community nodes. Each transaction
+validate messages based on configurable guidelines. This          is cryptographically signed and verified on-chain, ensuring
+allows rapid prototyping and access to state-of-the-art lan-      tamper-proof community coordination.
+guage models without requiring heavy local computation.
+                                                                  7.2. 2. Hardware Compatibility
+However, the moderation logic is abstracted through an in-
+terface, allowing any third-party or custom NLP engine to            Although Go provides cross-platform support and ex-
+be substituted by simply changing the configuration.              cellent binary portability, differences in hardware environ-
+                                                                  ments (e.g., ARM vs x86, OS-specific syscall behavior,
+6.5. Pluggability and Reconfiguration                             etc.) may introduce unforeseen bugs during real-world de-
+   Every component of the LIBR protocol is designed to be         ployment. To mitigate this:
+reconfigurable. Communities or advanced users may:                   • We statically compile binaries to maximize portability.
+   • Replace PostgreSQL with another SQL or NoSQL                    • Docker is used wherever applicable (especially for DB
+     database.                                                         nodes) to abstract away environmental differences.
+   • Swap out Google Cloud NLP with a local LLM or an-               • Community contributors are encouraged to test the
+     other moderation API.                                             system on diverse hardware setups, and automated CI
+                                                                       pipelines are used to test builds across popular plat-
+   • Modify the CLI or add a new interface (e.g., Web UI,
+                                                                       forms.
+     Mobile App).
+                                                                  7.3. 3. Cost and Time Efficiency
+   • Add new client-side features using custom plug-ins or
+     forks.                                                          Compared to traditional digital forums that operate on
+                                                                  centralized infrastructure, LIBR’s distributed nature intro-
+   This approach empowers each Community to tailor the            duces overhead—both in terms of latency and resource us-
+system according to its performance needs, regulatory re-         age. Message validation by multiple moderators, signature
+quirements, or infrastructure preferences—without deviat-         generation, and multi-node replication add to system load.
+ing from the core protocol.                                          To mitigate these performance costs:
+   The source code is organized using idiomatic Go con-
+ventions, with each major component (Client, Moderator,              • The community can tune protocol parameters (e.g.,
+Database Node) implemented in a separate module. Code-                 replication factor R, fault tolerance M ) to balance ef-
+level documentation, including API details, file structure,            ficiency vs robustness.
+and developer setup instructions, is available in the project’s      • Caching mechanisms and local snapshotting are
+GitHub repository and supporting documentation files.                  planned for future versions to reduce redundant reads.
+7. Challenges and Mitigation Strategies                              • Batch-based message verification and moderation
+                                                                       pipelines can help reduce processing time, especially
+    During the development and deployment of the LIBR
+                                                                       under heavy load.
+protocol, several challenges emerged due to the novel na-
+ture of the system and its underlying goals of censorship re-        While the system is heavier than traditional forums, it
+sistance, modularity, and decentralization. This section out-     provides trade-offs in censorship resistance, transparency,
+lines the major technical and operational hurdles and how         and resilience that are essential for high-trust or adversarial
+they were addressed.                                              settings.
+8. Risk Analysis
+Figure 4. Risk Analysis of LIBR
+Figure 5. Risk Analysis of LIBR (cont.)
+9. Progress                                                     • Mar 6–10, 2025 – Tech Stack Finalization
+                                                                  Evaluated JavaScript, Python, C++, and Go for pro-
+   The LIBR project is being developed over the course of         tocol implementation. Rejected Python (too high-
+the semester through a series of well-defined research, plan-     level), C++ (less suitable for modular systems), and
+ning, and implementation milestones. This section outlines        JavaScript (single-threaded runtime). Finalized Go for
+the chronological evolution of the project based on actual        its concurrency support, static typing, and modular de-
+deliverables and team activities.                                 velopment model.
+9.1. Milestone Timeline
+                                                                • Mar 11–15, 2025 – Learning Go and Basics
+  • Jan 10, 2025 – Team Finalization                              Learned Go syntax and semantics. Built basic REST
+    Project team members were finalized and roles were            servers and clients. Familiarized the team with Go’s
+    loosely designated based on domain interest.                  tooling and compilation.
+
+  • Jan 16, 2025 – Project Ideation Began                       • Mar 16–19, 2025 – Concurrency and Goroutines
+    Initiated discussion and brainstorming sessions around        Studied Go’s concurrency primitives—goroutines,
+    forum architectures, decentralization, and censorship         channels, and sync patterns—required for modular,
+    resilience.                                                   non-blocking network programming.
+  • Jan 20, 2025 – Submission of Core Project Idea              • Mar 20–23, 2025 – Cryptographic Module Proto-
+    Finalized and submitted the core concept: a decentral-        typing
+    ized, censorship-resilient, yet moderated public forum        Implemented standalone test modules for crypto-
+    framework.                                                    graphic primitives such as hashing and digital signa-
+                                                                  ture verification in Go.
+  • Jan 21–Feb 2, 2025 – Background Research Phase
+    Team divided into sub-groups to study critical con-         • Mar 27, 2025 – Blockchain Layer Forked and Ex-
+    cepts:                                                        tended
+                                                                  Forked the Blockshare repository to serve as the test
+        – Blockchain, decentralization, and consensus pro-
+                                                                  blockchain layer. Fixed bugs, added logging, and cus-
+          tocols.
+                                                                  tomized features to fit LIBR’s governance and state
+        – Distributed Hash Tables (DHTs) and Byzantine            transaction requirements.
+          Consistent Broadcast (BCB).
+        – Peer-to-peer (P2P) architectures and forum mod-       • Mar 31, 2025 – Project Development Kickoff
+          eration techniques.                                     Officially began development in the main GitHub
+                                                                  repository. Created separate modules for each node
+  • Feb 3, 2025 – Exploration of Space-Based Architec-            role.
+    ture
+    Investigated alternatives like space-based coordination     • Apr 1, 2025 – Shared Documentation Finalized
+    models and compared their feasibility with message-           Completed internal documentation to ensure consis-
+    passing architectures.                                        tent protocol understanding and cross-module compat-
+                                                                  ibility.
+  • Feb 5, 2025 – System Design and UML Drafting
+    Initiated system modeling using UML diagrams to de-         • Apr 2, 2025 – Client Skeleton Completed
+    fine actor interactions, message flows, and modular re-       Developed foundational logic for client interaction:
+    sponsibilities.                                               message creation, signature handling, and CLI scaf-
+                                                                  folding.
+  • Feb 11, 2025 – SRS and Documentation Initiated
+    Formal documentation, including Software Require-           • Apr 4, 2025 – Database Node Skeleton Completed
+    ments Specification (SRS), was started. A live collab-        Created the core database module including logic for
+    orative draft was maintained.                                 accepting and validating incoming messages.
+
+  • Mar 5, 2025 – Initial Protocol Architecture Final-          • Apr 6, 2025 – DHT-Based Node Selection Algo-
+    ized                                                          rithm Implemented
+    Defined the LIBR node roles (Client, Moderator, DB            Wrote and integrated a deterministic node selection
+    Node) and their interactions. Determined the core             mechanism using timestamp hashing and PRNG over
+    pipeline of moderation, certification, and storage.           active DB nodes.
+   • Apr 8, 2025 – Initial Integration Tests                       Using LIBR, they can:
+     Successfully tested client and database modules inde-
+     pendently and together using a dummy moderator.               • Deploy their own community with specific moderator
+                                                                     nodes and database resources.
+   • Apr 11, 2025 – Moderator Module Completed
+     Finalized the moderator module to receive user mes-           • Allow users to post messages via CLI or browser-
+     sages, evaluate content, and return cryptographic Mod-          based clients.
+     Signs.
+                                                                   • Ensure messages are validated by a quorum of moder-
+   • Apr 12, 2025 – Protocol Prototype Integration                   ators using configurable thresholds.
+     Integrated Client, Moderator, and Database modules to
+                                                                   • Log all decisions and state changes (moderator activ-
+     achieve an end-to-end working prototype for message
+                                                                     ity, DB participation, etc.) immutably on Blockshare.
+     certification and storage.
+                                                                   • Customize infrastructure (e.g., swap PostgreSQL with
+9.2. Current Status                                                  another DB, switch NLP validation providers) without
+   The LIBR system has evolved from an architectural con-            altering the protocol’s integrity.
+cept to a functional prototype. A REPL client interface,
+modular back-end services, and verifiable message work-          10.2. Benefits Over Traditional Forums
+flows have been developed. Final stages involve full system         LIBR offers several distinct advantages:
+integration, stress testing, and preparing a complete test de-
+ployment across virtualized nodes.                                 • Censorship Resistance: No single entity controls
+                                                                     message flow or content approval.
+10. Use Case
+                                                                   • Transparency: All moderation actions are recorded
+   The LIBR protocol is designed for communities that                as verifiable transactions.
+require transparent, censorship-resilient, and community-
+governed communication. Below, we outline a core use               • Community Governance: Users can influence the fo-
+case where the strengths of LIBR are most applicable.                rum by running clients, proposing mods, or adjusting
+                                                                     replication/moderation policies.
+10.1. Decentralized Public Forums with Modera-
+      tion Transparency                                            • Modularity: Components like the database, NLP val-
+                                                                     idator, or UI interface are fully customizable.
+   Conventional online forums and discussion platforms
+rely on centralized infrastructure and opaque moderation            This makes LIBR suitable not only for public forums
+policies. This makes them vulnerable to:                         but also for whistleblower platforms, academic discussions,
+                                                                 open-source governance, or any environment where mes-
+   • Arbitrary censorship of user content.                       sage integrity, traceability, and trust are vital.
+   • Lack of verifiability in moderation decisions.
+
+   • Single points of failure and control.
+
+   The LIBR protocol directly addresses these concerns by
+enabling communities to establish their own infrastructure
+and moderation rules, all verifiable on-chain.
+
+Scenario
+A group of researchers and activists wants to create a pub-
+lic forum to discuss politically sensitive topics. They are
+concerned about:
+
+   • Platform-level takedowns.
+
+   • Shadow banning or content suppression.
+
+   • Lack of clarity in moderation decisions.
+
