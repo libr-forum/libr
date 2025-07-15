@@ -2,18 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 
 	"github.com/devlup-labs/Libr/core/mod/config"
-	"github.com/devlup-labs/Libr/core/mod/routers"
+	Peers "github.com/devlup-labs/Libr/core/mod/internal/peers"
 )
 
 func main() {
-	config.LoadConfig()
+	load, _ := config.LoadConfig()
+	fmt.Println(load)
 
-	r := routers.Routers()
-	handlerWithCORS := routers.EnableCORS(r)
-	fmt.Println("Listening on http://localhost:5000")
-	log.Fatal(http.ListenAndServe(":3000", handlerWithCORS))
+	// r := routers.Routers()
+	// fmt.Println("Listening on http://localhost:5000")
+	// log.Fatal(http.ListenAndServe(":5000", r))
+
+	relayAdd := ""
+	Peers.StartNode(relayAdd)
 }

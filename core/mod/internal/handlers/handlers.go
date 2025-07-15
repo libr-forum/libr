@@ -2,9 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
-	"net/http"
-	"strings"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod/internal/service"
@@ -19,53 +18,35 @@ func HandleMsg() {
 	// 5. respond
 }
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Welcome to LIBR prototype"))
-}
-
-func MsgIN(w http.ResponseWriter, r *http.Request) {
+func MsgIN(bodyBytes []byte) []byte {
 	var req models.UserMsg
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Invalid user message: %v", err)
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
-		return
-	}
 
-	// Basic validation
-	if strings.TrimSpace(req.Content) == "" {
-		http.Error(w, "content missing", http.StatusBadRequest)
-		return
+	err := json.Unmarshal(bodyBytes, &req)
+	if err != nil {
+		fmt.Println("Invalid JSON")
+		return nil
 	}
 
 	// Moderate message
 	moderationStatus, err := service.ModerateMsg(req)
 	if err != nil {
 		log.Printf("Moderation error: %v", err)
-		http.Error(w, "error during moderation", http.StatusInternalServerError)
-		return
+		return nil
 	}
 
 	// Load keys to sign
 	pub, priv, err := cryptoutils.LoadKeys()
 	if err != nil {
 		log.Printf("Key load error: %v", err)
-		http.Error(w, "failed to load keys", http.StatusInternalServerError)
-		return
+		return nil
 	}
 
 	// Sign
 	signed, err := service.ModSign(req, moderationStatus, priv, pub)
 	if err != nil {
 		log.Printf("Signing error: %v", err)
-		http.Error(w, "error signing message", http.StatusInternalServerError)
-		return
+		return nil
 	}
-	var response models.ModResponse
-	json.Unmarshal([]byte(signed), &response)
 
-	// Respond
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	return []byte(signed)
 }
