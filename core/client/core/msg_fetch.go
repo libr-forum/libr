@@ -177,7 +177,7 @@ func Fetch(ts int64) []types.MsgCert {
 		}
 	}
 }
-func FetchRecent(ctx context.Context, limit int) []types.MsgCert {
+func FetchRecent(ctx context.Context) []types.MsgCert {
 	now := time.Now().Unix()
 	thirtyMinsAgo := now - 600
 
@@ -245,9 +245,6 @@ func FetchRecent(ctx context.Context, limit int) []types.MsgCert {
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Msg.Ts > results[j].Msg.Ts
 	})
-	if len(results) > limit {
-		results = results[:limit]
-	}
 	fmt.Printf("[FetchRecent] Total collected: %d\n", len(results))
 	return results
 }

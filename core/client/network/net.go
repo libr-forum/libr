@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	Peers "github.com/devlup-labs/Libr/core/client/peers"
 	"github.com/devlup-labs/Libr/core/client/types"
 	util "github.com/devlup-labs/Libr/core/client/util"
 )
@@ -28,15 +29,14 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 			return nil, err
 		}
 
-		resp, err := http.Post(addr, "application/json", bytes.NewBuffer([]byte(msgString)))
+		resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgString))
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
 
 		var response types.ModCert
 
-		json.NewDecoder(resp.Body).Decode(&response)
+		json.Unmarshal(resp, &response)
 
 		return response, nil
 
