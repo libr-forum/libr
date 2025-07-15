@@ -80,7 +80,7 @@ func (a *App) SendInput(input string) string {
 }
 
 func (a *App) FetchAll() []string {
-	messages := core.FetchRecent(context.Background(), 50)
+	messages := core.FetchRecent()
 	myKey := base64.StdEncoding.EncodeToString(keycache.PubKey)
 
 	var out []string
