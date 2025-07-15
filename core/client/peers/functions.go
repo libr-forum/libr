@@ -1,18 +1,16 @@
 package Peers
 
 import (
-	
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 )
 
 var Peer *ChatPeer
 
-func StartNode(relayAdd string) {
+func StartNode(relayAdd string) error {
 
 	fmt.Println("Starting Node...")
 
@@ -22,14 +20,14 @@ func StartNode(relayAdd string) {
 	Peer, err = NewChatPeer(relayAddr)
 	if err != nil {
 		fmt.Println("Error creating peer:", err)
-		return
+		return err
 	}
 	ctx := context.Background()
 
 	if err := Peer.Start(ctx); err != nil {
-		log.Fatal(err)
+		return err
 	}
-
+	return nil
 }
 
 func GET(targetIP string, targetPort string, route string) ([]byte, error) {
@@ -84,8 +82,7 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 		fmt.Println("[DEBUG]Failed to get req params json")
 		return nil, err
 	}
-	
-	
+
 	GetResp, err := Peer.Send(timeoutCtx, targetIP, targetPort, jsonReq, body)
 
 	if err != nil {
@@ -94,7 +91,6 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 
 	return GetResp, nil
 }
-
 
 func ServeGetReq([]byte) []byte {
 

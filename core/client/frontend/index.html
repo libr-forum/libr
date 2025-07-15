@@ -1,33 +1,29 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>LIBR Client</title>
-    <link rel="stylesheet" href="style.css" />
-    <script type="module" src="main.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>libr - Censorship-Resistant Social Network</title>
+    <meta name="description" content="A moderated, censorship-resilient social network framework" />
+    <meta name="author" content="libr" />
+
+    <meta property="og:title" content="libr - Censorship-Resistant Social Network" />
+    <meta property="og:description" content="A moderated, censorship-resilient social network framework" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
+
   <body>
-    <div class="container">
-      <h1>LIBR</h1>
-
-      <div class="input-row">
-        <span id="timestamp" class="timestamp-label"></span>
-        <input id="msgInput" placeholder="Type your message..." onkeydown="handleKey(event, 'send')" />
-        <button id="sendBtn" onclick="sendInput()">Send</button>
-        <span id="status" class="status-label"></span>
-      </div>
-
-      <div class="fetch-row">
-        <button id="fetchBtn" onclick="fetchTimestamp()">Fetch</button>
-        <input id="tsInput" placeholder="Enter timestamp" onkeydown="handleKey(event, 'fetch')" />
-      </div>
-
-      <div class="fetch-row">
-        <button onclick="fetchAll()">Fetch All</button>
-        <button onclick="clearOutput()">Clear</button>
-      </div>
-
-      <pre id="output" class="output-box"></pre>
-    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

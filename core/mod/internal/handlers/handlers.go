@@ -50,20 +50,3 @@ func MsgIN(bodyBytes []byte) []byte {
 
 	return []byte(signed)
 }
-
-// func MsgOUT(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	timestamp := vars["timestamp"]
-
-// 	mu.RLock()
-// 	msg, exists := msgStore[timestamp]
-// 	mu.RUnlock()
-
-// 	if !exists {
-// 		http.Error(w, "message not found", http.StatusNotFound)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(msg)
-// }

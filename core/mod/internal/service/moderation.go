@@ -19,10 +19,10 @@ func ModerateMsg(msg models.UserMsg) (string, error) {
 		return "", err
 	}
 	if clean {
-		fmt.Println("\nMessage:", msg.Content, "\nTimmestamp:", msg.TimeStamp, "\nStatus: Approved")
+		fmt.Println("\nMessage:", msg.Content, "\nTimestamp:", msg.TimeStamp, "\nStatus: Approved")
 		return "1", nil
 	}
-	fmt.Println("\nMessage:", msg.Content, "\nTimmestamp:", msg.TimeStamp, "\nStatus: Rejected")
+	fmt.Println("\nMessage:", msg.Content, "\nTimestamp:", msg.TimeStamp, "\nStatus: Rejected")
 	return "0", nil
 }
 

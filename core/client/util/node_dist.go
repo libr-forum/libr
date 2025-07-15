@@ -31,9 +31,14 @@ func GenerateNodeID(input string) [20]byte {
 func GetStartNodes() []*types.Node {
 	return []*types.Node{
 		{
-			NodeId: GenerateNodeID("127.0.0.1:8000"),
-			IP:     "127.0.0.1",
-			Port:   "8000",
+			NodeId: GenerateNodeID("49.36.179.166:53643"),
+			IP:     "49.36.179.166",
+			Port:   "53643",
+		},
+		{
+			NodeId: GenerateNodeID("49.36.179.166:34665"),
+			IP:     "49.36.179.166",
+			Port:   "34665",
 		},
 	}
 }

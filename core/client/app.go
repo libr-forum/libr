@@ -9,44 +9,73 @@ import (
 
 	"github.com/devlup-labs/Libr/core/client/core"
 	"github.com/devlup-labs/Libr/core/client/keycache"
+	Peers "github.com/devlup-labs/Libr/core/client/peers"
+	"github.com/devlup-labs/Libr/core/client/types"
 	util "github.com/devlup-labs/Libr/core/client/util"
 )
 
-// App struct
 type App struct {
-	ctx context.Context
+	ctx         context.Context
+	relayStatus string
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
 	keycache.InitKeys()
-	return &App{}
+	return &App{relayStatus: "offline"}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
+func (a *App) Connect(relayAdd string) string {
+	err := Peers.StartNode(relayAdd)
+	if err != nil {
+		a.relayStatus = "offline"
+		return err.Error()
+	}
+	a.relayStatus = "online"
+	return "Online"
+}
+
+func (a *App) GetRelayStatus() string {
+	return a.relayStatus
+}
+
 func (a *App) SendInput(input string) string {
-	fmt.Println("Received input:", input)
+	if a.relayStatus != "online" {
+		return "Offline"
+	}
 
 	ts := time.Now().Unix()
-	modcertlist := core.SendToMods(input, ts)
+
+	// Optional: Add timeout for whole SendToMods process (not just per mod)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	// Run SendToMods with timeout
+	modChan := make(chan []types.ModCert, 1)
+
+	go func() {
+		modcerts := core.SendToMods(input, ts)
+		modChan <- modcerts
+	}()
+
+	var modcertlist []types.ModCert
+	select {
+	case modcertlist = <-modChan:
+	case <-ctx.Done():
+		return "❌ Moderator timeout"
+	}
 
 	if len(modcertlist) == 0 {
-		fmt.Println("Rejected by mods")
 		return "❌ Message rejected by moderators."
 	}
 
-	fmt.Printf("Approved by %d mods\n", len(modcertlist))
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
-
 	key := util.GenerateNodeID(strconv.FormatInt(msgCert.Msg.Ts, 10))
-	response := core.SendToDb(key, msgCert)
+	core.SendToDb(key, msgCert)
 
-	fmt.Println("Sent to DB, response:", response)
 	return fmt.Sprintf("✅ Sent to DB. Time: %d", msgCert.Msg.Ts)
 }
 

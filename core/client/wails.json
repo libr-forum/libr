@@ -1,14 +1,19 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "libr-client",
-  "outputfilename": "libr-client",
-  "frontend": {
-    "dir": "frontend",
-    "install": "",
-    "build": ""
-  },
+  "name": "client",
+  "outputfilename": "libr_client",
+  "frontend:dir": "frontend",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Arnav Agrawal",
     "email": "arnav.agrawal.2609@gmail.com"
+  },
+  "windows": {
+    "icon": "C:\\Arnav\\LIBR\\Libr_frontend\\core\\app.ico"
   }
+
 }
+

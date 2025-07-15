@@ -14,7 +14,7 @@ type ModCert struct {
 type MsgCert struct {
 	PublicKey string    `json:"public_key"`
 	Msg       Msg       `json:"msg"`
-	ModCerts  []ModCert `json:"modCerts"`
+	ModCerts  []ModCert `json:"mod_certs"`
 	Sign      string    `json:"sign"`
 }
 
@@ -30,11 +30,11 @@ type Mod struct {
 	PublicKey string `json:"public_key"`
 }
 
-type StoredMsg struct {
-	PublicKey string `json:"public_key"`
-	Content   string `json:"content"`
-	Timestamp int64  `json:"timestamp"`
-}
+// type StoredMsg struct {
+// 	PublicKey string `json:"public_key"`
+// 	Content   string `json:"content"`
+// 	Timestamp int64  `json:"timestamp"`
+// }
 
 type Node struct {
 	NodeId [20]byte `json:"nodeid"`
