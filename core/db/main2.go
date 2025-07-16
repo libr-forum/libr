@@ -17,18 +17,12 @@ import (
 	"github.com/devlup-labs/Libr/core/db/internal/server"
 )
 
-var address string
-var ip string
-var port string
-
 func main() {
 	config.InitConnection()
 
-	url := "https://raw.githubusercontent.com/cherry-aggarwal/LIBR/refs/heads/main/docs/database_ips.csv"
-	address, err := GetFirstValidAddress(url)
-	if err != nil {
-		log.Fatalf("error getting address: %v", err)
-	}
+	url := "https://raw.githubusercontent.com/cherry-aggarwal/LIBR/refs/heads/integration/docs/db_addresses.csv"
+	ip, port, address, _ := GetFirstValidAddress(url)
+
 	fmt.Println("Using address:", address)
 
 	id := node.GenerateNodeID(address)
@@ -39,6 +33,8 @@ func main() {
 		IP:     ip,
 		Port:   port,
 	}
+
+	fmt.Println(localNode)
 
 	rt := routing.GetOrCreateRoutingTable(localNode)
 	fmt.Println("Routing table created with port:", rt.SelfPort)
@@ -74,14 +70,18 @@ func main() {
 	fmt.Println(rt)
 }
 
-func GetFirstValidAddress(csvURL string) (string, error) {
+func GetFirstValidAddress(csvURL string) (string, string, string, error) {
 	resp, err := http.Get(csvURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch CSV: %w", err)
+		return "", "", "", fmt.Errorf("failed to fetch CSV: %w", err)
 	}
 	defer resp.Body.Close()
 
 	reader := csv.NewReader(resp.Body)
+
+	if _, err := reader.Read(); err != nil {
+		return "", "", "", fmt.Errorf("failed to read header: %w", err)
+	}
 
 	for {
 		row, err := reader.Read()
@@ -102,9 +102,8 @@ func GetFirstValidAddress(csvURL string) (string, error) {
 		port := row[1]
 		address := ip + ":" + port
 
-		// TO ADD: if the node isn't working skip to next
-		return address, nil
+		return ip, port, address, nil
 	}
 
-	return "", fmt.Errorf("no valid address found")
+	return "", "", "", fmt.Errorf("no valid address found")
 }
