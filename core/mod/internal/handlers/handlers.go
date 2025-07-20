@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -13,14 +14,6 @@ import (
 	"github.com/devlup-labs/Libr/core/mod/internal/service"
 	"github.com/devlup-labs/Libr/core/mod/models"
 )
-
-func HandleMsg() {
-	// 1. msg in
-	// 2. validate
-	// 3. moderate
-	// 4. sign
-	// 5. respond
-}
 
 var (
 	msgStore = make(map[string]models.ModResponse)
@@ -47,6 +40,7 @@ func MsgIN(w http.ResponseWriter, r *http.Request) {
 
 	// Moderate message
 	moderationStatus, err := service.ModerateMsg(req)
+	fmt.Println(moderationStatus)
 	if err != nil {
 		log.Printf("Moderation error: %v", err)
 		http.Error(w, "error during moderation", http.StatusInternalServerError)
