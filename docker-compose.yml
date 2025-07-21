@@ -1,0 +1,26 @@
+services:
+  dbnode:
+    build:
+      context: .
+      dockerfile: core/db/Dockerfile
+    env_file:
+      - core/db/.env
+    environment:
+      - DB_ENV_PATH=/app/core/db/.env
+    volumes:
+      - ./core/db:/app/core/db:ro
+      - ./core/crypto:/app/core/crypto
+    depends_on:
+      - postgres
+    # ports:
+    #   - "8080:8080"
+
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: libr
+    ports:
+      - "5432:5432"
