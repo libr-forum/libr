@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +15,6 @@ import (
 	"github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
-	"github.com/joho/godotenv"
 )
 
 var Peer *ChatPeer
@@ -36,61 +33,18 @@ func RegisterLocalState(n *node.Node, rt *routing.RoutingTable) {
 }
 
 func initDHT() {
-	baseEnvPath := os.Getenv("DB_ENV_PATH")
-	if baseEnvPath == "" {
-		baseEnvPath = "./core/db/.env" // fallback when running outside Docker
-	}
-
-	// 1. Load base .env
-	baseEnv, err := godotenv.Read(baseEnvPath)
-	if err != nil {
-		log.Fatal("Failed to read base .env:", err)
-	}
-
-	// 2. Parse IP and PORT from publicAddr
+	// 1. Parse IP and PORT from publicAddr
 	parts := strings.Split(publicAddr, ":")
 	if len(parts) != 2 {
 		log.Fatalf("Invalid public address format: %s", publicAddr)
 	}
 	ip := parts[0]
 	port := parts[1]
-	selfAddr := ip + ":" + port
 
-	// 3. Read and parse current DB_PORT
-	dbPortStr := baseEnv["DB_PORT"]
-	dbPort, err := strconv.Atoi(dbPortStr)
-	if err != nil {
-		log.Fatalf("Invalid DB_PORT in .env: %v", err)
-	}
+	// 2.Bootstrap nodes from csv
+	bootstrapAddrs := bootstrap.GetBootstrapNodes()
 
-	// 4. Append to BOOTSTRAP in base .env if DB_PORT is a seed
-	isSeed := dbPort == 5432 || dbPort == 5440 || dbPort == 5447 || dbPort == 5454 || dbPort == 5463
-	if isSeed {
-		bootstrapList := strings.Split(baseEnv["BOOTSTRAP"], ",")
-		exists := false
-		for _, b := range bootstrapList {
-			if strings.TrimSpace(b) == selfAddr {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			if baseEnv["BOOTSTRAP"] == "" {
-				baseEnv["BOOTSTRAP"] = selfAddr
-			} else {
-				baseEnv["BOOTSTRAP"] += "," + selfAddr
-			}
-			fmt.Println("✅ Added", selfAddr, "to base BOOTSTRAP")
-		}
-	}
-
-	// 5. Add logic to get bootstrap nodes from csv
-	bootstrapAddrs := []string{}
-	if baseEnv["BOOTSTRAP"] != "" {
-		bootstrapAddrs = strings.Split(baseEnv["BOOTSTRAP"], ",")
-	}
-
-	// 6. Init DB and routing
+	// 3. Init DB and routing
 	config.InitConnection(port)
 	address := ip + ":" + port
 	localNode := &node.Node{
@@ -101,17 +55,12 @@ func initDHT() {
 	rt := routing.GetOrCreateRoutingTable(localNode)
 	RegisterLocalState(localNode, rt)
 
-	// 7. Bootstrap to other nodes
-	for _, addr := range bootstrapAddrs {
-		addr = strings.TrimSpace(addr)
-		if addr == "" || addr == selfAddr {
-			continue
-		}
-		targetIP := addr[:strings.LastIndex(addr, ":")]
-		targetPort := addr[strings.LastIndex(addr, ":")+1:]
-		fmt.Println("Bootstrapping with", addr)
-		bootstrap.Bootstrap(targetIP, targetPort, localNode, rt)
-	}
+	// 4. Bootstrap to other nodes
+	bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
+	// for _, node := range bootstrapAddrs {
+	// 	fmt.Println("Bootstrapping with", node.IP, node.Port)
+	// 	bootstrap.Bootstrap(node.IP, node.Port, localNode, rt)
+	// }
 
 	data, _ := json.MarshalIndent(rt, "", "  ")
 	fmt.Println(string(data))

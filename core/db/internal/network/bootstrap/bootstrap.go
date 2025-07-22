@@ -4,15 +4,52 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/devlup-labs/Libr/core/db/internal/network"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
 )
+
+func BootstrapFromPeers(peers []string, localNode *node.Node, rt *routing.RoutingTable) {
+	var wg sync.WaitGroup
+	seen := make(map[string]bool)
+	var mu sync.Mutex // protect access to `seen` map
+
+	for _, addr := range peers {
+		// Skip invalid addresses
+		parts := strings.Split(addr, ":")
+		if len(parts) != 2 {
+			log.Printf("⚠️ Skipping invalid bootstrap address: %s", addr)
+			continue
+		}
+		ip := parts[0]
+		port := parts[1]
+
+		// Deduplication check
+		mu.Lock()
+		if seen[addr] {
+			mu.Unlock()
+			continue
+		}
+		seen[addr] = true
+		mu.Unlock()
+
+		wg.Add(1)
+		go func(ip, port, addr string) {
+			defer wg.Done()
+			fmt.Printf("🌐 Bootstrapping from %s\n", addr)
+			Bootstrap(ip, port, localNode, rt)
+		}(ip, port, addr)
+	}
+
+	wg.Wait()
+}
 
 func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *routing.RoutingTable) {
 	if network.GlobalPostFunc == nil {
