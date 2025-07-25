@@ -93,11 +93,19 @@ export const Sidebar: React.FC = () => {
       {user && !isCollapsed && (
         <div className="p-4 bg-muted/20">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-libr-accent1 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {user.alias.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {user.avatarSvg && user.avatarSvg !== "unknown" ? (
+              <img
+                src={`data:image/svg+xml;base64,${user.avatarSvg}`}
+                alt="avatar"
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {user.alias.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 {user.alias}

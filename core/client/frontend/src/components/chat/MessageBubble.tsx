@@ -47,11 +47,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn = f
         >
           {!isOwn && (
             <div className="flex items-center space-x-2 mb-2">
-              <div className="w-6 h-6 bg-libr-accent1 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-medium">
-                  {message.authorAlias.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              {message.avatarSvg && message.avatarSvg !== "unknown" ? (
+                <img
+                  src={`data:image/svg+xml;base64,${message.avatarSvg}`}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-libr-accent1 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {message.authorAlias.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <span className="text-sm font-medium text-libr-secondary">
                 {message.authorAlias}
               </span>

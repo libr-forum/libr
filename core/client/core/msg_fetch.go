@@ -20,177 +20,135 @@ func Fetch(ts int64) []types.MsgCert {
 	key := strconv.FormatInt(ts, 10)
 	keyBytes := util.GenerateNodeID(key)
 
-	startNodes := util.GetStartNodes()
+	startNodes, _ := util.GetStartNodes()
 	known := append([]*types.Node{}, startNodes...)
 	queried := make(map[string]bool)
-
-	var mu sync.Mutex
-	newNodesChan := make(chan *types.Node, 100)
-	done := make(chan struct{})
-	var printed sync.Map // deduplication by sign
-
+	printed := sync.Map{}
 	var results []types.MsgCert
-	const maxSame = 2
-	sameCount := 0
-	var prevClosest []*types.Node
 
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			default:
+	const maxRounds = 50
+	const alpha = 3
+	const k = config.K
+
+	for round := 0; round < maxRounds; round++ {
+		sort.Slice(known, func(i, j int) bool {
+			return util.XORBigInt(keyBytes, known[i].NodeId).Cmp(util.XORBigInt(keyBytes, known[j].NodeId)) < 0
+		})
+
+		currentClosest := []*types.Node{}
+		for _, n := range known {
+			if len(currentClosest) >= k {
+				break
 			}
-
-			mu.Lock()
-			sort.Slice(known, func(i, j int) bool {
-				return util.XORBigInt(keyBytes, known[i].NodeId).Cmp(util.XORBigInt(keyBytes, known[j].NodeId)) < 0
-			})
-
-			currentClosest := append([]*types.Node(nil), known...)
-			if len(currentClosest) > config.K {
-				currentClosest = currentClosest[:config.K]
-			}
-
-			same := len(currentClosest) == len(prevClosest)
-			if same {
-				for i := range currentClosest {
-					if !bytes.Equal(currentClosest[i].NodeId[:], prevClosest[i].NodeId[:]) {
-						same = false
-						break
-					}
-				}
-			}
-
-			if same {
-				sameCount++
-			} else {
-				sameCount = 0
-			}
-
-			if sameCount >= maxSame {
-				mu.Unlock()
-				close(done)
-				return
-			}
-
-			prevClosest = currentClosest
-			toQuery := []*types.Node{}
-			for _, n := range currentClosest {
-				key := fmt.Sprintf("%s:%s", n.IP, n.Port)
-				if !queried[key] {
-					toQuery = append(toQuery, n)
-					queried[key] = true
-					if len(toQuery) >= config.Alpha {
-						break
-					}
-				}
-			}
-			mu.Unlock()
-
-			if len(toQuery) == 0 {
-				time.Sleep(50 * time.Millisecond)
-				continue
-			}
-
-			var once sync.Once
-			var wg sync.WaitGroup
-			for _, n := range toQuery {
-				wg.Add(1)
-				go func(n *types.Node) {
-					defer wg.Done()
-					rawResp, err := network.GetFrom(n.IP, n.Port, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
-					if err != nil {
-						return
-					}
-
-					respBytes, ok := rawResp.([]byte)
-					if !ok {
-						return
-					}
-
-					var base BaseResponse
-					err = json.Unmarshal(respBytes, &base)
-					if err != nil {
-						return
-					}
-
-					switch base.Type {
-					case "found":
-						var val struct {
-							Type   string          `json:"type"`
-							Values []types.MsgCert `json:"values"`
-						}
-						if err := json.Unmarshal(respBytes, &val); err != nil {
-							return
-						}
-
-						for _, cert := range val.Values {
-							if _, alreadyPrinted := printed.LoadOrStore(cert.Sign, true); !alreadyPrinted {
-								mu.Lock()
-								results = append(results, cert)
-								mu.Unlock()
-							}
-						}
-
-						once.Do(func() {
-							close(done)
-						})
-
-					case "redirect":
-						var redir struct {
-							Type  string       `json:"type"`
-							Nodes []types.Node `json:"nodes"`
-						}
-						if err := json.Unmarshal(respBytes, &redir); err != nil {
-							return
-						}
-						for _, nn := range redir.Nodes {
-							copy := nn
-							newNodesChan <- &copy
-						}
-					}
-					fmt.Println(base)
-				}(n)
-			}
-			wg.Wait()
+			currentClosest = append(currentClosest, n)
 		}
-	}()
 
-	for {
-		select {
-		case <-done:
-			return results
-		case newNode := <-newNodesChan:
-			mu.Lock()
-			exists := false
-			for _, kn := range known {
-				if bytes.Equal(kn.NodeId[:], newNode.NodeId[:]) {
-					exists = true
+		toQuery := []*types.Node{}
+		for _, n := range currentClosest {
+			key := fmt.Sprintf("%s:%s", n.IP, n.Port)
+			if !queried[key] {
+				toQuery = append(toQuery, n)
+				queried[key] = true
+				if len(toQuery) >= alpha {
 					break
 				}
 			}
-			if !exists {
-				known = append(known, newNode)
-			}
-			mu.Unlock()
 		}
+
+		if len(toQuery) == 0 {
+			break
+		}
+
+		var wg sync.WaitGroup
+		newNodes := []*types.Node{}
+		var mu sync.Mutex
+
+		for _, n := range toQuery {
+			wg.Add(1)
+			go func(n *types.Node) {
+				defer wg.Done()
+				rawResp, err := network.GetFrom(n.IP, n.Port, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+				if err != nil {
+					return
+				}
+				respBytes, ok := rawResp.([]byte)
+				if !ok {
+					return
+				}
+				var base BaseResponse
+				if err := json.Unmarshal(respBytes, &base); err != nil {
+					return
+				}
+				switch base.Type {
+				case "found":
+					var val struct {
+						Type   string          `json:"type"`
+						Values []types.MsgCert `json:"values"`
+					}
+					if err := json.Unmarshal(respBytes, &val); err != nil {
+						return
+					}
+					for _, cert := range val.Values {
+						if cert.Sign == "" {
+							continue
+						}
+						if _, loaded := printed.LoadOrStore(cert.Sign, true); !loaded {
+							mu.Lock()
+							results = append(results, cert)
+							mu.Unlock()
+						}
+					}
+				case "redirect":
+					var redir struct {
+						Type  string       `json:"type"`
+						Nodes []types.Node `json:"nodes"`
+					}
+					if err := json.Unmarshal(respBytes, &redir); err != nil {
+						return
+					}
+					mu.Lock()
+					for _, node := range redir.Nodes {
+						exists := false
+						for _, kn := range known {
+							if bytes.Equal(kn.NodeId[:], node.NodeId[:]) {
+								exists = true
+								break
+							}
+						}
+						if !exists {
+							copy := node
+							newNodes = append(newNodes, &copy)
+						}
+					}
+					mu.Unlock()
+				}
+			}(n)
+		}
+		wg.Wait()
+
+		if len(newNodes) == 0 {
+			break
+		}
+		known = append(known, newNodes...)
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Msg.Ts > results[j].Msg.Ts
+	})
+	return results
 }
+
 func FetchRecent(ctx context.Context) []types.MsgCert {
-	now := time.Now().Unix()
-	thirtyMinsAgo := now - 600
+	now := time.Now().Truncate(time.Minute).Unix()
+	start := now - 1200
 
+	tsChan := make(chan int64, 100)
+	results := []types.MsgCert{}
+	printed := sync.Map{}
 	var mu sync.Mutex
-	var results []types.MsgCert
-	var printed sync.Map
 
-	tsChan := make(chan int64, 500)
-	done := make(chan struct{})
-
-	// Feed timestamps to tsChan
 	go func() {
-		for ts := now; ts >= thirtyMinsAgo; ts-- {
+		for ts := now; ts >= start; ts -= 60 {
 			select {
 			case <-ctx.Done():
 				close(tsChan)
@@ -201,10 +159,61 @@ func FetchRecent(ctx context.Context) []types.MsgCert {
 		close(tsChan)
 	}()
 
-	const numWorkers = 20
+	const workers = 25
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for ts := range tsChan {
+				certs := Fetch(ts)
+				for _, cert := range certs {
+					if cert.Sign == "" || cert.Msg.Ts < start || cert.Msg.Ts > now {
+						continue
+					}
+					if _, seen := printed.LoadOrStore(cert.Sign, true); !seen {
+						mu.Lock()
+						results = append(results, cert)
+						mu.Unlock()
+					}
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Msg.Ts > results[j].Msg.Ts
+	})
+	fmt.Printf("[FetchRecent] collected: %d certs\n", len(results))
+	return results
+}
+
+func FetchRecentStreamed(ctx context.Context) <-chan types.MsgCert {
+	out := make(chan types.MsgCert)
+	printed := sync.Map{}
+
+	now := time.Now().Truncate(time.Minute).Unix()
+	start := now - 1200 // last 20 mins
+
+	tsChan := make(chan int64, 100)
+
+	go func() {
+		for ts := now; ts >= start; ts -= 60 {
+			select {
+			case <-ctx.Done():
+				close(tsChan)
+				return
+			case tsChan <- ts:
+			}
+		}
+		close(tsChan)
+	}()
+
+	const workers = 30
 	var wg sync.WaitGroup
 
-	for i := 0; i < numWorkers; i++ {
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -217,11 +226,14 @@ func FetchRecent(ctx context.Context) []types.MsgCert {
 
 				certs := Fetch(ts)
 				for _, cert := range certs {
-					if cert.Msg.Ts >= thirtyMinsAgo && cert.Msg.Ts <= now && cert.Sign != "" {
-						if _, seen := printed.LoadOrStore(cert.Sign, true); !seen {
-							mu.Lock()
-							results = append(results, cert)
-							mu.Unlock()
+					if cert.Sign == "" || cert.Msg.Ts < start || cert.Msg.Ts > now {
+						continue
+					}
+					if _, seen := printed.LoadOrStore(cert.Sign, true); !seen {
+						select {
+						case <-ctx.Done():
+							return
+						case out <- cert:
 						}
 					}
 				}
@@ -229,22 +241,11 @@ func FetchRecent(ctx context.Context) []types.MsgCert {
 		}()
 	}
 
+	// Close `out` only when all workers are done
 	go func() {
 		wg.Wait()
-		close(done)
+		close(out)
 	}()
 
-	select {
-	case <-ctx.Done():
-		fmt.Println("[FetchRecent] Context canceled.")
-	case <-done:
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Msg.Ts > results[j].Msg.Ts
-	})
-	fmt.Printf("[FetchRecent] Total collected: %d\n", len(results))
-	return results
+	return out
 }

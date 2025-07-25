@@ -14,9 +14,26 @@ import { ChatRoom } from './pages/ChatRoom';
 import { ModLogs } from './pages/ModLogs';
 import { Communities } from './pages/Communities';
 
-import { Connect,GetRelayStatus } from '../wailsjs/go/main/App';
+import { Connect,GetRelayStatus,FetchPubKey } from '../wailsjs/go/main/App';
 
 const queryClient = new QueryClient();
+
+const csvURL = 'https://raw.githubusercontent.com/cherry-aggarwal/LIBR/refs/heads/integration/docs/network.csv';
+
+async function fetchRelayAddr():Promise<string> {
+  try {
+    const response = await fetch(csvURL);
+    if (!response.ok) throw new Error('Failed to fetch CSV');
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) throw new Error('CSV does not have enough rows');
+    const firstDataRow = lines[1].split(',')[0]; // adjust index if needed
+    return firstDataRow;
+  } catch (error) {
+      console.error('Error loading relay address:', error);
+      return '';
+    }
+};
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -49,7 +66,7 @@ const App: React.FC = () => {
     const initializeApp = async () => {
       try {
         //Relay connection
-        const relayAddr = "/dns4/0.tcp.in.ngrok.io/tcp/15979/p2p/12D3KooWP4uk7aVv6wzYZGwQ8TJUdUEdJ6Yc6MHbVJfex8bzqLi1";
+        const relayAddr = await fetchRelayAddr();
         const status = await GetRelayStatus();
         if (status !== "online") {
           const result = await Connect(relayAddr);
@@ -57,10 +74,10 @@ const App: React.FC = () => {
         }
 
         // Mock authentication with a demo public key
-        const demoPublicKey = 'demo_public_key_' + Math.random().toString(36).substr(2, 9);
-        const user = await apiService.authenticate(demoPublicKey);
+        const PublicKey=await FetchPubKey()
+        const user = await apiService.authenticate(PublicKey);
         setUser(user);
-
+        
         // Load communities
         const fetchedCommunities = await apiService.getCommunities();
         setCommunities(fetchedCommunities);

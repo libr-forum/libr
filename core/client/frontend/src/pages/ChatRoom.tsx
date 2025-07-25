@@ -93,11 +93,11 @@ export const ChatRoom: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-libr-primary">
+    <div className="flex-1 flex flex-col bg-libr-primary min-h-0">
       <TopBar />
       
       {/* Messages Area */}
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden relative min-h-0 flex flex-col">
         {/* Toolbar */}
         <div className="bg-card/50 border-b border-border/30 p-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">

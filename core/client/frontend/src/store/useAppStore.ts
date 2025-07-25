@@ -8,6 +8,7 @@ export interface User {
   alias: string;
   role: 'member' | 'moderator' | 'admin';
   communityRoles?: Record<string, 'member' | 'moderator' | 'admin'>;
+  avatarSvg?: string;
 }
 
 export interface Community {
@@ -28,6 +29,7 @@ export interface Message {
   communityId: string;
   status: 'pending' | 'approved' | 'rejected';
   moderationNote?: string;
+  avatarSvg?:string;
 }
 
 interface AppState {

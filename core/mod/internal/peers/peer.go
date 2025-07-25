@@ -2,11 +2,13 @@ package Peers
 
 import (
 	"bufio"
+	"bytes"
 
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+
+	//"io"
 	"strconv"
 	"strings"
 	"time"
@@ -34,10 +36,10 @@ type ChatPeer struct {
 }
 
 type reqFormat struct {
-	Type      string `json:"type"`
-	PubIP     string `json:"pubip"`
-	ReqParams []byte
-	Body      []byte `json:"body,omitempty"`
+	Type      string          `json:"type,omitempty"`
+	PubIP     string          `json:"pubip,omitempty"`
+	ReqParams json.RawMessage `json:"reqparams,omitempty"`
+	Body      json.RawMessage `json:"body,omitempty"`
 }
 
 func NewChatPeer(relayAddr string) (*ChatPeer, error) {
@@ -210,34 +212,25 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 	fmt.Println("[DEBUG] Incoming chat stream from", s.Conn().RemotePeer())
 	defer s.Close()
 
-	remotePeer := s.Conn().RemotePeer()
-	nickname := cp.peers[remotePeer]
-	if nickname == "" {
-		nickname = remotePeer.String()[:8] + "..."
-	}
-
 	reader := bufio.NewReader(s)
 	for {
-		var req = make([]byte, 1024*4)
 
-		_, err := reader.Read(req)
-
+		line, err := reader.ReadBytes('\n')
 		if err != nil {
-			// io.EOF means the end of the input stream was reached (e.g., connection closed gracefully).
-			if err == io.EOF {
-				fmt.Printf("[INFO] Reader finished or connection closed for %s.\n", nickname)
-			} else {
-				// Other errors (e.g., network issues)
-				fmt.Printf("[ERROR] Failed to read message from %s: %v\n", nickname, err)
-			}
-			return
+			fmt.Println("[DEBUG]Error reading the bytes from the stream")
 		}
+		line = bytes.TrimRight(line, "\n")
+		line = bytes.TrimRight(line, "\x00")
 		var reqStruct reqFormat
-		err = json.Unmarshal(req, &reqStruct)
+		err = json.Unmarshal(line, &reqStruct)
+
+		fmt.Println("[DEBUG] Raw input:", string(line))
+
 		if err != nil {
 			fmt.Println("[DEBUG]Error unmarshalling to reqStruc")
 		}
 		var reqData map[string]interface{}
+		reqStruct.ReqParams = bytes.TrimRight(reqStruct.ReqParams, "\x00")
 		if err := json.Unmarshal(reqStruct.ReqParams, &reqData); err != nil {
 			fmt.Printf("[ERROR] Failed to unmarshal incoming request: %v\n", err)
 			return
@@ -247,6 +240,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 
 		if reqData["Method"] == "GET" {
 			resp := ServeGetReq(reqStruct.ReqParams)
+			resp = bytes.TrimRight(resp, "\x00")
 			_, err = s.Write(resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error writing resp bytes to relay")
@@ -256,6 +250,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 
 		if reqData["Method"] == "POST" {
 			resp := ServePostReq(reqStruct.ReqParams, reqStruct.Body)
+			resp = bytes.TrimRight(resp, "\x00")
 			_, err = s.Write(resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error writing resp bytes to relay")
@@ -297,16 +292,11 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 		fmt.Println("[DEBUG]Error getting the acknowledgement")
 		return nil, err
 	}
-	if ack == "Success" {
-		fmt.Println("[DEBUg]Msg sent successfully, Waiting for response bytes")
-	} else {
-		fmt.Println("[DEBUG]error sending the req")
-		return nil, err
-	}
+	_ = ack //can be used if required
 
 	var resp = make([]byte, 1024*4)
 	reader.Read(resp)
-
+	resp = bytes.TrimRight(resp, "\x00")
 	defer stream.Close()
 
 	return resp, err

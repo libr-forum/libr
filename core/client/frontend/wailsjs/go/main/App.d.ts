@@ -5,8 +5,18 @@ export function Connect(arg1:string):Promise<string>;
 
 export function FetchAll():Promise<Array<string>>;
 
+export function FetchMessagesByDate(arg1:number):Promise<void>;
+
+export function FetchPubKey():Promise<string>;
+
 export function FetchTimestamp(arg1:string):Promise<Array<string>>;
+
+export function GenerateAlias(arg1:string):Promise<string>;
+
+export function GenerateAvatar(arg1:string):Promise<string>;
 
 export function GetRelayStatus():Promise<string>;
 
 export function SendInput(arg1:string):Promise<string>;
+
+export function StreamMessages():Promise<void>;

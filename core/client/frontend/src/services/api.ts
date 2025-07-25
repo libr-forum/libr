@@ -1,4 +1,5 @@
-import { SendInput,FetchAll } from "../../wailsjs/go/main/App"; 
+import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,StreamMessages } from "../../wailsjs/go/main/App"; 
+import { EventsOn } from "../../wailsjs/runtime";
 import axios from 'axios';
 import { Community, Message, User } from '../store/useAppStore';
 
@@ -143,16 +144,16 @@ export const apiService = {
   // Auth
   async authenticate(publicKey: string): Promise<User> {
     // Mock authentication
+    const avatar= await GenerateAvatar(publicKey)
+    const alias=await GenerateAlias(publicKey)
     return {
       id: 'user123',
       publicKey,
-      alias: 'CryptoExplorer',
-      role: 'moderator', // Demo as moderator
+      alias: alias,
+      role: 'member', // Demo as moderator
+      avatarSvg:avatar,
     };
   },
-
-  // Relay connect
-
 
   // Communities
   async getCommunities(): Promise<Community[]> {
@@ -167,32 +168,62 @@ export const apiService = {
   },
 
   // Messages
-    async getMessages(_communityId: string): Promise<Message[]> {
+  async getMessages(_communityId: string): Promise<Message[]> {
     try {
       const response = await FetchAll(); // returns []string
       // Convert each string into a Message object
-      return response.map((line): Message => {
+      return await Promise.all(response.map(async(line): Promise<Message> => {
         // Expected format: "Sender: <sender> | Msg: <msg> | Time: <timestamp>"
         const senderMatch = line.match(/Sender: (.*?) \|/);
         const msgMatch = line.match(/Msg: (.*?) \|/);
         const timeMatch = line.match(/Time: (\d+)/);
-
+        const sender = senderMatch?.[1] || "unknown";
+        let avatar:string;
+        if (sender==="unknown"){
+          avatar=sender
+        }else{
+          avatar=await GenerateAvatar(sender)
+        }
+        const alias=await GenerateAlias(sender)
         return {
           id: timeMatch?.[1] || Date.now().toString(),
           content: msgMatch?.[1] || "",
           authorId: senderMatch?.[1] || "unknown",
-          authorAlias: senderMatch?.[1] || "unknown",
+          authorAlias: alias,
           timestamp: new Date(parseInt(timeMatch?.[1] || "0") * 1000),
           communityId: _communityId,
           status: "approved",
+          avatarSvg:avatar,
         };
-      });
+      }));
     } catch (err) {
       console.error("Failed to fetch messages:", err);
       return [];
     }
   },
 
+  async streamMessages(_communityId: string, onMessage: (msg: Message) => void) {
+    EventsOn("newMessage", async (raw: any) => {
+      try {
+        const sender = raw.sender || "unknown";
+        const avatar = sender === "unknown" ? sender : await GenerateAvatar(sender);
+        const alias = await GenerateAlias(sender);
+        const message: Message = {
+          id: raw.timestamp?.toString() || Date.now().toString(),
+          content: raw.content || "",
+          authorId: sender,
+          authorAlias: alias,
+          timestamp: new Date((raw.timestamp || 0) * 1000),
+          communityId: _communityId,
+          status: "approved",
+          avatarSvg: avatar,
+        };
+        onMessage(message);
+      } catch (err) {
+        console.error("Failed to parse incoming message:", err);
+      }
+    });
+  },
 
   async sendMessage(communityId: string, content: string): Promise<Message> {
     const result = await SendInput(content);

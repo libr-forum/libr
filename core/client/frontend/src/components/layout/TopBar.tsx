@@ -44,11 +44,20 @@ export const TopBar: React.FC = () => {
       <div className="flex items-center space-x-3">
         {user && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-libr-accent1 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {user.alias.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {user.avatarSvg && user.avatarSvg !== "unknown" ? (
+              <img
+                src={`data:image/svg+xml;base64,${user.avatarSvg}`}
+                alt="avatar"
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {user.alias.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+
             <div className="hidden sm:block">
               <p className="text-sm font-medium text-foreground">{user.alias}</p>
               <div className="flex items-center space-x-1">

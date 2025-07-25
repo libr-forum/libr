@@ -270,7 +270,7 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 	req.Body = body
 	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
 	if err != nil {
-		fmt.Println("[DEBUG]Error opening a fetch ID stream to relay")
+		//fmt.Println("[DEBUG]Error opening a fetch ID stream to relay")
 		return nil, err
 	}
 
@@ -282,19 +282,19 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 
 	stream.Write([]byte(jsonReqRelay))
 
-	fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
+	//fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
 
 	reader := bufio.NewReader(stream)
 	ack, err := reader.ReadString('\n')
 
 	if err != nil {
-		fmt.Println("[DEBUG]Error getting the acknowledgement")
+		//fmt.Println("[DEBUG]Error getting the acknowledgement")
 		return nil, err
 	}
 	if ack == "Success" {
 		fmt.Println("[DEBUG]Msg sent successfully, Waiting for response bytes")
 	} else {
-		fmt.Println("[DEBUG]error sending the req")
+		//fmt.Println("[DEBUG]error sending the req")
 		//return nil, err
 	}
 

@@ -31,7 +31,7 @@ type StoredResponse struct {
 
 func SendToDb(key [20]byte, msgcert types.MsgCert) error {
 	var mu sync.Mutex
-	startNodes := util.GetStartNodes()
+	startNodes, _ := util.GetStartNodes()
 	known := append([]*types.Node{}, startNodes...)
 	queried := make(map[string]bool)
 	stored := make(map[string]bool)

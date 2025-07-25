@@ -54,7 +54,7 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) {
 
 	GetResp, err := Peer.Send(ctx, targetIP, targetPort, jsonReq, nil)
 	if err != nil {
-		fmt.Println("Error Sending trial get message")
+		//fmt.Println("Error Sending trial get message")
 	}
 
 	return GetResp, nil //this will be of json bytes with a field type, and other field(Resp) having the response bytes from the server
@@ -86,7 +86,7 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 	GetResp, err := Peer.Send(timeoutCtx, targetIP, targetPort, jsonReq, body)
 
 	if err != nil {
-		fmt.Println("Error Sending trial get message")
+		//fmt.Println("Error Sending trial get message")
 	}
 
 	return GetResp, nil

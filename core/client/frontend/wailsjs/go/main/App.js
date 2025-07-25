@@ -10,8 +10,24 @@ export function FetchAll() {
   return window['go']['main']['App']['FetchAll']();
 }
 
+export function FetchMessagesByDate(arg1) {
+  return window['go']['main']['App']['FetchMessagesByDate'](arg1);
+}
+
+export function FetchPubKey() {
+  return window['go']['main']['App']['FetchPubKey']();
+}
+
 export function FetchTimestamp(arg1) {
   return window['go']['main']['App']['FetchTimestamp'](arg1);
+}
+
+export function GenerateAlias(arg1) {
+  return window['go']['main']['App']['GenerateAlias'](arg1);
+}
+
+export function GenerateAvatar(arg1) {
+  return window['go']['main']['App']['GenerateAvatar'](arg1);
 }
 
 export function GetRelayStatus() {
@@ -20,4 +36,8 @@ export function GetRelayStatus() {
 
 export function SendInput(arg1) {
   return window['go']['main']['App']['SendInput'](arg1);
+}
+
+export function StreamMessages() {
+  return window['go']['main']['App']['StreamMessages']();
 }

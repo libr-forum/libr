@@ -1,6 +1,7 @@
 package Peers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -33,7 +34,7 @@ func StartNode(relayAdd string) {
 
 }
 
-func GET(targetIP string, targetPort string, route string) ([]byte, error) {
+func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"/ts=123&&id=123"
 
 	reqparams := make(map[string]string)
 	parts := strings.Split(route, "/")
@@ -59,8 +60,8 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) {
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
 	}
-
-	return GetResp, nil //this will be of json bytes with a field type, and other field(Resp) having the response bytes from the server
+	GetResp = bytes.TrimRight(GetResp, "\x00")
+	return GetResp, nil //this will be json bytes with resp encoded in form of resp from the server and can be used according to utility
 }
 
 func POST(targetIP string, targetPort string, route string, body []byte) ([]byte, error) {
@@ -91,7 +92,7 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
 	}
-
+	GetResp = bytes.TrimRight(GetResp, "\x00")
 	return GetResp, nil
 }
 
@@ -104,6 +105,6 @@ func ServeGetReq([]byte) []byte {
 
 }
 
-func ServePostReq(param []byte, bodyBytes []byte) []byte {
-	return handlers.MsgIN(bodyBytes)
+func ServePostReq(params []byte, bodybytes []byte) []byte {
+	return handlers.MsgIN(bodybytes)
 }

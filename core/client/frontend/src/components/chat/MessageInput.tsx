@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Smile, Paperclip } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
@@ -10,6 +10,14 @@ export const MessageInput: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const { currentCommunity, addMessage } = useAppStore();
   const { isCollapsed } = useSidebarStore();
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  React.useEffect(() => {
+    if (message === '') {
+      textareaRef.current?.focus();
+    }
+  }, [message]);
+
 
   const handleSend = async () => {
     if (!message.trim() || !currentCommunity || isSending) return;
@@ -49,6 +57,7 @@ export const MessageInput: React.FC = () => {
         <div className="flex-1">
           <div className="relative">
             <textarea
+              ref={textareaRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}

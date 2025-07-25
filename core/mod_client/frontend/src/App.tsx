@@ -173,34 +173,34 @@ const App: React.FC = () => {
         const user = await apiService.authenticate(publicKey);
         setUser(user);
 
-        console.log("🔄 Fetching relay addresses...");
-        const relayAddrs = await fetchRelayAddrs();
+        // console.log("🔄 Fetching relay addresses...");
+        // const relayAddrs = await fetchRelayAddrs();
 
-        let connected = false;
-        for (let i = 0; i < 10; i++) {
-          const status = await GetRelayStatus();
-          if (status === "online") {
-            connected = true;
-            break;
-          }
+        // let connected = false;
+        // for (let i = 0; i < 10; i++) {
+        //   const status = await GetRelayStatus();
+        //   if (status === "online") {
+        //     connected = true;
+        //     break;
+        //   }
 
-          const error = await Connect(relayAddrs);
-          const recheck = await GetRelayStatus();
-          if (recheck === "online") {
-            connected = true;
-            break;
-          }
+        //   const error = await Connect(relayAddrs);
+        //   const recheck = await GetRelayStatus();
+        //   if (recheck === "online") {
+        //     connected = true;
+        //     break;
+        //   }
 
-          await new Promise(res => setTimeout(res, 1000));
-        }
+        //   await new Promise(res => setTimeout(res, 1000));
+        // }
 
-        if (!connected) {
-          console.error("❌ Could not connect to relay.");
-          setRelayFailed(true);
-          return;
-        }
+        // if (!connected) {
+        //   console.error("❌ Could not connect to relay.");
+        //   setRelayFailed(true);
+        //   return;
+        // }
 
-        console.log("✅ Relay connected. Authenticating...");
+        // console.log("✅ Relay connected. Authenticating...");
 
         const fetchedCommunities = await apiService.getCommunities();
         setCommunities(fetchedCommunities);
@@ -244,7 +244,7 @@ const App: React.FC = () => {
             </p>
           </motion.div>
         </div>
-        <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
+        {/* <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} /> */}
       </>
     );
   }
@@ -271,7 +271,7 @@ const App: React.FC = () => {
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
-      <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
+      {/* <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} /> */}
     </>
   );
 };

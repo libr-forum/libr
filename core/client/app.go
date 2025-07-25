@@ -7,11 +7,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/client/alias"
+	"github.com/devlup-labs/Libr/core/client/avatar"
+	"github.com/devlup-labs/Libr/core/client/cache"
 	"github.com/devlup-labs/Libr/core/client/core"
 	"github.com/devlup-labs/Libr/core/client/keycache"
 	Peers "github.com/devlup-labs/Libr/core/client/peers"
 	"github.com/devlup-labs/Libr/core/client/types"
 	util "github.com/devlup-labs/Libr/core/client/util"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
@@ -20,12 +24,63 @@ type App struct {
 }
 
 func NewApp() *App {
+	cache.InitCacheFile()
 	keycache.InitKeys()
 	return &App{relayStatus: "offline"}
+}
+func (a *App) FetchPubKey() string {
+	pubStr := keycache.LoadPubKey()
+	return pubStr
+}
+
+func (a *App) GenerateAvatar(key string) string {
+	// Check cache
+	record, err := cache.GetFromCache(key)
+	if err == nil && record != nil && record.AvatarSVG != "" {
+		return base64.StdEncoding.EncodeToString([]byte(record.AvatarSVG))
+	}
+
+	// Not cached, generate
+	svg := avatar.GenerateAvatar(key)
+	encodedSVG := base64.StdEncoding.EncodeToString([]byte(svg))
+
+	// Get alias if available, else empty
+	alias := ""
+	if record != nil {
+		alias = record.Alias
+	}
+
+	// Write to cache
+	_ = cache.AddToCache(key, svg, alias)
+
+	return encodedSVG
+}
+
+func (a *App) GenerateAlias(key string) string {
+	// Check cache
+	record, err := cache.GetFromCache(key)
+	if err == nil && record != nil && record.Alias != "" {
+		return record.Alias
+	}
+
+	// Not cached, generate
+	genAlias := alias.GenerateAlias(key)
+
+	// Get SVG if available, else empty
+	svg := ""
+	if record != nil {
+		svg = record.AvatarSVG
+	}
+
+	// Write to cache
+	_ = cache.AddToCache(key, svg, genAlias)
+
+	return genAlias
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	runtime.WindowMaximise(ctx)
 }
 
 func (a *App) Connect(relayAdd string) string {
@@ -73,7 +128,8 @@ func (a *App) SendInput(input string) string {
 	}
 
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
-	key := util.GenerateNodeID(strconv.FormatInt(msgCert.Msg.Ts, 10))
+	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
+	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	core.SendToDb(key, msgCert)
 
 	return fmt.Sprintf("✅ Sent to DB. Time: %d", msgCert.Msg.Ts)
@@ -81,17 +137,46 @@ func (a *App) SendInput(input string) string {
 
 func (a *App) FetchAll() []string {
 	messages := core.FetchRecent(context.Background())
-	myKey := base64.StdEncoding.EncodeToString(keycache.PubKey)
-
 	var out []string
 	for _, cert := range messages {
-		sender := cert.PublicKey
-		if sender == myKey {
-			sender = "You"
-		}
-		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", sender, cert.Msg.Content, cert.Msg.Ts))
+		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts))
 	}
 	return out
+}
+
+func (a *App) StreamMessages() {
+	ctx := context.Background()
+
+	msgChan := core.FetchRecentStreamed(ctx)
+
+	go func() {
+		for cert := range msgChan {
+			msg := map[string]interface{}{
+				"sender":    cert.PublicKey,
+				"content":   cert.Msg.Content,
+				"timestamp": cert.Msg.Ts,
+			}
+			runtime.EventsEmit(a.ctx, "newMessage", msg)
+
+		}
+	}()
+}
+
+func (a *App) FetchMessagesByDate(ts int64) {
+	ctx := context.Background()
+
+	msgChan := core.FetchRecentStreamed(ctx)
+
+	go func() {
+		for cert := range msgChan {
+			msg := map[string]interface{}{
+				"sender":    cert.PublicKey,
+				"content":   cert.Msg.Content,
+				"timestamp": cert.Msg.Ts,
+			}
+			runtime.EventsEmit(a.ctx, "newMessage", msg)
+		}
+	}()
 }
 
 func (a *App) FetchTimestamp(tsStr string) []string {
@@ -101,15 +186,10 @@ func (a *App) FetchTimestamp(tsStr string) []string {
 	}
 
 	messages := core.Fetch(ts)
-	myKey := base64.StdEncoding.EncodeToString(keycache.PubKey)
 
 	var out []string
 	for _, cert := range messages {
-		sender := cert.PublicKey
-		if sender == myKey {
-			sender = "You"
-		}
-		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", sender, cert.Msg.Content, cert.Msg.Ts))
+		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts))
 	}
 	return out
 }
