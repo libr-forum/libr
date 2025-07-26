@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/config"
 	"github.com/devlup-labs/Libr/core/mod_client/network"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
@@ -92,10 +93,24 @@ func Fetch(ts int64) []types.MsgCert {
 						if cert.Sign == "" {
 							continue
 						}
-						if _, loaded := printed.LoadOrStore(cert.Sign, true); !loaded {
-							mu.Lock()
-							results = append(results, cert)
-							mu.Unlock()
+
+						sort.SliceStable(cert.ModCerts, func(i, j int) bool {
+							return cert.ModCerts[i].PublicKey < cert.ModCerts[j].PublicKey
+						})
+
+						dataToSign := types.DataToSign{
+							Content:   cert.Msg.Content,
+							Timestamp: cert.Msg.Ts,
+							ModCerts:  cert.ModCerts, // sorted before signing
+						}
+						jsonBytes, _ := json.Marshal(dataToSign)
+
+						if cryptoutils.VerifySignature(cert.PublicKey, string(jsonBytes), cert.Sign) {
+							if _, loaded := printed.LoadOrStore(cert.Sign, true); !loaded {
+								mu.Lock()
+								results = append(results, cert)
+								mu.Unlock()
+							}
 						}
 					}
 				case "redirect":
