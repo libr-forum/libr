@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -24,35 +23,7 @@ type ModelFunc func(content string) (bool, error)
 
 func init() {
 	const envPath = ".env"
-	const key = "GOOGLE_NLP_API_KEY"
-	const value = "AIzaSyBS_wzK2RDpklddYg5SH4MtVRNiDgGU9sg"
-
-	// Load existing .env file or create if it doesn't exist
-	if _, err := os.Stat(envPath); os.IsNotExist(err) {
-		// Create .env and add the key
-		err := os.WriteFile(envPath, []byte(fmt.Sprintf("%s=%s\n", key, value)), 0644)
-		if err != nil {
-			fmt.Printf("Failed to create .env: %v\n", err)
-		}
-	} else {
-		// .env exists, load and update if needed
-		_ = godotenv.Load(envPath)
-
-		existingKey := os.Getenv(key)
-		if existingKey == "" {
-			// Append key=value to .env
-			f, err := os.OpenFile(envPath, os.O_APPEND|os.O_WRONLY, 0644)
-			if err == nil {
-				defer f.Close()
-				writer := bufio.NewWriter(f)
-				_, _ = writer.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-				_ = writer.Flush()
-			} else {
-				fmt.Printf("Failed to append to .env: %v\n", err)
-			}
-		}
-	}
-
+	_ = godotenv.Load(envPath)
 	ensureModConfigExists()
 }
 
