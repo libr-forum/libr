@@ -29,7 +29,6 @@ vendor/
 go.work
 
 # Build directories
-/build/
 /dist/
 
 # Node.js
@@ -134,7 +133,6 @@ temp/
 .packages
 .pub-cache/
 .pub/
-/build/
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -154,9 +152,6 @@ app.*.map.json
 # Hardhat files
 cache
 artifacts
-
-# Truffle
-build/
 
 # Coverage reports
 coverage
@@ -231,7 +226,6 @@ keystore/
 
 # Build outputs
 bin/
-build/
 dist/
 out/
 

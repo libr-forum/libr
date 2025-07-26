@@ -14,7 +14,7 @@ import (
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/alias"
 	"github.com/devlup-labs/Libr/core/mod_client/avatar"
-	"github.com/devlup-labs/Libr/core/mod_client/cache"
+	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
 	"github.com/devlup-labs/Libr/core/mod_client/config"
 	"github.com/devlup-labs/Libr/core/mod_client/core"
 	service "github.com/devlup-labs/Libr/core/mod_client/internal/service"
