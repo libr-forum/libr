@@ -20,7 +20,10 @@ func main() {
 	var connected bool
 	for _, relayAddr := range relayAddrs {
 		fmt.Println("Trying to connect to relay:", relayAddr)
-		peer.StartNode(relayAddr)
+		connected = peer.StartNode(relayAddr)
+		if connected {
+			break
+		}
 	}
 
 	if !connected {

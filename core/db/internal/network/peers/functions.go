@@ -45,7 +45,11 @@ func initDHT() {
 	bootstrapAddrs := bootstrap.GetBootstrapNodes()
 
 	// 3. Init DB and routing
+<<<<<<< HEAD
 	config.InitConnection(port)
+=======
+	config.InitDB()
+>>>>>>> 33bf593 (Migrated from postgresql to sqlite)
 	address := ip + ":" + port
 	localNode := &node.Node{
 		NodeId: node.GenerateNodeID(address),
@@ -67,7 +71,7 @@ func initDHT() {
 	fmt.Println("✅ Kademlia node running at", address)
 }
 
-func StartNode(relayAdd string) {
+func StartNode(relayAdd string) bool {
 
 	fmt.Println("Starting Node...")
 
@@ -77,7 +81,7 @@ func StartNode(relayAdd string) {
 	Peer, err = NewChatPeer(relayAddr)
 	if err != nil {
 		fmt.Println("Error creating peer:", err)
-		return
+		return false
 	}
 	ctx := context.Background()
 
@@ -87,6 +91,7 @@ func StartNode(relayAdd string) {
 
 	initDHT()
 
+	return true
 }
 
 func POST(targetIP, targetPort, route string, body []byte) ([]byte, error) {

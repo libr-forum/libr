@@ -3,9 +3,9 @@ package routing
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"time"
 
@@ -85,7 +85,6 @@ func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *node.Node, buc
 
 func (rt *RoutingTable) FindClosest(targetID [20]byte, count int) []*node.Node {
 	var allNodes []*node.Node
-	fmt.Println(rt)
 	for _, bucket := range rt.Buckets {
 		if bucket == nil {
 			continue
@@ -105,42 +104,14 @@ func (rt *RoutingTable) FindClosest(targetID [20]byte, count int) []*node.Node {
 	return allNodes
 }
 
-func (rt *RoutingTable) SaveTo(filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	return encoder.Encode(rt)
-}
-
-func LoadRoutingTable(filename string) (*RoutingTable, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var rt RoutingTable
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&rt); err != nil {
-		return nil, err
-	}
-	return &rt, nil
-}
-
 func NewRoutingTable(selfID [20]byte, selfPort string) *RoutingTable {
 	rt := &RoutingTable{
 		SelfID:   selfID,
 		SelfPort: selfPort,
 	}
-
 	for i := range rt.Buckets {
 		rt.Buckets[i] = &KBucket{}
 	}
-
 	return rt
 }
 
@@ -155,16 +126,14 @@ func GetOrCreateRoutingTable(node *node.Node) *RoutingTable {
 		return memoryCache
 	}
 
-	// Try to load from DB
 	dbRT, err := LoadRoutingTableFromDB()
 	if err == nil {
 		memoryCache = dbRT
 		return memoryCache
 	}
 
-	// If failed to load from DB, create a new one
 	memoryCache = NewRoutingTable(node.NodeId, node.Port)
-	go memoryCache.SaveToDBAsync() // save it asynchronously
+	go memoryCache.SaveToDBAsync()
 	return memoryCache
 }
 
@@ -172,29 +141,33 @@ func (rt *RoutingTable) SaveToDBAsync() {
 	go func() {
 		jsonBytes, err := json.Marshal(rt)
 		if err != nil {
-			fmt.Println("Error marshaling routing table:", err)
+			fmt.Println("❌ Error marshaling routing table:", err)
 			return
 		}
 
-		_, err = config.Pool.Exec(context.Background(), `
-			INSERT INTO RoutingTable (rt) VALUES ($1)
-		`, jsonBytes)
+		_, err = config.DB.ExecContext(context.Background(),
+			`INSERT INTO RoutingTable (rt) VALUES (?)`, jsonBytes)
 		if err != nil {
-			fmt.Println("Error saving routing table to DB:", err)
+			fmt.Println("❌ Error saving routing table to SQLite:", err)
 		}
 	}()
 }
 
 func LoadRoutingTableFromDB() (*RoutingTable, error) {
 	var jsonBytes []byte
-	err := config.Pool.QueryRow(context.Background(), `
-		SELECT rt FROM RoutingTable ORDER BY id DESC LIMIT 1
-	`).Scan(&jsonBytes)
+	row := config.DB.QueryRowContext(context.Background(),
+		`SELECT rt FROM RoutingTable ORDER BY id DESC LIMIT 1`)
+	err := row.Scan(&jsonBytes)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no routing table in DB")
+		}
 		return nil, err
 	}
 
 	var rt RoutingTable
-	err = json.Unmarshal(jsonBytes, &rt)
-	return &rt, err
+	if err := json.Unmarshal(jsonBytes, &rt); err != nil {
+		return nil, fmt.Errorf("error unmarshaling routing table: %v", err)
+	}
+	return &rt, nil
 }

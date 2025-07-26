@@ -4,8 +4,6 @@ go 1.24.4
 
 require (
 	github.com/devlup-labs/Libr/core/crypto v1.0.1
-	github.com/jackc/pgx/v5 v5.7.5
-	github.com/joho/godotenv v1.5.1
 	github.com/libp2p/go-libp2p v0.42.0
 	github.com/multiformats/go-multiaddr v0.16.0
 	github.com/pion/stun v0.6.1
@@ -27,11 +25,9 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/ipfs/go-cid v0.5.0 // indirect
 	github.com/ipfs/go-log/v2 v2.6.0 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
+	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/koron/go-ssdp v0.0.6 // indirect
@@ -44,6 +40,7 @@ require (
 	github.com/libp2p/go-yamux/v5 v5.0.1 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/miekg/dns v1.1.66 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
@@ -108,5 +105,3 @@ require (
 )
 
 replace github.com/devlup-labs/Libr/core/crypto => ../crypto
-
-

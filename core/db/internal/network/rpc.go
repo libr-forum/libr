@@ -100,3 +100,17 @@ func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]mod
 	keyBytes := sha1.Sum([]byte(key))
 	return nil, rt.FindClosest(keyBytes, config.K)
 }
+
+func DeleteValue(key [20]byte, cert models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
+	closest := rt.FindClosest(key, config.K)
+	selfDist := node.XORBigInt(self.NodeId, key)
+
+	for _, n := range closest {
+		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
+			storage.DeleteMsgCert(cert)
+			return nil
+		}
+	}
+
+	return closest
+}
