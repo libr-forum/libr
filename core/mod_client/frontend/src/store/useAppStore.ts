@@ -74,7 +74,7 @@ export const useAppStore = create<AppState>()(
       // Initial state
       user: null,
       isAuthenticated: false,
-      isDarkMode: false,
+      isDarkMode: true,
       communities: [],
       currentCommunity: null,
       messages: [],

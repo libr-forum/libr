@@ -41,3 +41,23 @@ type Node struct {
 	IP     string   `json:"ip"`
 	Port   string   `json:"port"`
 }
+
+type ReportMsg struct {
+	PublicKey string `json:"public_key"`
+	Msg       Msg    `json:"msg"`
+}
+
+type ReportCert struct {
+	PublicKey string    `json:"public_key"`
+	ReportMsg ReportMsg `json:"report_msg"`
+	ModCerts  []ModCert `json:"mod_certs"`
+	Sign      string    `json:"sign"`
+}
+
+type RetMsgCert struct {
+	PublicKey string    `json:"public_key"`
+	Msg       Msg       `json:"msg"`
+	ModCerts  []ModCert `json:"mod_certs"`
+	Sign      string    `json:"sign"`
+	Deleted   string    `json:"deleted"`
+}

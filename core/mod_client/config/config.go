@@ -9,6 +9,7 @@ import (
 
 const K = 4
 const Alpha = 4
+const DeleteThreshold = 40.0
 
 type Config struct {
 

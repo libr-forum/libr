@@ -28,6 +28,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction
 } from "@/components/ui/alert-dialog";
+import { MsgReports } from './pages/MessageReports';
 
 const queryClient = new QueryClient();
 
@@ -52,7 +53,7 @@ export const RelayErrorDialog: React.FC<RelayErrorDialogProps> = ({ open, onOpen
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => onOpenChange(false)}>Cancel</AlertDialogCancel>
+          {/* <AlertDialogCancel onClick={() => onOpenChange(false)}>Cancel</AlertDialogCancel> */}
           <AlertDialogAction onClick={() => Quit()}>Close App</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -128,16 +129,16 @@ async function fetchRelayAddrs(): Promise<string[]> {
   }
 }
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div className="flex h-screen bg-libr-primary relative">
-      <Sidebar />
-      <main className="flex-1 overflow-hidden transition-all duration-300">
-        {children}
-      </main>
-    </div>
-  );
-};
+// const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+//   return (
+//     <div className="flex h-screen bg-libr-primary relative">
+//       <Sidebar />
+//       <main className="flex-1 overflow-hidden transition-all duration-300">
+//         {children}
+//       </main>
+//     </div>
+//   );
+// };
 
 const App: React.FC = () => {
   const {
@@ -169,13 +170,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const publicKey = await FetchPubKey();
-        const user = await apiService.authenticate(publicKey);
-        setUser(user);
-
-        // console.log("🔄 Fetching relay addresses...");
-        // const relayAddrs = await fetchRelayAddrs();
-
+        console.log("🔄 Fetching relay addresses...");
+        //const relayAddrs = await fetchRelayAddrs();
+        //const relayAddrs = ["/dns4/0.tcp.in.ngrok.io/tcp/10096/p2p/12D3KooWKCZB2WyjgdFoarh2k2oPMHHQmZJM1bns77cNb3dEabHN"]
         // let connected = false;
         // for (let i = 0; i < 10; i++) {
         //   const status = await GetRelayStatus();
@@ -184,7 +181,7 @@ const App: React.FC = () => {
         //     break;
         //   }
 
-        //   const error = await Connect(relayAddrs);
+        // const error = await Connect(relayAddrs);
         //   const recheck = await GetRelayStatus();
         //   if (recheck === "online") {
         //     connected = true;
@@ -201,6 +198,10 @@ const App: React.FC = () => {
         // }
 
         // console.log("✅ Relay connected. Authenticating...");
+        
+        const publicKey = await FetchPubKey();
+        const user = await apiService.authenticate(publicKey);
+        setUser(user);
 
         const fetchedCommunities = await apiService.getCommunities();
         setCommunities(fetchedCommunities);
@@ -244,7 +245,7 @@ const App: React.FC = () => {
             </p>
           </motion.div>
         </div>
-        {/* <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} /> */}
+        <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
       </>
     );
   }
@@ -256,7 +257,7 @@ const App: React.FC = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Layout>
+            {/* <Layout> */}
               <AnimatePresence mode="wait">
                 <Routes>
                   <Route path="/" element={<Navigate to="/chat" replace />} />
@@ -264,14 +265,15 @@ const App: React.FC = () => {
                   <Route path="/communities" element={<Communities />} />
                   <Route path="/modlogs" element={<ModLogs />} />
                   <Route path="/modconfig" element={<ModConfig />} />
+                  <Route path="/msgreports" element={<MsgReports />} />
                   <Route path="*" element={<Navigate to="/chat" replace />} />
                 </Routes>
               </AnimatePresence>
-            </Layout>
+            {/* </Layout> */}
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
-      {/* <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} /> */}
+      <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
     </>
   );
 };

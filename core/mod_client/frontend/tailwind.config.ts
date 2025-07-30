@@ -138,4 +138,5 @@ export default {
 		require("tailwindcss-animate"),
 		require('tailwind-scrollbar')({ nocompatible: true }),
 	],
+	safelist: ['prose-mirror-editor'],
 } satisfies Config;

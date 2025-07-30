@@ -1,12 +1,15 @@
 
-import React, { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef,useState } from 'react';
+import { motion ,AnimatePresence} from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import { MessageInput } from '../components/chat/MessageInput';
 import { apiService } from '../services/api';
 import { TopBar } from '../components/layout/TopBar';
-import { ArrowDown, Clock, Calendar, RotateCcw } from 'lucide-react';
+import { Menubar } from '../components/layout/Menubar';
+import { Sidebar } from '../components/layout/Sidebar';
+import { ArrowDown, Clock, Calendar, RotateCcw, Plus } from 'lucide-react';
+import * as AlertDialog from '@radix-ui/react-alert-dialog';
 
 export const ChatRoom: React.FC = () => {
   const { 
@@ -17,50 +20,13 @@ export const ChatRoom: React.FC = () => {
     isLoading, 
   } = useAppStore();
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [sortByNewest, setSortByNewest] = React.useState(true);
-  const [showScrollButton, setShowScrollButton] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = React.useState(false);
+  const [inputOpen, setInputOpen] = useState(false);
   const messageInputRef = useRef<HTMLDivElement>(null);
-  const [inputHeight, setInputHeight] = React.useState(0);
-  const scrollButtonRef = useRef<HTMLButtonElement>(null);
-
-
-  // Measure input height
-  useEffect(() => {
-    if (!messageInputRef.current) return;
-
-    const resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const height = entry.contentRect.height;
-        setInputHeight(height);
-        
-        // Force reflow for Wails/DOM issues
-        window.dispatchEvent(new Event('resize'));
-      }
-    });
-
-    resizeObserver.observe(messageInputRef.current);
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const atBottom = scrollTop + clientHeight >= scrollHeight - 50; // buffer
-      setShowScrollButton(!atBottom);
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
-
   // useEffect(() => {
   //   if (currentCommunity) {
   //     loadMessages();
@@ -81,14 +47,6 @@ export const ChatRoom: React.FC = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-    }
-  };
-
-
   const sortedMessages = React.useMemo(() => {
     let filtered = [...messages];
     
@@ -108,6 +66,7 @@ export const ChatRoom: React.FC = () => {
   }, [messages, sortByNewest, selectedDate]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
 
   useEffect(() => {
     if (!messagesContainerRef.current) return;
@@ -147,142 +106,162 @@ export const ChatRoom: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <TopBar />
-      
-      {/* Messages Area */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        {/* Toolbar */}
-        <div className="bg-card/50 border-b border-border/30 h-16 p-3 pl-5 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {/* <button
-              onClick={() => setSortByNewest(!sortByNewest)}
-              className="libr-button bg-muted/50 hover:bg-muted flex items-center space-x-2 text-sm"
-            >
-              <Clock className="w-4 h-4" />
-              <span className='mt-0.5'>{sortByNewest ? 'Newest First' : 'Oldest First'}</span>
-            </button> */}
-            <button
-              onClick={loadMessages}
-              className="libr-button bg-muted/50 hover:bg-muted flex items-center space-x-2 text-sm"
-              title="Reload Messages"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className='mt-0.5'>Reload</span>
-            </button>
-            <span className="text-sm text-muted-foreground">
-              {selectedDate 
-                ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
-                : `${messages.length} messages`
-              }
-            </span>
-          </div>
-          
-          {/* <div className="flex items-center space-x-2 relative">
-            <div
-              // onClick={() => setShowDatePicker(!showDatePicker)}
-              className="libr-button bg-muted/50 hover:bg-muted flex items-center space-x-2 text-sm"
-            >
-              <Calendar className="w-4 h-4" />
-              <span className='mt-0.5'>{selectedDate ? selectedDate.toLocaleDateString() : 'Today'}</span>
-            </div>
-            
-            {selectedDate && (
-              <button
-                onClick={() => setSelectedDate(null)}
-                className="libr-button bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm"
-              >
-                Clear
-              </button>
-            )}
-            
-            {showDatePicker && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="absolute right-0 top-full mt-2 bg-card border border-border rounded-lg shadow-lg z-20 p-4"
-              >
-                <input
-                  type="date"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setSelectedDate(new Date(e.target.value));
-                      setShowDatePicker(false);
-                    }
-                  }}
-                  className="bg-muted border border-border rounded px-3 py-2 text-sm"
-                />
-              </motion.div>
-            )}
-          </div> */}
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2" ref={messagesContainerRef} style={{ paddingBottom: Math.max(inputHeight, 100) + 36 }}>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-8 h-8 border-2 border-libr-accent1 border-t-transparent rounded-full"
-              />
-            </div>
-          ) : sortedMessages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-center py-12"
-            >
-              <div className="text-center">
-                <div className="w-16 h-16 bg-libr-accent1/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="text-2xl"
-                  >
-                    💬
-                  </motion.div>
-                </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  Start the conversation
-                </h3>
-                <p className="text-muted-foreground">
-                  Be the first to send a message in #{currentCommunity.name}
-                </p>
-              </div>
-            </motion.div>
-          ) : (
-            sortedMessages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-              />
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Scroll to bottom button */}
-        {showScrollButton && (
-          <motion.button
-            ref={scrollButtonRef}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            onClick={scrollToBottom}
-            className="fixed right-6 w-12 h-12 bg-libr-accent1 hover:bg-libr-accent1/80 rounded-full flex items-center justify-center shadow-lg transition-all"
-            style={{
-              bottom: Math.max(inputHeight, 80) + 45,
-            }}
-          >
-            <ArrowDown className="w-5 h-5 text-white" />
-          </motion.button>
-        )}
+    <div className='flex flex-row'>
+      <div className='w-[24%]'>
+      <Sidebar />
       </div>
+      <div className="flex flex-col w-full h-screen">
+        <div className='h-[8%] mt-4 mr-4 z-50'>
+          <TopBar />
+        </div>
+        <div className='flex h-[92%] flex-row'>
+          {/* Messages Area */}
+          <div className="flex-1 min-h-0 h-screen flex flex-col relative">
+            {/* Toolbar */}
+            <div className=" h-[8%] rounded-2xl pt-4 pl-0 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                {/* <button
+                  onClick={() => setSortByNewest(!sortByNewest)}
+                  className="libr-button bg-muted/50 hover:bg-muted flex items-center space-x-2 text-sm"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span className='mt-0.5'>{sortByNewest ? 'Newest First' : 'Oldest First'}</span>
+                </button> */}
+                <button
+                  onClick={loadMessages}
+                  className="libr-button bg-libr-accent1/20 rounded-2xl hover:bg-muted flex items-center space-x-2 text-sm"
+                  title="Reload Messages"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className='mt-0.5'>Reload</span>
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedDate 
+                    ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
+                    : `${messages.length} messages`
+                  }
+                </span>
+              </div>
+              
+              {/* <div className="flex items-center space-x-2 relative">
+                <div
+                  // onClick={() => setShowDatePicker(!showDatePicker)}
+                  className="libr-button bg-muted/50 hover:bg-muted flex items-center space-x-2 text-sm"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span className='mt-0.5'>{selectedDate ? selectedDate.toLocaleDateString() : 'Today'}</span>
+                </div>
+                
+                {selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate(null)}
+                    className="libr-button bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm"
+                  >
+                    Clear
+                  </button>
+                )}
+                
+                {showDatePicker && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute right-0 top-full mt-2 bg-card border border-border rounded-lg shadow-lg z-20 p-4"
+                  >
+                    <input
+                      type="date"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setSelectedDate(new Date(e.target.value));
+                          setShowDatePicker(false);
+                        }
+                      }}
+                      className="bg-muted border border-border rounded px-3 py-2 text-sm"
+                    />
+                  </motion.div>
+                )}
+              </div> */}
+            </div>
 
-      {/* Fixed Message Input */}
-      <MessageInput ref={messageInputRef} />
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[76%]" ref={messagesContainerRef}>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 border-2 border-libr-accent1 border-t-transparent rounded-full"
+                  />
+                </div>
+              ) : sortedMessages.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-center py-12"
+                >
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-libr-accent1/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="text-2xl"
+                      >
+                        💬
+                      </motion.div>
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      Start the thread
+                    </h3>
+                    <p className="text-muted-foreground">
+                      Be the first to send a post in #{currentCommunity.name}
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                sortedMessages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                  />
+                ))
+              )}
+              <div ref={messagesEndRef} />
+              <div className="fixed right-[16.5%] bottom-[1.5%] flex w-16 justify-start">
+                <button
+                  onClick={() => setInputOpen(true)}
+                  className="w-12 h-12 libr-button bg-libr-accent1/20 hover:bg-muted rounded-xl flex items-center justify-center"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            
+
+            {/* Message Input Dialog */}
+            <AlertDialog.Root open={inputOpen} onOpenChange={setInputOpen}>
+              <AnimatePresence>
+                {inputOpen && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-40 bg-black/50"
+                  />
+                )}
+              </AnimatePresence>
+
+              <AlertDialog.Portal>
+                <AlertDialog.Content className="fixed inset-0 z-50 translate-y-[4%] flex items-center justify-center">
+                  <MessageInput ref={messageInputRef} onClose={() => setInputOpen(false)} />
+                </AlertDialog.Content>
+              </AlertDialog.Portal>
+            </AlertDialog.Root>
+          </div>
+          <div className='flex justify-center p-4 h-full w-[22%]'>
+            <Menubar/>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

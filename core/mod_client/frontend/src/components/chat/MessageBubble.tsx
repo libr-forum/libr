@@ -1,21 +1,59 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Message } from '../../store/useAppStore';
-import { Clock, Check, AlertCircle } from 'lucide-react';
+import { Message,User,useAppStore } from '../../store/useAppStore';
+import { Clock, Check, AlertCircle, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {emojify} from 'node-emoji';
+import { Report } from 'wailsjs/go/main/App';
 
 interface MessageBubbleProps {
   message: Message;
 }
 
 export function parseFormatting(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')     // Bold
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')                  // Italic
-    .replace(/_(.+?)_/g, '<u>$1</u>')                    // Underline
-    .replace(/~(.+?)~/g, '<s>$1</s>')                    // Strikethrough
-    .replace(/\n/g, '<br/>');                              // Line breaks
+  // Escape HTML to prevent injection
+  const escapeHTML = (str: string) =>
+    str.replace(/&/g, '&amp;')
+       .replace(/</g, '&lt;')
+       .replace(/>/g, '&gt;');
+
+  // Apply emoji replacements first
+  let formatted = emojify(text);
+
+  // Code blocks (```...```)
+  formatted = formatted.replace(/```([\s\S]*?)```/g, (_match, code) => {
+    return `<pre class="bg-muted rounded p-2 overflow-x-auto my-2 text-xs"><code>${escapeHTML(code)}</code></pre>`;
+  });
+
+  // Inline code (`...`)
+  formatted = formatted.replace(/`([^`\n]+?)`/g, (_match, code) => {
+    return `<code class="bg-muted px-1 rounded text-xs">${escapeHTML(code)}</code>`;
+  });
+
+  // Bold (**bold**)
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic (*italic*)
+  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Underline (_underline_)
+  formatted = formatted.replace(/_(.+?)_/g, '<u>$1</u>');
+
+  // Strikethrough (~strike~)
+  formatted = formatted.replace(/~(.+?)~/g, '<s>$1</s>');
+
+  // Newlines to <br/>
+  formatted = formatted.replace(/\n/g, '<br/>');
+
+  return formatted;
 }
+
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const formatTime = (date: Date) => {
@@ -25,14 +63,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     }).format(date);
   };
 
-  const getStatusIcon = () => {
+  const getStatus = () => {
     switch (message.status) {
       case 'approved':
-        return <Check className="w-3 h-3 text-green-500" />;
+        return { icon: <Check className="w-3 h-3 text-green-500" />, label: 'Approved' };
       case 'pending':
-        return <Clock className="w-3 h-3 text-yellow-500" />;
+        return { icon: <Clock className="w-3 h-3 text-yellow-500" />, label: 'Pending' };
       case 'rejected':
-        return <AlertCircle className="w-3 h-3 text-red-500" />;
+        return { icon: <AlertCircle className="w-3 h-3 text-red-500" />, label: 'Rejected' };
       default:
         return null;
     }
@@ -50,17 +88,71 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
   const { title, body } = parseMessage(message.content);
   const safeHtml = DOMPurify.sanitize(parseFormatting(body));
+  const status = getStatus();
+  const user=useAppStore.getState().user;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex justify-center mb-4"
+      className="flex w-full mb-4"
     >
-      <div className="max-w-lg w-full">
-        <div className="rounded-2xl px-4 py-3 shadow-md bg-card border border-border/50">
-          <div className="flex items-start space-x-3 mb-2">
+      <div className="w-[99%]">
+        <div className="relative rounded-3xl px-4 py-3 border-b">
+          <div className="absolute top-3 right-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 rounded-full hover:bg-muted transition">
+                  <MoreVertical className="w-4 h-4 text-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="right"
+                align="start"
+                sideOffset={8}
+                className="z-50 bg-popover border border-border rounded-md shadow-lg p-2 text-sm w-64"
+              >
+                <DropdownMenuItem disabled className="flex items-center justify-between">
+                  <span className="text-foreground">Time</span>
+                  <span>{formatTime(message.timestamp)}</span>
+                </DropdownMenuItem>
+                {status && (
+                  <DropdownMenuItem disabled className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-foreground">
+                      {status.icon}
+                      {status.label}
+                    </span>
+                  </DropdownMenuItem>
+                )}
+                {message.moderationNote && (
+                  <div className="px-2 py-1 mt-2 bg-muted/20 text-foreground text-xs rounded">
+                    {message.moderationNote}
+                  </div>
+                )}
+
+                {message.authorId === user.publicKey ? (
+                  <DropdownMenuItem
+                    onClick={() => console.log('Delete message:', message.id)}
+                    className="text-destructive cursor-pointer hover:bg-destructive/10"
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => Report(message.content,Math.floor(message.timestamp.getTime() / 1000),'',message.authorId)}
+                    className="text-destructive cursor-pointer hover:bg-destructive/10"
+                  >
+                    Report
+                  </DropdownMenuItem>
+                )}
+
+              </DropdownMenuContent>
+
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-start space-x-3">
             {/* Avatar */}
             {message.avatarSvg && message.avatarSvg !== 'unknown' ? (
               <img
@@ -78,32 +170,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
             {/* Header Info */}
             <div className="flex flex-col w-full">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-libr-secondary">
-                  {message.authorAlias}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-muted-foreground">
-                    {formatTime(message.timestamp)}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    {getStatusIcon()}
-                    {message.status === 'pending' && (
-                      <span className="text-xs text-yellow-600">Pending</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <span className="text-sm font-medium text-libr-secondary">
+                {message.authorAlias}
+              </span>
 
-              {/* Title */}
               {title && (
-                <p className="text-lg font-semibold text-foreground mt-1">
-                  {title}
-                </p>
+                <p className="text-lg font-semibold text-foreground mt-1">{title}</p>
               )}
 
-              {/* Body */}
-              <p className="text-sm leading-relaxed text-foreground mt-1" dangerouslySetInnerHTML={{ __html: safeHtml }}/>
+              <p
+                className="text-sm leading-relaxed text-foreground mt-1"
+                dangerouslySetInnerHTML={{ __html: safeHtml }}
+              />
             </div>
           </div>
         </div>

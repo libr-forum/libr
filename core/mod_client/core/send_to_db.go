@@ -29,7 +29,7 @@ type StoredResponse struct {
 	Status string `json:"status"`
 }
 
-func SendToDb(key [20]byte, msgcert types.MsgCert) error {
+func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 	var mu sync.Mutex
 	startNodes, _ := util.GetStartNodes()
 	known := append([]*types.Node{}, startNodes...)
@@ -109,7 +109,7 @@ func SendToDb(key [20]byte, msgcert types.MsgCert) error {
 				wg.Add(1)
 				go func(n *types.Node) {
 					defer wg.Done()
-					resp, err := network.SendTo(n.IP, n.Port, "/route=store", msgcert, "db")
+					resp, err := network.SendTo(n.IP, n.Port, route, msgcert, "db")
 					if err != nil {
 						log.Printf("Failed to store to %s:%s: %v", n.IP, n.Port, err)
 						return

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
@@ -49,6 +50,20 @@ func (a *App) ModAuthentication(myKey string) bool {
 		return false
 	}
 	return val
+}
+
+func (a *App) GetOnlineMods() []string {
+	onlineMods, err := util.GetOnlineMods()
+	if err != nil {
+		return nil
+	}
+
+	var publicKeys []string
+	for _, mod := range onlineMods {
+		publicKeys = append(publicKeys, mod.PublicKey)
+	}
+
+	return publicKeys
 }
 
 func (a *App) GenerateAvatar(key string) string {
@@ -145,7 +160,7 @@ func (a *App) SendInput(input string) string {
 	modChan := make(chan []types.ModCert, 1)
 
 	go func() {
-		modcerts := core.SendToMods(input, ts)
+		modcerts := core.SendToMods(input, ts, "", "")
 		modChan <- modcerts
 	}()
 
@@ -153,77 +168,61 @@ func (a *App) SendInput(input string) string {
 	select {
 	case modcertlist = <-modChan:
 	case <-ctx.Done():
-		return "❌ Moderator timeout"
+		return ":x: Moderator timeout"
 	}
 
 	if len(modcertlist) == 0 {
-		return "❌ Message rejected by moderators."
+		return ":x: Message rejected by moderators."
 	}
 
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
 	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	core.SendToDb(key, msgCert)
+	core.SendToDb(key, msgCert, "/route=store")
 
-	return fmt.Sprintf("✅ Sent to DB. Time: %d", msgCert.Msg.Ts)
+	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", msgCert.Msg.Ts)
+}
+
+func (a *App) Report(message string, ts int64, reason string, originalsender string) string {
+	if a.relayStatus != "online" {
+		return "Offline"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	// Run SendToMods with timeout
+	modChan := make(chan []types.ModCert, 1)
+
+	go func() {
+		modcerts := core.SendToMods(message, ts, reason, "manual")
+		modChan <- modcerts
+	}()
+
+	var modcertlist []types.ModCert
+	select {
+	case modcertlist = <-modChan:
+	case <-ctx.Done():
+		return ":x: Moderator timeout"
+	}
+
+	if len(modcertlist) == 0 {
+		return ":x: Message rejected by moderators."
+	}
+
+	repCert := core.CreateRepCert(originalsender, message, ts, modcertlist)
+	tsmin := repCert.ReportMsg.Msg.Ts - (repCert.ReportMsg.Msg.Ts % 60)
+	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
+	core.SendToDb(key, repCert, "/route=delete")
+
+	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", repCert.ReportMsg.Msg.Ts)
 }
 
 func (a *App) FetchAll() []string {
 	messages := core.FetchRecent(context.Background())
 	var out []string
 	for _, cert := range messages {
-		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts))
-	}
-	return out
-}
-
-func (a *App) StreamMessages() {
-	ctx := context.Background()
-	startTS := time.Now().Unix()
-
-	msgChan := core.FetchRecentStreamOrdered(ctx, startTS)
-
-	go func() {
-		for cert := range msgChan {
-			msg := map[string]interface{}{
-				"sender":    cert.PublicKey,
-				"content":   cert.Msg.Content,
-				"timestamp": cert.Msg.Ts,
-			}
-			runtime.EventsEmit(a.ctx, "newMessage", msg)
-
-		}
-	}()
-}
-
-func (a *App) FetchMessagesByDate(ts int64) {
-	ctx := context.Background()
-
-	msgChan := core.FetchRecentStreamOrdered(ctx, ts)
-
-	go func() {
-		for cert := range msgChan {
-			msg := map[string]interface{}{
-				"sender":    cert.PublicKey,
-				"content":   cert.Msg.Content,
-				"timestamp": cert.Msg.Ts,
-			}
-			runtime.EventsEmit(a.ctx, "newMessage", msg)
-		}
-	}()
-}
-
-func (a *App) FetchTimestamp(tsStr string) []string {
-	ts, err := strconv.ParseInt(tsStr, 10, 64)
-	if err != nil {
-		return []string{"❌ Invalid timestamp format"}
-	}
-
-	messages := core.Fetch(ts)
-
-	var out []string
-	for _, cert := range messages {
-		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts))
+		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d | ModCerts: %s", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts, cert.ModCerts))
 	}
 	return out
 }
@@ -275,4 +274,38 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	return enc.Encode(cfg)
+}
+
+func (a *App) SaveGoogleApiKey(key string) error {
+	path := service.GetModEnvPath()
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read env file: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	found := false
+
+	for i, line := range lines {
+		if strings.HasPrefix(line, "GOOGLE_NLP_API_KEY=") {
+			lines[i] = "GOOGLE_NLP_API_KEY=" + key
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		// If not found, append at the end
+		lines = append(lines, "GOOGLE_NLP_API_KEY="+key)
+	}
+
+	newContent := strings.Join(lines, "\n")
+
+	err = os.WriteFile(path, []byte(newContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write env file: %w", err)
+	}
+
+	return nil
 }

@@ -15,10 +15,25 @@ import (
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 )
 
-func SendToMods(message string, ts int64) []types.ModCert {
-	msg := types.Msg{
-		Content: message,
-		Ts:      ts,
+func SendToMods(message string, ts int64, reason string, action string) []types.ModCert {
+
+	var msg interface{}
+	if action == "manual" {
+		type RepMsg struct {
+			Content string `json:"content"`
+			Ts      int64  `json:"ts"`
+			Reason  string `json:"reason"`
+		}
+		msg = RepMsg{
+			Content: message,
+			Ts:      ts,
+			Reason:  reason,
+		}
+	} else {
+		msg = types.Msg{
+			Content: message,
+			Ts:      ts,
+		}
 	}
 
 	onlineMods, err := util.GetOnlineMods()
@@ -69,7 +84,7 @@ func SendToMods(message string, ts int64) []types.ModCert {
 					return
 				}
 
-				if cryptoutils.VerifySignature(modcert.PublicKey, msg.Content+strconv.FormatInt(msg.Ts, 10)+modcert.Status, modcert.Sign) {
+				if cryptoutils.VerifySignature(modcert.PublicKey, message+strconv.FormatInt(ts, 10)+modcert.Status, modcert.Sign) {
 					responseChan <- modcert
 				} else {
 					log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)

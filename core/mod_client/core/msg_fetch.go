@@ -17,7 +17,7 @@ import (
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
 )
 
-func Fetch(ts int64) []types.MsgCert {
+func Fetch(ts int64) []types.RetMsgCert {
 	key := strconv.FormatInt(ts, 10)
 	keyBytes := util.GenerateNodeID(key)
 
@@ -25,7 +25,7 @@ func Fetch(ts int64) []types.MsgCert {
 	known := append([]*types.Node{}, startNodes...)
 	queried := make(map[string]bool)
 	printed := sync.Map{}
-	var results []types.MsgCert
+	var results []types.RetMsgCert
 
 	const maxRounds = 50
 	const alpha = 3
@@ -83,8 +83,8 @@ func Fetch(ts int64) []types.MsgCert {
 				switch base.Type {
 				case "found":
 					var val struct {
-						Type   string          `json:"type"`
-						Values []types.MsgCert `json:"values"`
+						Type   string             `json:"type"`
+						Values []types.RetMsgCert `json:"values"`
 					}
 					if err := json.Unmarshal(respBytes, &val); err != nil {
 						return
@@ -153,14 +153,18 @@ func Fetch(ts int64) []types.MsgCert {
 	return results
 }
 
-func FetchRecent(ctx context.Context) []types.MsgCert {
+func FetchRecent(ctx context.Context) []types.RetMsgCert {
+	deleteThreshold := config.DeleteThreshold
 	now := time.Now().Truncate(time.Minute).Unix()
 	start := now - 1200
 
 	tsChan := make(chan int64, 100)
-	results := []types.MsgCert{}
+	rawCerts := []types.RetMsgCert{}
 	printed := sync.Map{}
 	var mu sync.Mutex
+
+	signCounts := make(map[string]int)
+	deleteCounts := make(map[string]int)
 
 	go func() {
 		for ts := now; ts >= start; ts -= 60 {
@@ -186,132 +190,41 @@ func FetchRecent(ctx context.Context) []types.MsgCert {
 					if cert.Sign == "" || cert.Msg.Ts < start || cert.Msg.Ts > now {
 						continue
 					}
-					if _, seen := printed.LoadOrStore(cert.Sign, true); !seen {
-						mu.Lock()
-						results = append(results, cert)
-						mu.Unlock()
+					mu.Lock()
+					signCounts[cert.Sign]++
+					if cert.Deleted == "1" {
+						deleteCounts[cert.Sign]++
 					}
+					if _, seen := printed.LoadOrStore(cert.Sign+"#"+fmt.Sprint(cert.Msg.Ts), true); !seen {
+						rawCerts = append(rawCerts, cert)
+					}
+					mu.Unlock()
 				}
 			}
 		}()
 	}
 
 	wg.Wait()
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Msg.Ts > results[j].Msg.Ts
-	})
-	fmt.Printf("[FetchRecent] collected: %d certs\n", len(results))
-	return results
-}
 
-func FetchRecentStreamOrdered(ctx context.Context, startTS int64) <-chan types.MsgCert {
-	out := make(chan types.MsgCert, 100)
-	bufferChan := make(chan types.MsgCert, 1000)
+	filtered := []types.RetMsgCert{}
+	for _, cert := range rawCerts {
+		mu.Lock()
+		delCount := deleteCounts[cert.Sign]
+		totalCount := signCounts[cert.Sign]
+		mu.Unlock()
 
-	var printed sync.Map
-	tsChan := make(chan int64, 1000)
-
-	// Feed timestamps: newest to oldest
-	go func() {
-		for ts := startTS; ts >= startTS-600; ts-- {
-			select {
-			case <-ctx.Done():
-				close(tsChan)
-				return
-			case tsChan <- ts:
-			}
+		if totalCount == 0 {
+			continue
 		}
-		close(tsChan)
-	}()
 
-	const numWorkers = 100
-	var wg sync.WaitGroup
-
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for ts := range tsChan {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				certs := Fetch(ts)
-				for _, cert := range certs {
-					if cert.Sign != "" {
-						if _, seen := printed.LoadOrStore(cert.Sign, true); !seen {
-							select {
-							case bufferChan <- cert:
-							case <-ctx.Done():
-								return
-							}
-						}
-					}
-				}
-			}
-		}()
+		if float64(delCount)/float64(totalCount) <= deleteThreshold {
+			filtered = append(filtered, cert)
+		}
 	}
 
-	// Reordering and flushing
-	go func() {
-		defer close(out)
-		defer close(bufferChan)
-
-		var buffer []types.MsgCert
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case cert, ok := <-bufferChan:
-				if !ok {
-					// Final flush
-					sort.Slice(buffer, func(i, j int) bool {
-						return buffer[i].Msg.Ts > buffer[j].Msg.Ts
-					})
-					for _, c := range buffer {
-						select {
-						case out <- c:
-						case <-ctx.Done():
-							return
-						}
-					}
-					return
-				}
-				buffer = append(buffer, cert)
-
-			case <-ticker.C:
-				if len(buffer) > 0 {
-					sort.Slice(buffer, func(i, j int) bool {
-						return buffer[i].Msg.Ts > buffer[j].Msg.Ts
-					})
-					toEmit := buffer
-					if len(buffer) > 10 {
-						toEmit = buffer[:10]
-						buffer = buffer[10:]
-					} else {
-						buffer = nil
-					}
-					for _, c := range toEmit {
-						select {
-						case out <- c:
-						case <-ctx.Done():
-							return
-						}
-					}
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
-		wg.Wait()
-		// bufferChan will be closed by the flusher above
-	}()
-
-	return out
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
+	})
+	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
+	return filtered
 }

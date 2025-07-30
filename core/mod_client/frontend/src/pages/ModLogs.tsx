@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/api';
 import { Message,ModLogEntry } from '../store/useAppStore';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { Shield, Check, X, Filter, Search, Clock, MessageSquare } from 'lucide-react';
 
 export const ModLogs: React.FC = () => {
@@ -41,6 +42,10 @@ export const ModLogs: React.FC = () => {
 
   if (user?.role !== 'moderator') {
     return (
+      <div className='flex flex-row'>
+        <div className='w-[19.4%]'>
+          <Sidebar />
+        </div>
       <div className="flex-1 flex items-center justify-center bg-libr-primary">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -58,20 +63,25 @@ export const ModLogs: React.FC = () => {
           </p>
         </motion.div>
       </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-libr-primary h-screen">
+    <div className='flex flex-row'>
+      <div className='w-[19.4%]'>
+        <Sidebar />
+      </div>
+    <div className="flex-1 flex flex-col w-full bg-libr-primary h-screen">
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 pb-24">
+        <div className="pt-6 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-6xl mx-auto"
+            className="max-w-7xl mx-4"
           >
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-8 w-full">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-12 h-12 bg-libr-accent2/20 rounded-xl flex items-center justify-center">
                   <Shield className="w-6 h-6 text-libr-accent2" />
@@ -175,9 +185,33 @@ export const ModLogs: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="mt-3 text-sm text-foreground leading-snug bg-background/50 p-3 rounded-md">
-                      {log.content}
-                    </p>
+                    <div className="mt-3 bg-background/50 p-3 rounded-md">
+                      {(() => {
+                        const titleMatch = log.content.match(/<HEAD>(.*?)<\/HEAD>/s);
+                        const bodyMatch = log.content.match(/<BODY>(.*?)<\/BODY>/s);
+                        const title = titleMatch?.[1]?.trim() || '';
+                        const rawBody = bodyMatch?.[1]?.trim() || '';
+
+                        const cleanBody = rawBody
+                          .replace(/<\/p>\s*<p>/g, '<br><br>') // Convert paragraphs to double line break
+                          .replace(/^<p>/, '')
+                          .replace(/<\/p>$/, '');
+
+                        return (
+                          <>
+                            {title && (
+                              <h4 className="text-sm font-semibold text-foreground mb-1">
+                                {title}
+                              </h4>
+                            )}
+                            <div
+                              className="text-sm text-foreground leading-snug whitespace-pre-wrap [&_strong]:font-semibold [&_u]:underline [&_em]:italic"
+                              dangerouslySetInnerHTML={{ __html: cleanBody }}
+                            />
+                          </>
+                        );
+                      })()}
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -185,6 +219,7 @@ export const ModLogs: React.FC = () => {
           </motion.div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

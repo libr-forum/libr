@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -11,13 +10,16 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "wailsjs":path.resolve(__dirname,"./wailsjs"),
+      "wailsjs": path.resolve(__dirname, "./wailsjs"),
     },
+    dedupe: ["react", "react-dom"], // ✅ CRITICAL to prevent hook errors
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom"], // ✅ Optional but helps
   },
 }));

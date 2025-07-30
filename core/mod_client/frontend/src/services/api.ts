@@ -1,4 +1,4 @@
-import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication } from "../../wailsjs/go/main/App"; 
+import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey } from "../../wailsjs/go/main/App"; 
 import axios from 'axios';
 import { Community, Message, User,ModLogEntry, useAppStore } from '../store/useAppStore';
 
@@ -181,10 +181,11 @@ export const apiService = {
       const response = await FetchAll(); // returns []string
       // Convert each string into a Message object
       return await Promise.all(response.map(async(line): Promise<Message> => {
-        // Expected format: "Sender: <sender> | Msg: <msg> | Time: <timestamp>"
+        // Expected format: "Sender: <sender> | Msg: <msg> | Time: <timestamp> | ModCerts: <modcerts>"
         const senderMatch = line.match(/Sender: (.*?) \|/);
         const msgMatch = line.match(/Msg: (.*?) \|/);
         const timeMatch = line.match(/Time: (\d+)/);
+        const moderationNoteMatch=line.match(/ModCerts:(.*?)\|/);
         const sender = senderMatch?.[1] || "unknown";
         let avatar:string;
         if (sender==="unknown"){
@@ -202,6 +203,7 @@ export const apiService = {
           communityId: _communityId,
           status: "approved",
           avatarSvg:avatar,
+          moderationNote:moderationNoteMatch?.[1]||"",
         };
       }));
     } catch (err) {
@@ -214,19 +216,18 @@ export const apiService = {
   async sendMessage(communityId: string, content: string): Promise<Message> {
     const result = await SendInput(content);
 
-    const approved = result.includes("✅");
+    const approved = result.includes("Sent");
     const user=useAppStore.getState().user;
     const newMessage: Message = {
       id: Date.now().toString(),
       content,
-      authorId: user.id,
+      authorId: user.publicKey,
       authorAlias: user.alias,
       timestamp: new Date(),
       communityId,
       status: approved ? 'approved' : 'rejected', // timeout = rejected
       avatarSvg:user.avatarSvg,
     };
-
     return newMessage;
   },
 
@@ -249,4 +250,8 @@ export const apiService = {
   async SaveModConfig(data: { forbidden: string[]; thresholds: string }):Promise<void>{
     await SaveModConfig(data)
   },
+
+  async SaveGoogleApiKey(key: string){
+    await SaveGoogleApiKey(key)
+  }
 };

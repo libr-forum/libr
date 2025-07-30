@@ -2,10 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/api';
+import { Sidebar } from '@/components/layout/Sidebar';
 import {
   Shield,
   Wrench,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog';
 
 interface Thresholds {
   [key: string]: number;
@@ -16,10 +27,23 @@ export const ModConfig: React.FC = () => {
   const [forbiddenWords, setForbiddenWords] = useState('');
   const [thresholds, setThresholds] = useState<Thresholds>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [googleApiKey, setGoogleApiKey] = useState('');
+  const [isSavingKey, setIsSavingKey] = useState(false);
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  const saveApiKey = async () => {
+    setIsSavingKey(true);
+    try {
+      await apiService.SaveGoogleApiKey(googleApiKey); // or any custom endpoint
+    } catch (error) {
+      console.error('Failed to save API key:', error);
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
 
   const loadConfig = async () => {
     const config = await apiService.GetModConfig();
@@ -64,7 +88,11 @@ export const ModConfig: React.FC = () => {
 
   if (user?.role !== 'moderator') {
     return (
-      <div className="flex-1 flex items-center justify-center bg-libr-primary">
+      <div className='flex flex-row'>
+        <div className='w-[19.4%]'>
+          <Sidebar />
+        </div>
+      <div className="flex-1 flex items-center justify-center bg-libr-primary m-80">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -81,19 +109,24 @@ export const ModConfig: React.FC = () => {
           </p>
         </motion.div>
       </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-libr-primary h-screen">
+    <div className='flex flex-row'>
+      <div className='w-[19.4%]'>
+        <Sidebar />
+      </div>
+    <div className="flex-1 flex flex-col h-screen">
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 pb-24">
+        <div className="pt-6 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-6xl mx-auto"
+            className="max-w-7xl mx-4"
           >
-            <div className="mb-8">
+            <div className="mb-8 w-full">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-12 h-12 bg-libr-accent1/20 rounded-xl flex items-center justify-center">
                   <Wrench className="w-6 h-6 text-libr-accent2" />
@@ -105,7 +138,35 @@ export const ModConfig: React.FC = () => {
                   </p>
                 </div>
               </div>
-
+              <div className="flex justify-end items-center p-4">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="px-4 py-2 text-sm rounded-md bg-libr-accent1/20 libr-button text-foreground hover:bg-muted/30 border border-border/50">
+                      Set API Key
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Enter Google NLP API Key</AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <input
+                      placeholder="Your API Key"
+                      value={googleApiKey}
+                      onChange={(e) => setGoogleApiKey(e.target.value)}
+                      className="w-full mt-4 px-3 py-2 text-sm rounded-md bg-muted/30 border border-border/50 text-foreground"
+                    />
+                    <AlertDialogFooter className="mt-4">
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction className='bg-libr-accent1/20 libr-button hover:bg-muted/30 text-foreground'
+                        onClick={saveApiKey}
+                        disabled={isSavingKey}
+                      >
+                        {isSavingKey ? 'Saving...' : 'Save'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
               {/* Forbidden Words */}
               <div className="mb-8">
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
@@ -120,7 +181,7 @@ export const ModConfig: React.FC = () => {
               </div>
 
               {/* Threshold Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
                 {Object.keys(thresholds).map((key) => (
                   <div key={key} className="space-y-2">
                     <label className="text-sm font-medium text-foreground">{key}</label>
@@ -151,15 +212,14 @@ export const ModConfig: React.FC = () => {
                 <motion.button
                   onClick={async () => {
                     await saveConfig();
-                    // Wait a tiny bit to let backend update
                     setTimeout(() => {
                         loadConfig();
-                    }, 300); // 300ms delay
+                    }, 300);
                   }}
 
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className="flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-libr-accent1 text-white shadow-md hover:bg-libr-accent1/80 transition disabled:opacity-50 disabled:pointer-events-none"
+                  className="flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-libr-accent1/20 libr-button hover:bg-muted/30 transition disabled:opacity-50 disabled:pointer-events-none"
                   disabled={isSaving}
                 >
                   <span>{isSaving ? 'Saving...' : 'Save'}</span>
@@ -169,6 +229,7 @@ export const ModConfig: React.FC = () => {
           </motion.div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

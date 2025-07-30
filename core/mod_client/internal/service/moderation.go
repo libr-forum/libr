@@ -22,7 +22,7 @@ var forbidden = LoadForbiddenWords()
 type ModelFunc func(content string) (bool, error)
 
 func init() {
-	const envPath = ".env"
+	envPath := GetModEnvPath()
 	_ = godotenv.Load(envPath)
 	ensureModConfigExists()
 }
@@ -42,6 +42,26 @@ func GetModConfigPath() string {
 		path = filepath.Join(home, ".config", "libr", "modconfig", "modconfig.json")
 	default:
 		path = filepath.Join("modconfig", "modconfig.json")
+	}
+
+	return path
+}
+
+func GetModEnvPath() string {
+	var path string
+
+	switch runtime.GOOS {
+	case "windows":
+		appData := os.Getenv("APPDATA")
+		path = filepath.Join(appData, "libr", "modconfig", ".env")
+	case "darwin":
+		home, _ := os.UserHomeDir()
+		path = filepath.Join(home, "Library", "Application Support", "libr", "modconfig", ".env")
+	case "linux":
+		home, _ := os.UserHomeDir()
+		path = filepath.Join(home, ".config", "libr", "modconfig", ".env")
+	default:
+		path = filepath.Join("modconfig", ".env")
 	}
 
 	return path

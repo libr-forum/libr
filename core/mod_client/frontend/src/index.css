@@ -115,7 +115,24 @@ body,
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+.scrollbar-none::-webkit-scrollbar-track {
+  background: transparent;
+}
 .scrollbar-none {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose-mirror-editor .ProseMirror {
+  height: 100%;
+}
+.prose-mirror-editor .ProseMirror p.is-empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af; /* text-gray-400 */
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

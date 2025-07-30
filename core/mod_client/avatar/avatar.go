@@ -3,9 +3,9 @@ package avatar
 import "fmt"
 
 const (
-	cellSize = 16
-	rows     = 16
-	cols     = 16
+	cellSize = 32
+	rows     = 8
+	cols     = 8
 	totalOps = 5
 )
 

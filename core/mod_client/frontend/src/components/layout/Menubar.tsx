@@ -1,0 +1,99 @@
+import React from 'react';
+import { BrowserOpenURL } from '../../../wailsjs/runtime';
+import { PencilLine,Globe, Database } from 'lucide-react';
+import {
+  GetOnlineMods,
+  GenerateAlias,
+  GenerateAvatar
+} from "../../../wailsjs/go/main/App";
+
+type ModDisplay = {
+  key: string;
+  alias: string;
+  avatarSvg: string;
+};
+
+export const Menubar: React.FC = () => {
+  const [mods, setMods] = React.useState<ModDisplay[]>([]);
+
+  React.useEffect(() => {
+    async function fetchMods() {
+      try {
+        const keys = await GetOnlineMods();
+        const resolved = await Promise.all(
+          keys.map(async (key) => {
+            const alias = await GenerateAlias(key);
+            const avatarSvg = await GenerateAvatar(key);
+            return { key, alias, avatarSvg };
+          })
+        );
+        setMods(resolved);
+      } catch (err) {
+        console.error("Failed to load online mods:", err);
+      }
+    }
+
+    fetchMods();
+  }, []);
+
+  return (
+    <div className="w-full p-2 bg-card shadow-md items-center rounded-3xl h-full flex flex-col z-50">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto flex flex-col w-full items-center">
+        <div className="text-left w-full mt-4 mb-4 pl-2 flex items-center">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Active Moderators
+          </h3>
+        </div>
+
+        <div className="flex flex-col gap-3 w-full pl-2 pb-4">
+          {mods.map(({ key, alias, avatarSvg }) => (
+            <div key={key} className="flex items-center justify-start space-x-3 py-1">
+              {avatarSvg && avatarSvg !== "unknown" ? (
+                <img
+                  src={`data:image/svg+xml;base64,${avatarSvg}`}
+                  alt="avatar"
+                  className="w-10 h-10 rounded-xl"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {alias.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <span className="text-sm font-medium text-foreground">{alias}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-3xl m-2 bg-card w-[92%]">
+        <button
+          onClick={() => BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9")}
+          className="flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2"
+        >
+          <PencilLine className="aspect-square h-[40%]" />
+          <span className="mt-0.5">Feedback</span>
+        </button>
+      </div>
+      <div className="rounded-3xl m-2 bg-card w-[92%]">
+        <button
+          onClick={() => BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9")}
+          className="flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2"
+        >
+          <Globe className="aspect-square h-[40%]" />
+          <span className="mt-0.5">Visit Website</span>
+        </button>
+      </div>
+      <div className="rounded-3xl m-2 bg-card w-[92%]">
+        <button
+          onClick={() => BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9")}
+          className="flex justify-start libr-button hover:bg-muted/50 w-[100%] items-center space-x-2"
+        >
+          <Database className="aspect-square h-[40%]" />
+          <span className="mt-0.5">Host a database</span>
+        </button>
+      </div>
+    </div>
+  );
+};

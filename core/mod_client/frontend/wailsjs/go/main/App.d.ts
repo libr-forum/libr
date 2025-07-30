@@ -6,11 +6,7 @@ export function Connect(arg1:Array<string>):Promise<void>;
 
 export function FetchAll():Promise<Array<string>>;
 
-export function FetchMessagesByDate(arg1:number):Promise<void>;
-
 export function FetchPubKey():Promise<string>;
-
-export function FetchTimestamp(arg1:string):Promise<Array<string>>;
 
 export function GenerateAlias(arg1:string):Promise<string>;
 
@@ -20,16 +16,20 @@ export function GetModConfig():Promise<models.ModConfig>;
 
 export function GetModerationLogs():Promise<Array<models.ModLogEntry>>;
 
+export function GetOnlineMods():Promise<Array<string>>;
+
 export function GetRelayStatus():Promise<string>;
 
 export function ModAuthentication(arg1:string):Promise<boolean>;
 
 export function RegenKeys():Promise<string>;
 
+export function Report(arg1:string,arg2:number,arg3:string,arg4:string):Promise<string>;
+
+export function SaveGoogleApiKey(arg1:string):Promise<void>;
+
 export function SaveModConfig(arg1:models.ModConfig):Promise<void>;
 
 export function SendInput(arg1:string):Promise<string>;
-
-export function StreamMessages():Promise<void>;
 
 export function TitleBarTheme(arg1:boolean):Promise<void>;

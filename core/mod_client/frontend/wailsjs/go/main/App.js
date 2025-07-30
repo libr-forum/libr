@@ -10,16 +10,8 @@ export function FetchAll() {
   return window['go']['main']['App']['FetchAll']();
 }
 
-export function FetchMessagesByDate(arg1) {
-  return window['go']['main']['App']['FetchMessagesByDate'](arg1);
-}
-
 export function FetchPubKey() {
   return window['go']['main']['App']['FetchPubKey']();
-}
-
-export function FetchTimestamp(arg1) {
-  return window['go']['main']['App']['FetchTimestamp'](arg1);
 }
 
 export function GenerateAlias(arg1) {
@@ -38,6 +30,10 @@ export function GetModerationLogs() {
   return window['go']['main']['App']['GetModerationLogs']();
 }
 
+export function GetOnlineMods() {
+  return window['go']['main']['App']['GetOnlineMods']();
+}
+
 export function GetRelayStatus() {
   return window['go']['main']['App']['GetRelayStatus']();
 }
@@ -50,16 +46,20 @@ export function RegenKeys() {
   return window['go']['main']['App']['RegenKeys']();
 }
 
+export function Report(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['Report'](arg1, arg2, arg3, arg4);
+}
+
+export function SaveGoogleApiKey(arg1) {
+  return window['go']['main']['App']['SaveGoogleApiKey'](arg1);
+}
+
 export function SaveModConfig(arg1) {
   return window['go']['main']['App']['SaveModConfig'](arg1);
 }
 
 export function SendInput(arg1) {
   return window['go']['main']['App']['SendInput'](arg1);
-}
-
-export function StreamMessages() {
-  return window['go']['main']['App']['StreamMessages']();
 }
 
 export function TitleBarTheme(arg1) {
