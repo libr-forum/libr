@@ -33,7 +33,7 @@ import { MsgReports } from './pages/MessageReports';
 
 const queryClient = new QueryClient();
 
-const csvURL = 'https://raw.githubusercontent.com/cherry-aggarwal/LIBR/refs/heads/integration/docs/network.csv';
+const baseURL = 'https://script.google.com/macros/s/AKfycbw5yRBiPoDTWsqMcQLhEeaxRnW2UJwscjuNNLKH5juziwAdwPrsvUh7Uzci-UhTSpOzKg/exec';
 
 interface RelayErrorDialogProps {
   open: boolean;
@@ -105,30 +105,31 @@ export function useRelayConnection() {
 
 async function fetchRelayAddrs(): Promise<string[]> {
   try {
-    const response = await fetch(csvURL);
-    if (!response.ok) throw new Error('Failed to fetch CSV');
-    
-    const text = await response.text();
-    const lines = text.trim().split('\n');
-    
-    if (lines.length < 2) throw new Error('CSV does not have enough rows');
+    const url = `${baseURL}?sheet=relay`; // Adjust baseURL as needed
+    console.log("▶ fetching from URL:", url);
 
-    const dataRows = lines
-    .slice(1)
-    .map(line =>
-      line
-        .split(',')[0]           // Get first column
-        .replace(/\r/g, '')      // Remove carriage returns
-        .trim()                  // Remove any leading/trailing spaces/newlines
-    );
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch relay data (HTTP ${response.status})`);
 
-    console.log(dataRows);
-    return dataRows;
+    const rows: any[][] = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("No data found in sheet");
+    }
+
+    const addrs = rows
+      .map(row => row[0])                // take first column
+      .filter(addr => typeof addr === 'string' && addr.trim() !== '') // ensure it's a valid string
+      .map(addr => addr.trim());         // trim spaces
+
+    console.log(addrs);
+    return addrs;
   } catch (error) {
-    console.error('Error loading relay addresses:', error);
+    console.error("Error loading relay addresses:", error);
     return [];
   }
 }
+
 
 // const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 //   return (
