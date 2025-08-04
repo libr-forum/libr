@@ -80,6 +80,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
 				}
+				fmt.Println(base)
 				switch base.Type {
 				case "found":
 					var val struct {
@@ -202,6 +203,7 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 				}
 			}
 		}()
+		fmt.Println(rawCerts)
 	}
 
 	wg.Wait()
@@ -226,5 +228,6 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
 	})
 	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
+	fmt.Println(filtered)
 	return filtered
 }

@@ -10,50 +10,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {emojify} from 'node-emoji';
-import { Report } from 'wailsjs/go/main/App';
-
+import { Delete, Report } from 'wailsjs/go/main/App';
+import { types } from 'wailsjs/go/models';
+import { parseFormatting } from '@/services/api';
 interface MessageBubbleProps {
   message: Message;
 }
-
-export function parseFormatting(text: string): string {
-  // Escape HTML to prevent injection
-  const escapeHTML = (str: string) =>
-    str.replace(/&/g, '&amp;')
-       .replace(/</g, '&lt;')
-       .replace(/>/g, '&gt;');
-
-  // Apply emoji replacements first
-  let formatted = emojify(text);
-
-  // Code blocks (```...```)
-  formatted = formatted.replace(/```([\s\S]*?)```/g, (_match, code) => {
-    return `<pre class="bg-muted rounded p-2 overflow-x-auto my-2 text-xs"><code>${escapeHTML(code)}</code></pre>`;
-  });
-
-  // Inline code (`...`)
-  formatted = formatted.replace(/`([^`\n]+?)`/g, (_match, code) => {
-    return `<code class="bg-muted px-1 rounded text-xs">${escapeHTML(code)}</code>`;
-  });
-
-  // Bold (**bold**)
-  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic (*italic*)
-  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-  // Underline (_underline_)
-  formatted = formatted.replace(/_(.+?)_/g, '<u>$1</u>');
-
-  // Strikethrough (~strike~)
-  formatted = formatted.replace(/~(.+?)~/g, '<s>$1</s>');
-
-  // Newlines to <br/>
-  formatted = formatted.replace(/\n/g, '<br/>');
-
-  return formatted;
-}
-
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const formatTime = (date: Date) => {
@@ -99,7 +61,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       className="flex w-full mb-4"
     >
       <div className="w-[99%]">
-        <div className="relative rounded-3xl px-4 py-3 border-b">
+        <div className="relative rounded-3xl px-4 py-3 bg-card shadow-md border-b">
           <div className="absolute top-3 right-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -115,7 +77,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               >
                 <DropdownMenuItem disabled className="flex items-center justify-between">
                   <span className="text-foreground">Time</span>
-                  <span>{formatTime(message.timestamp)}</span>
+                  <span>{message.timestamp.toString()}</span>
                 </DropdownMenuItem>
                 {status && (
                   <DropdownMenuItem disabled className="flex items-center justify-between">
@@ -127,20 +89,52 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 )}
                 {message.moderationNote && (
                   <div className="px-2 py-1 mt-2 bg-muted/20 text-foreground text-xs rounded">
-                    {message.moderationNote}
+                    {message.moderationNote.map((cert, index) => (
+                      <div key={index}>
+                        <p>{cert.public_key}</p>
+                        <p>{cert.status}</p>
+                        <p>{cert.sign}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {message.authorId === user.publicKey ? (
+                {message.authorPublicKey === user.publicKey ? (
                   <DropdownMenuItem
-                    onClick={() => console.log('Delete message:', message.id)}
+                    onClick={() =>{
+                      const msg:types.Msg={
+                        content:message.content,
+                        ts:Number(message.timestamp),
+                      }
+                      const msgcert=new types.MsgCert({
+                        public_key:message.authorPublicKey,
+                        msg:msg,
+                        mod_certs:message.moderationNote,
+                        sign:message.sign,
+                        
+                      });
+                      Delete(msgcert);
+                    }}
                     className="text-destructive cursor-pointer hover:bg-destructive/10"
                   >
                     Delete
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
-                    onClick={() => Report(message.content,Math.floor(message.timestamp.getTime() / 1000),'',message.authorId)}
+                    onClick={() =>{
+                      const msg:types.Msg={
+                        content:message.content,
+                        ts:Number(message.timestamp),
+                      }
+                      const msgcert=new types.MsgCert({
+                        public_key:message.authorPublicKey,
+                        msg:msg,
+                        mod_certs:message.moderationNote,
+                        sign:message.sign,
+                        
+                      });
+                      Report(msgcert,"report reason");
+                    }}
                     className="text-destructive cursor-pointer hover:bg-destructive/10"
                   >
                     Report

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Header, Hero, Features } from './components/LandingPageSections';
+import { Header, Hero, Features,WhatIsLIBR} from './components/LandingPageSections';
 import { HowItWorks, Community, Roadmap, Footer } from './components/LandingPageExtended';
 import { TechStackSection, SecuritySection, CallToActionSection } from './components/AdditionalSections';
-
+import ArchitectureAnimation from './components/ArchitectureAnimation';
+import NetworkFlowAnimation from './components/MultiPartAnimation';
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -119,9 +120,11 @@ const App: React.FC = () => {
       <main>
         <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
         <Hero />
+        <WhatIsLIBR/>
         <Features />
         <SecuritySection />
         <HowItWorks />
+        <ArchitectureAnimation />
         <TechStackSection />
         <Community />
         <Roadmap />

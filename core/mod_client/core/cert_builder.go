@@ -43,3 +43,17 @@ func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.
 	return msgCert
 
 }
+
+func CreateRepCert(msgcert types.MsgCert, modcertList []types.ModCert, mode string) types.ReportCert {
+	sort.SliceStable(modcertList, func(i, j int) bool {
+		return modcertList[i].PublicKey < modcertList[j].PublicKey
+	})
+
+	repCert := types.ReportCert{
+		Msgcert:     msgcert,
+		RepModCerts: modcertList,
+		Mode:        mode,
+	}
+
+	return repCert
+}

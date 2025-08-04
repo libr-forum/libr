@@ -1,6 +1,8 @@
 import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey } from "../../wailsjs/go/main/App"; 
 import axios from 'axios';
-import { Community, Message, User,ModLogEntry, useAppStore } from '../store/useAppStore';
+import { Community, Message, User, ModLogEntry, useAppStore } from '../store/useAppStore';
+import {types} from '../../wailsjs/go/models'
+import {emojify} from 'node-emoji';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -117,36 +119,6 @@ const mockCommunities: Community[] = [
   },
 ];
 
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    content: 'Has anyone tried implementing zero-knowledge proofs with the new Circom 2.0?',
-    authorId: 'user123',
-    authorAlias: 'CryptoExplorer',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    communityId: '1',
-    status: 'approved',
-  },
-  {
-    id: '2',
-    content: 'The latest paper on post-quantum cryptography is fascinating. Here\'s the link: https://eprint.iacr.org/...',
-    authorId: 'user456',
-    authorAlias: 'QuantumResearcher',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-    communityId: '1',
-    status: 'approved',
-  },
-  {
-    id: '3',
-    content: 'Looking for collaborators on a new privacy-preserving protocol. DM me if interested!',
-    authorId: 'user789',
-    authorAlias: 'PrivacyAdvocate',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    communityId: '1',
-    status: 'pending',
-  },
-];
-
 export const apiService = {
   // Auth
   async authenticate(publicKey: string): Promise<User> {
@@ -155,7 +127,6 @@ export const apiService = {
     const isMod=await ModAuthentication(publicKey)
     const role: 'member' | 'moderator' | 'admin' = isMod ? 'moderator' : 'member';
     return {
-      id: 'user123',
       publicKey,
       alias,
       role, 
@@ -178,34 +149,21 @@ export const apiService = {
   // Messages
     async getMessages(_communityId: string): Promise<Message[]> {
     try {
-      const response = await FetchAll(); // returns []string
-      // Convert each string into a Message object
-      return await Promise.all(response.map(async(line): Promise<Message> => {
-        // Expected format: "Sender: <sender> | Msg: <msg> | Time: <timestamp> | ModCerts: <modcerts>"
-        const senderMatch = line.match(/Sender: (.*?) \|/);
-        const msgMatch = line.match(/Msg: (.*?) \|/);
-        const timeMatch = line.match(/Time: (\d+)/);
-        const moderationNoteMatch=line.match(/ModCerts:(.*?)\|/);
-        const sender = senderMatch?.[1] || "unknown";
-        let avatar:string;
-        if (sender==="unknown"){
-          avatar=sender
-        }else{
-          avatar=await GenerateAvatar(sender)
+      const fetched = await FetchAll();
+      const response:Message[]=[];
+      for (const message of fetched){
+        const alias=await GenerateAlias(message.public_key);
+        const msg:Message={
+          content:message.msg.content,
+          authorAlias:alias,
+          authorPublicKey:message.public_key,
+          timestamp:BigInt(message.msg.ts),
+          communityId:"1",
+          status:"approved",
+          sign:message.sign,
         }
-        const alias=await GenerateAlias(sender)
-        return {
-          id: timeMatch?.[1] || Date.now().toString(),
-          content: msgMatch?.[1] || "",
-          authorId: senderMatch?.[1] || "unknown",
-          authorAlias: alias,
-          timestamp: new Date(parseInt(timeMatch?.[1] || "0") * 1000),
-          communityId: _communityId,
-          status: "approved",
-          avatarSvg:avatar,
-          moderationNote:moderationNoteMatch?.[1]||"",
-        };
-      }));
+      }
+      return response
     } catch (err) {
       console.error("Failed to fetch messages:", err);
       return [];
@@ -214,19 +172,28 @@ export const apiService = {
 
 
   async sendMessage(communityId: string, content: string): Promise<Message> {
+    let response: string | null = null;
+    let modcerts:types.ModCert[] | null = null;
     const result = await SendInput(content);
-
-    const approved = result.includes("Sent");
+    if (typeof result === 'string') {
+      response = result;
+    } else if (Array.isArray(result)) {
+      modcerts = result;
+    }
+    const approved = response.includes("Sent");
     const user=useAppStore.getState().user;
+    const signMatch = response.match(/Sign:\s*(\S+)/);
+    const tsMatch = response.match(/Time:\s*(\d+)/);
     const newMessage: Message = {
-      id: Date.now().toString(),
       content,
-      authorId: user.publicKey,
+      authorPublicKey: user.publicKey,
       authorAlias: user.alias,
-      timestamp: new Date(),
+      timestamp: BigInt(tsMatch[1]),
       communityId,
       status: approved ? 'approved' : 'rejected', // timeout = rejected
       avatarSvg:user.avatarSvg,
+      moderationNote:modcerts,
+      sign:signMatch[1],
     };
     return newMessage;
   },
@@ -255,3 +222,41 @@ export const apiService = {
     await SaveGoogleApiKey(key)
   }
 };
+
+export function parseFormatting(text: string): string {
+  // Escape HTML to prevent injection
+  const escapeHTML = (str: string) =>
+    str.replace(/&/g, '&amp;')
+       .replace(/</g, '&lt;')
+       .replace(/>/g, '&gt;');
+
+  // Apply emoji replacements first
+  let formatted = emojify(text);
+
+  // Code blocks (```...```)
+  formatted = formatted.replace(/```([\s\S]*?)```/g, (_match, code) => {
+    return `<pre class="bg-muted rounded p-2 overflow-x-auto my-2 text-xs"><code>${escapeHTML(code)}</code></pre>`;
+  });
+
+  // Inline code (`...`)
+  formatted = formatted.replace(/`([^`\n]+?)`/g, (_match, code) => {
+    return `<code class="bg-muted px-1 rounded text-xs">${escapeHTML(code)}</code>`;
+  });
+
+  // Bold (**bold**)
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic (*italic*)
+  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Underline (_underline_)
+  formatted = formatted.replace(/_(.+?)_/g, '<u>$1</u>');
+
+  // Strikethrough (~strike~)
+  formatted = formatted.replace(/~(.+?)~/g, '<s>$1</s>');
+
+  // Newlines to <br/>
+  formatted = formatted.replace(/\n/g, '<br/>');
+
+  return formatted;
+}

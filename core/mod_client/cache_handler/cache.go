@@ -3,10 +3,13 @@ package cache
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
 const cacheFileName = "alias_cache.json"
@@ -118,4 +121,47 @@ func AddToCache(key string, svg string, alias string) error {
 		Alias:     alias,
 	}
 	return saveCache()
+}
+
+// Func for pending moderation
+func SavePendingModeration(pending types.PendingModeration) error {
+	dir := "pending_mods"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create pending_mods dir: %w", err)
+	}
+
+	filePath := filepath.Join(dir, pending.MsgSign+".json")
+	data, err := json.MarshalIndent(pending, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal pending moderation: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write pending file: %w", err)
+	}
+
+	return nil
+}
+
+func LoadPendingModeration(msgSign string) (types.PendingModeration, error) {
+	filePath := filepath.Join("pending_mods", msgSign+".json")
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return types.PendingModeration{}, fmt.Errorf("failed to read pending file: %w", err)
+	}
+
+	var pending types.PendingModeration
+	if err := json.Unmarshal(data, &pending); err != nil {
+		return types.PendingModeration{}, fmt.Errorf("failed to unmarshal pending data: %w", err)
+	}
+
+	return pending, nil
+}
+
+func DeletePendingModeration(msgSign string) error {
+	filePath := filepath.Join("pending_mods", msgSign+".json")
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to delete pending moderation file: %w", err)
+	}
+	return nil
 }

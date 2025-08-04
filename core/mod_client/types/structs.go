@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type Msg struct {
 	Content string `json:"content"`
 	Ts      int64  `json:"ts"`
@@ -16,6 +18,7 @@ type MsgCert struct {
 	Msg       Msg       `json:"msg"`
 	ModCerts  []ModCert `json:"mod_certs"`
 	Sign      string    `json:"sign"`
+	Reason    string    `json:"reason,omitempty"`
 }
 
 type DataToSign struct {
@@ -47,7 +50,21 @@ type ReportMsg struct {
 	Msg       Msg    `json:"msg"`
 }
 
+type SubmitMsg struct {
+	Content string  `json:"content"`
+	Ts      int64   `json:"ts"`
+	Reason  *string `json:"reason,omitempty"`
+	Mode    string  `json:"mode"`
+	Sign    *string `json:"sign,omitempty"`
+}
+
 type ReportCert struct {
+	Msgcert     MsgCert   `json:"msgcert"`
+	RepModCerts []ModCert `json:"repmod_certs"`
+	Mode        string    `json:"mode"`
+}
+
+type DeleteCert struct {
 	PublicKey string    `json:"public_key"`
 	ReportMsg ReportMsg `json:"report_msg"`
 	ModCerts  []ModCert `json:"mod_certs"`
@@ -60,4 +77,13 @@ type RetMsgCert struct {
 	ModCerts  []ModCert `json:"mod_certs"`
 	Sign      string    `json:"sign"`
 	Deleted   string    `json:"deleted"`
+}
+
+type PendingModeration struct {
+	MsgSign      string    `json:"msg_sign"`      // cert.Sign
+	MsgCert      MsgCert   `json:"msg_cert"`      // full original cert
+	PartialCerts []ModCert `json:"partial_certs"` // modcerts already received
+	AwaitingMods []string  `json:"awaiting_mods"` // public keys of mods yet to respond
+	AckCount     int       `json:"ack_count"`
+	CreatedAt    time.Time `json:"created_at"` // timestamp for cron retry
 }

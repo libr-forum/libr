@@ -6,7 +6,7 @@ import { useSidebarStore } from '../../store/useSidebarStore';
 import { Shield, Cog, Hash, Plus, Settings, Moon, Sun, RefreshCcw , ChevronLeft, Eye, Menu, Wrench, User, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RegenKeys } from 'wailsjs/go/main/App';
-import logoSVG from '../assets/icon_transparent-01.svg';
+import logoSVG from '../assets/icon_transparent.svg';
 import { apiService } from '@/services/api';
 import {
   AlertDialog,

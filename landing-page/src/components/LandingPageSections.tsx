@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, MessageSquare, Zap, Moon, Sun } from 'lucide-react';
+import { Shield, Users, Globe, Lock, MessageSquare, Zap, Moon, Sun,Weight,LockIcon } from 'lucide-react';
 import logo_bg_noname from "../assets/logo_bg_noname.png"
 import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
 import icon_transparent from "../assets/icon_transparent.png"
@@ -33,10 +33,14 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         </motion.div>
         
         <div className="hidden md:flex items-center space-x-8">
+          <a href="#what-is-libr" className="text-foreground hover:text-libr-accent1 transition-colors">Product</a>
           <a href="#features" className="text-foreground hover:text-libr-accent1 transition-colors">Architecture</a>
           <a href="#how-it-works" className="text-foreground hover:text-libr-accent1 transition-colors">Protocol</a>
-          <a href="#community" className="text-foreground hover:text-libr-accent1 transition-colors">Research</a>
+          {/* <a href="#community" className="text-foreground hover:text-libr-accent1 transition-colors">Research</a> */}
           <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Roadmap</a>
+          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Docs</a>
+          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">GitHub</a>
+          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Join Beta</a>
         </div>
         
         <div className="flex items-center gap-4">
@@ -67,14 +71,14 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             </motion.button>
           )}
           
-          <motion.button 
+          {/* <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="libr-button-primary"
             onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')}
           >
             View Docs
-          </motion.button>
+          </motion.button> */}
         </div>
       </nav>
     </motion.header>
@@ -83,7 +87,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
 
 const Hero: React.FC = () => {
   return (
-    <section className="hero-gradient min-h-screen flex items-center section-padding pt-20">
+    <section className="hero-gradient min-h-screen flex items-center section-padding pt-20 pb-20">
       <div className="container mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
@@ -200,6 +204,89 @@ const Hero: React.FC = () => {
   );
 };
 
+const WhatIsLIBR: React.FC = () => {
+  return (
+    <section id="what-is-libr" className="flex items-center pt-20 pb-20">
+      <div className="container mx-auto">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <motion.div
+            initial={{ x: -100, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className=''
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
+              What is libr?
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8">
+              Tired of platforms that quietly delete your posts?<br/>
+              Or rules that change depending on who’s watching?<br/>
+              libr is a new kind of social platform.<br/>
+              Built on transparency, community, and proof.
+            </p>
+            
+            <p className='text-md mb-8'>
+              libr is a <b>censorship-resistant forum protocol</b> where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
+            </p>
+            
+            <div className='flex flex-col gap-4'>
+              <div className='flex flew-row gap-2'>
+                🛡️ No Silent Bans
+              </div>
+              <div className='flex flew-row gap-2'>
+                ⚖️ Quorum-based Moderation
+              </div>
+              <div className='flex flew-row gap-2'>
+                🔐 Proof of every vote
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div
+            initial={{ x: 100, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="space-y-6"
+          >
+            <div className="testimonial-card">
+              <p className="text-muted-foreground mb-4">
+                "The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
+                This research addresses real challenges in decentralized systems."
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center text-white font-semibold">
+                  A
+                </div>
+                <div>
+                  <p className="font-semibold">Dr. Alice Research</p>
+                  <p className="text-sm text-muted-foreground">Distributed Systems</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="testimonial-card">
+              <p className="text-muted-foreground mb-4">
+                "Impressive protocol design. The modular Go implementation makes it easy to understand and extend."
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-10 h-10 bg-libr-accent2 rounded-full flex items-center justify-center text-white font-semibold">
+                  S
+                </div>
+                <div>
+                  <p className="font-semibold">Sam Developer</p>
+                  <p className="text-sm text-muted-foreground">Open Source Contributor</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Features: React.FC = () => {
   const features = [
     {
@@ -276,4 +363,4 @@ const Features: React.FC = () => {
   );
 };
 
-export { Header, Hero, Features };
+export { Header, Hero, Features,WhatIsLIBR };

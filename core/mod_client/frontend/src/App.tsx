@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import logotransparent from "./components/assets/logo_transparent_noname-01.png";
 
 import { useAppStore } from './store/useAppStore';
 import { apiService } from './services/api';
@@ -172,32 +173,32 @@ const App: React.FC = () => {
       try {
         console.log("🔄 Fetching relay addresses...");
         //const relayAddrs = await fetchRelayAddrs();
-        //const relayAddrs = ["/dns4/0.tcp.in.ngrok.io/tcp/10096/p2p/12D3KooWKCZB2WyjgdFoarh2k2oPMHHQmZJM1bns77cNb3dEabHN"]
-        // let connected = false;
-        // for (let i = 0; i < 10; i++) {
-        //   const status = await GetRelayStatus();
-        //   if (status === "online") {
-        //     connected = true;
-        //     break;
-        //   }
+        const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWG9JXRbHZXPG3B4JrvGpZHDAGAzXgVU7mecGb5u5LkQVd"]
+        let connected = false;
+        for (let i = 0; i < 10; i++) {
+          const status = await GetRelayStatus();
+          if (status === "online") {
+            connected = true;
+            break;
+          }
 
-        // const error = await Connect(relayAddrs);
-        //   const recheck = await GetRelayStatus();
-        //   if (recheck === "online") {
-        //     connected = true;
-        //     break;
-        //   }
+        const error = await Connect(relayAddrs);
+          const recheck = await GetRelayStatus();
+          if (recheck === "online") {
+            connected = true;
+            break;
+          }
 
-        //   await new Promise(res => setTimeout(res, 1000));
-        // }
+          await new Promise(res => setTimeout(res, 1000));
+        }
 
-        // if (!connected) {
-        //   console.error("❌ Could not connect to relay.");
-        //   setRelayFailed(true);
-        //   return;
-        // }
+        if (!connected) {
+          console.error("❌ Could not connect to relay.");
+          setRelayFailed(true);
+          return;
+        }
 
-        // console.log("✅ Relay connected. Authenticating...");
+        console.log("✅ Relay connected. Authenticating...");
         
         const publicKey = await FetchPubKey();
         const user = await apiService.authenticate(publicKey);
@@ -230,7 +231,7 @@ const App: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="text-center"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-libr-accent1 to-libr-accent2 rounded-2xl flex items-center justify-center mx-auto mb-6 libr-glow">
+            <div className="w-40 h-40 rounded-2xl flex items-center justify-center mx-auto mb-2 libr-glow bg-cover bg-center" style={{ backgroundImage: `url(${logotransparent})` }}>
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}

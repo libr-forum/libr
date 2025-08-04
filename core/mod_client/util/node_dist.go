@@ -2,9 +2,9 @@ package util
 
 import (
 	"crypto/sha1"
-	"encoding/csv"
+	"encoding/json"
 	"fmt"
-	"log"
+	"io"
 	"math/big"
 	"net/http"
 
@@ -33,56 +33,47 @@ func GenerateNodeID(input string) [20]byte {
 }
 
 func GetStartNodes() ([]*types.Node, error) {
-	csvurl := "https://raw.githubusercontent.com/cherry-aggarwal/LIBR/refs/heads/integration/docs/db_addresses.csv"
-	nodes, err := getValidDBs(csvurl)
+	rows, err := fetchRawData("db")
 	if err != nil {
 		return nil, err
 	}
-	return nodes, nil
+	var nodeList []*types.Node
+	for _, r := range rows {
+		if len(r) >= 2 {
+			ip := fmt.Sprint(r[0])
+			port := fmt.Sprint(r[1])
+			addr := fmt.Sprintf("%s:%s", ip, port)
+
+			nodeList = append(nodeList, &types.Node{
+				NodeId: GenerateNodeID(addr),
+				IP:     ip,
+				Port:   port,
+			})
+		}
+	}
+
+	return nodeList, nil
 }
 
-func getValidDBs(csvURL string) ([]*types.Node, error) {
-	resp, err := http.Get(csvURL)
+func fetchRawData(sheet string) ([][]interface{}, error) {
+	url := fmt.Sprintf("%s?sheet=%s", "https://script.google.com/macros/s/AKfycbw5yRBiPoDTWsqMcQLhEeaxRnW2UJwscjuNNLKH5juziwAdwPrsvUh7Uzci-UhTSpOzKg/exec", sheet)
+	fmt.Println("▶ fetching sheet:", sheet, "from URL:", url)
+
+	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch CSV: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	reader := csv.NewReader(resp.Body)
+	bodyBytes, _ := io.ReadAll(resp.Body)
 
-	// Skip header
-	if _, err := reader.Read(); err != nil {
-		return nil, fmt.Errorf("failed to read header: %w", err)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var nodes []*types.Node
-
-	for {
-		row, err := reader.Read()
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			log.Printf("skipping bad row: %v", err)
-			continue
-		}
-
-		if len(row) < 2 {
-			log.Printf("skipping row with too few columns: %v", row)
-			continue
-		}
-
-		node := &types.Node{
-			NodeId: GenerateNodeID(row[0] + row[1]),
-			IP:     row[0],
-			Port:   row[1],
-		}
-		nodes = append(nodes, node)
+	var rows [][]interface{}
+	if err := json.Unmarshal(bodyBytes, &rows); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
-
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no valid address found")
-	}
-
-	return nodes, nil
+	return rows, nil
 }

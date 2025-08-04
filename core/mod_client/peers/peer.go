@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
+	"os"
 	"sort"
 
 	"context"
@@ -12,6 +13,8 @@ import (
 	"fmt"
 
 	//"io"
+	"crypto/tls"
+	"crypto/x509"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +28,11 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
+
+	//webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pion/stun"
 )
@@ -48,6 +56,14 @@ type reqFormat struct {
 }
 
 func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
+	caCertPEM, err := os.ReadFile("C:\\Users\\kushagra\\Downloads\\isrgrootx1.pem")
+	if err != nil {
+		// handle error
+	}
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCertPEM) {
+		// handle error: failed to parse CA certificate
+	}
 
 	var relayList []string
 	for _, multiaddr := range relayMultiAddrList {
@@ -77,16 +93,19 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	})
 
 	relayIDused := distmap[0].relayID
-	relayIDused = relayIDused[:len(relayIDused)-1]
-
+	fmt.Println("Relay ID used: ", relayIDused)
 	var relayAddr string
 
 	for _, multiaddr := range relayMultiAddrList {
 		parts := strings.Split(multiaddr, "/")
-		for i := 0; i < len(parts); i++ {
-			parts[i] = strings.TrimSuffix(parts[i], "\"")
-
+		if parts[len(parts)-1] == relayIDused {
+			relayAddr = multiaddr
+			break
 		}
+	}
+
+	for _, multiaddr := range relayMultiAddrList {
+		parts := strings.Split(multiaddr, "/")
 		if parts[len(parts)-1] == relayIDused {
 			relayAddr = multiaddr
 			break
@@ -94,7 +113,6 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	}
 
 	fmt.Println("[DEBUG] Parsing relay address:", relayAddr)
-	relayAddr = relayAddr[1 : len(relayAddr)-1]
 	relayMA, err := multiaddr.NewMultiaddr(relayAddr)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to parse relay multiaddr:", err)
@@ -114,13 +132,25 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		return nil, err
 	}
 
+	tlsConfig := &tls.Config{
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: true,
+		// Other TLS configurations like ClientAuth, InsecureSkipVerify, etc.
+	}
+
+	// tls.Config = *tlsConfig;
+
 	fmt.Println("[DEBUG] Creating libp2p Host")
 	h, err := libp2p.New(
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"), // WebSocket
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.ConnectionManager(connMgr),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelay(),
-		//libp2p.EnableHolePunching(),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(websocket.New, websocket.WithTLSConfig(tlsConfig)),
+		// libp2p.Transport(websocket.NewWithTLSConfig(tlsConfig)),
+		// libp2p.Transport(websocket.New),
 	)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create Host:", err)
@@ -341,7 +371,7 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 
 	if err != nil {
 		fmt.Println("[DEBUG]Error getting the acknowledgement")
-		return nil, err
+		//return nil, err
 	}
 	_ = ack //can be used if required
 

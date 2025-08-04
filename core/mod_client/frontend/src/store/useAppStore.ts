@@ -2,9 +2,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TitleBarTheme } from 'wailsjs/go/main/App';
+import { types } from 'wailsjs/go/models';
 
 export interface User {
-  id: string;
   publicKey: string;
   alias: string;
   role: 'member' | 'moderator' | 'admin';
@@ -22,15 +22,15 @@ export interface Community {
 }
 
 export interface Message {
-  id: string;
   content: string;
-  authorId: string;
+  authorPublicKey: string;
   authorAlias: string;
-  timestamp: Date;
+  timestamp: bigint;
   communityId: string;
   status: 'pending' | 'approved' | 'rejected';
-  moderationNote?: string;
+  moderationNote?: types.ModCert[];
   avatarSvg?:string;
+  sign:string;
 }
 
 export interface ModLogEntry {

@@ -6,6 +6,10 @@ export function Connect(arg1) {
   return window['go']['main']['App']['Connect'](arg1);
 }
 
+export function Delete(arg1) {
+  return window['go']['main']['App']['Delete'](arg1);
+}
+
 export function FetchAll() {
   return window['go']['main']['App']['FetchAll']();
 }
@@ -46,8 +50,8 @@ export function RegenKeys() {
   return window['go']['main']['App']['RegenKeys']();
 }
 
-export function Report(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['Report'](arg1, arg2, arg3, arg4);
+export function Report(arg1, arg2) {
+  return window['go']['main']['App']['Report'](arg1, arg2);
 }
 
 export function SaveGoogleApiKey(arg1) {

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -36,6 +37,7 @@ func NewApp() *App {
 	cache.InitCacheFile()
 	keycache.InitKeys()
 	config.LoadConfig()
+	config.InitDB()
 	return &App{relayStatus: "offline"}
 }
 
@@ -146,9 +148,9 @@ func (a *App) TitleBarTheme(isDark bool) {
 	}
 }
 
-func (a *App) SendInput(input string) string {
+func (a *App) SendInput(input string) (string, []types.ModCert) {
 	if a.relayStatus != "online" {
-		return "Offline"
+		return "Offline", nil
 	}
 
 	ts := time.Now().Unix()
@@ -160,7 +162,7 @@ func (a *App) SendInput(input string) string {
 	modChan := make(chan []types.ModCert, 1)
 
 	go func() {
-		modcerts := core.SendToMods(input, ts, "", "")
+		modcerts := core.AutoSendToMods(input, ts)
 		modChan <- modcerts
 	}()
 
@@ -168,11 +170,11 @@ func (a *App) SendInput(input string) string {
 	select {
 	case modcertlist = <-modChan:
 	case <-ctx.Done():
-		return ":x: Moderator timeout"
+		return ":x: Moderator timeout", nil
 	}
 
 	if len(modcertlist) == 0 {
-		return ":x: Message rejected by moderators."
+		return ":x: Message rejected by moderators.", nil
 	}
 
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
@@ -180,10 +182,10 @@ func (a *App) SendInput(input string) string {
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	core.SendToDb(key, msgCert, "/route=store")
 
-	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", msgCert.Msg.Ts)
+	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d Sign: %s", msgCert.Msg.Ts, msgCert.Sign), modcertlist
 }
 
-func (a *App) Report(message string, ts int64, reason string, originalsender string) string {
+func (a *App) Report(msgcert types.MsgCert, reason *string) string {
 	if a.relayStatus != "online" {
 		return "Offline"
 	}
@@ -191,11 +193,10 @@ func (a *App) Report(message string, ts int64, reason string, originalsender str
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
-	// Run SendToMods with timeout
 	modChan := make(chan []types.ModCert, 1)
-
+	mods, _ := util.GetOnlineMods()
 	go func() {
-		modcerts := core.SendToMods(message, ts, reason, "manual")
+		modcerts := core.ManualSendToMods(msgcert, mods, *reason)
 		modChan <- modcerts
 	}()
 
@@ -210,21 +211,35 @@ func (a *App) Report(message string, ts int64, reason string, originalsender str
 		return ":x: Message rejected by moderators."
 	}
 
-	repCert := core.CreateRepCert(originalsender, message, ts, modcertlist)
-	tsmin := repCert.ReportMsg.Msg.Ts - (repCert.ReportMsg.Msg.Ts % 60)
+	return fmt.Sprintf(":white_check_mark: Sent to Mods for approval. Time: %d", time.Now().Unix())
+}
+
+func (a *App) Delete(msgcert types.MsgCert) string {
+	if a.relayStatus != "online" {
+		return "Offline"
+	}
+	payload := msgcert.Sign
+	pubkey, sign, err := cryptoutils.SignMessage(keycache.PrivKey, payload)
+	if err != nil {
+		log.Println("Error signing delete cert: ", err)
+	}
+	delcert := []types.ModCert{{
+		Sign:      sign,
+		PublicKey: string(pubkey),
+		Status:    "",
+	},
+	}
+	repCert := core.CreateRepCert(msgcert, delcert, "delete")
+	tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	core.SendToDb(key, repCert, "/route=delete")
 
-	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", repCert.ReportMsg.Msg.Ts)
+	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", time.Now().Unix())
 }
 
-func (a *App) FetchAll() []string {
+func (a *App) FetchAll() []types.RetMsgCert {
 	messages := core.FetchRecent(context.Background())
-	var out []string
-	for _, cert := range messages {
-		out = append(out, fmt.Sprintf("Sender: %s | Msg: %s | Time: %d | ModCerts: %s", cert.PublicKey, cert.Msg.Content, cert.Msg.Ts, cert.ModCerts))
-	}
-	return out
+	return messages
 }
 
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {

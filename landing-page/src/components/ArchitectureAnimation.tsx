@@ -1,0 +1,311 @@
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Mail, Package, ShieldCheck,Monitor,Database } from 'lucide-react';
+import BackgroundSVG from '../assets/Central-01.svg?react';
+import WorkingBGDark from '../assets/HowItWorks.png';
+import WorkingBGLight from '../assets/HowItWorksLight.png'
+
+gsap.registerPlugin(MotionPathPlugin, ScrollTrigger);
+
+export default function ArchitectureAnimation() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  useEffect(() => {
+    // Detect theme from <html class="dark">
+    const isDark = document.documentElement.classList.contains('dark');
+    setIsDarkMode(isDark);
+
+    const observer = new MutationObserver(() => {
+      const updatedIsDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(updatedIsDark);
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const path1Ref = useRef<SVGPathElement>(null);
+  const path2Ref = useRef<SVGPathElement>(null);
+  const path3Ref = useRef<SVGPathElement>(null);
+  const path4Ref = useRef<SVGPathElement>(null);
+  const path5Ref = useRef<SVGPathElement>(null);
+  const path6Ref = useRef<SVGPathElement>(null);
+  const path7Ref = useRef<SVGPathElement>(null);
+  const path8Ref = useRef<SVGPathElement>(null);
+  const path9Ref = useRef<SVGPathElement>(null);
+  const path10Ref = useRef<SVGPathElement>(null);
+
+  const mail1Ref = useRef(null);
+  const mail2Ref = useRef(null);
+  const mail3Ref = useRef(null);
+
+  const mail4Ref = useRef(null);
+  const mail5Ref = useRef(null);
+  const mail6Ref = useRef(null);
+
+  const packet1Ref = useRef(null);
+  const packet2Ref = useRef(null);
+  const packet3Ref = useRef(null);
+  const packet4Ref = useRef(null);
+
+  const pathRefs = useRef<SVGPathElement[]>([]);
+  const pathD = [
+    "M761 558 Q838 380 903 548",
+    "M761 558 Q723 430 658 465",
+    "M761 558 Q813 480 846 640",
+    "M903 548 Q838 380 761 558",
+    "M658 465 Q723 430 761 558",
+    "M846 640 Q813 480 761 558",
+    "M761 558 Q813 480 835 502",
+    "M761 558 Q830 520 792 687",
+    "M761 558 Q700 510 666 627",
+    "M761 558 Q770 470 753 455",
+  ];
+
+  const circleRefs = useRef<SVGCircleElement[]>([]);
+  const circlePositions = [
+    { cx: 761, cy: 558 },
+    { cx: 846, cy: 640 },
+    { cx: 658, cy: 465 },
+    { cx: 903, cy: 548 },
+    { cx: 866, cy: 426 },
+    { cx: 621, cy: 534 },
+    { cx: 835, cy: 502 },
+    { cx: 792, cy: 687 },
+    { cx: 666, cy: 627 },
+    { cx: 753, cy: 455 },
+  ];
+
+  useEffect(() => {
+    const stroke = isDarkMode ? '#fdfcf7' : '#304a78';
+    pathRefs.current.forEach((p) => {
+      if (p) p.setAttribute('stroke', stroke);
+    });
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    const fill = isDarkMode ? '#fdfcf7' : '#304a78';
+    circleRefs.current.forEach(circle => {
+      if (circle) circle.setAttribute('fill', fill);
+    });
+  }, [isDarkMode]);
+
+  
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      if (
+        !path1Ref.current || !path2Ref.current || !path3Ref.current ||
+        !path4Ref.current || !path5Ref.current || !path6Ref.current || !path7Ref.current || !path8Ref.current || !path9Ref.current || !path10Ref.current
+      ) return;
+
+      gsap.set(
+        [
+          mail1Ref.current, mail2Ref.current, mail3Ref.current,mail4Ref.current,mail5Ref.current,mail6Ref.current,
+          packet1Ref.current, packet2Ref.current, packet3Ref.current, packet4Ref.current
+        ],
+        { xPercent: -50, yPercent: -50 }
+      );
+
+      const masterTimeline = gsap.timeline({ repeat: -1 });
+
+      // Mail timeline
+      const mailTimeline = gsap.timeline({
+        defaults: { duration: 1.5, ease: 'linear' },
+      });
+
+      mailTimeline.to(mail1Ref.current, {
+        motionPath: {
+          path: path1Ref.current,
+          align: path1Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(mail2Ref.current, {
+        motionPath: {
+          path: path2Ref.current,
+          align: path2Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(mail3Ref.current, {
+        motionPath: {
+          path: path3Ref.current,
+          align: path3Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0);
+
+      // Return timeline
+      const returnTimeline = gsap.timeline({
+        defaults: { duration: 2, ease: 'linear' },
+      });
+
+      returnTimeline.to(mail4Ref.current, {
+        motionPath: {
+          path: path4Ref.current,
+          align: path4Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(mail5Ref.current, {
+        motionPath: {
+          path: path5Ref.current,
+          align: path5Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0.4).to(mail6Ref.current, {
+        motionPath: {
+          path: path6Ref.current,
+          align: path6Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0.5);
+
+      // Packet timeline
+      const packetTimeline = gsap.timeline({
+        defaults: { duration: 1.5, ease: 'linear' }
+      });
+
+      packetTimeline.to(packet1Ref.current, {
+        motionPath: {
+          path: path7Ref.current,
+          align: path7Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(packet2Ref.current, {
+        motionPath: {
+          path: path8Ref.current,
+          align: path8Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(packet3Ref.current, {
+        motionPath: {
+          path: path9Ref.current,
+          align: path9Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0).to(packet4Ref.current, {
+        motionPath: {
+          path: path10Ref.current,
+          align: path10Ref.current,
+          alignOrigin: [0.5, 0.5],
+        }
+      }, 0);
+
+      const resetPositions = () => {
+        gsap.set([
+          mail1Ref.current, mail2Ref.current, mail3Ref.current,mail4Ref.current,mail5Ref.current,mail6Ref.current,
+          packet1Ref.current, packet2Ref.current, packet3Ref.current, packet4Ref.current
+        ], { clearProps: 'all', xPercent: -50, yPercent: -50 });
+      };
+
+      masterTimeline
+        .add(() => resetPositions(), 0)
+        .add(mailTimeline,"+=2")
+        .add(returnTimeline,"+=0.5")
+        .add(packetTimeline,"+=0.5");
+
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative h-screen w-full flex items-center justify-center overflow-hidden"
+    >
+      {/* Background */}
+      <div
+        className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center opacity-50 z-0 p-28"
+        style={{backgroundImage: `url(${isDarkMode ? WorkingBGDark : WorkingBGLight})`,}}
+      >
+      </div>
+
+      <div
+        className="relative origin-center"
+        style={{
+          transform: 'scale(2)',
+          transformOrigin: 'center',
+        }}
+      >
+      {/* Foreground Animation */}
+      <svg
+        width="1536"
+        height="1024"
+        viewBox="0 0 1536 1024"
+        className="rounded shadow-xl z-10"
+      >
+        
+        {/* Paths */}
+        <path ref={path1Ref} d="M761 558 Q838 380 903 548" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path2Ref} d="M761 558 Q723 430 658 465" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path3Ref} d="M761 558 Q813 480 846 640" stroke="black" strokeWidth="0.5" fill="none" />
+
+        <path ref={path4Ref} d="M903 548 Q838 380 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path5Ref} d="M658 465 Q723 430 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path6Ref} d="M846 640 Q813 480 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+
+        <path ref={path7Ref} d="M761 558 Q813 480 835 502" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path8Ref} d="M761 558 Q830 520 792 687" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path9Ref} d="M761 558 Q700 510 666 627" stroke="black" strokeWidth="0.5" fill="none" />
+        <path ref={path10Ref} d="M761 558 Q770 470 753 455" stroke="black" strokeWidth="0.5" fill="none" />
+        
+        {pathD.map((d, i) => (
+          <path
+            key={i}
+            ref={(el) => (pathRefs.current[i] = el!)}
+            d={d}
+            strokeWidth="0.5"
+            fill="none"
+            style={{ transition: 'stroke 0.3s ease-in-out' }}
+          />
+          ))}
+
+
+        {/* Mails */}
+        <Mail ref={mail1Ref} className="text-libr-secondary" />
+        <Mail ref={mail2Ref} className="text-libr-secondary" />
+        <Mail ref={mail3Ref} className="text-libr-secondary" />
+
+        <Mail ref={mail4Ref} className="text-green-500" />
+        <Mail ref={mail5Ref} className="text-green-500" />
+        <Mail ref={mail6Ref} className="text-red-500" />
+
+
+        {/* Packets */}
+        <Package ref={packet1Ref} className="text-libr-secondary" />
+        <Package ref={packet2Ref} className="text-libr-secondary" />
+        <Package ref={packet3Ref} className="text-libr-secondary" />
+        <Package ref={packet4Ref} className="text-libr-secondary" />
+
+        {/* Optional Static Circles */}
+        {circlePositions.map((pos, i) => (
+          <circle
+            key={i}
+            ref={(el) => (circleRefs.current[i] = el!)}
+            cx={pos.cx}
+            cy={pos.cy}
+            r="20"
+            opacity={1}
+            style={{ transition: 'fill 0.3s ease-in-out' }}
+          />
+        ))}
+
+      </svg>
+      <Monitor style={{ left: 761, top: 558 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <ShieldCheck style={{ left: 846, top: 640 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <ShieldCheck style={{ left: 658, top: 465 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <ShieldCheck style={{ left: 903, top: 548 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Monitor style={{ left: 866, top: 426 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Monitor style={{ left: 621, top: 534 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Database style={{ left: 835, top: 502 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Database style={{ left: 792, top: 687 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Database style={{ left: 666, top: 627 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+      <Database style={{ left: 753, top: 455 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+
+      </div>
+    </section>
+  );
+}

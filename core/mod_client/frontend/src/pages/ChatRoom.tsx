@@ -118,7 +118,7 @@ export const ChatRoom: React.FC = () => {
           {/* Messages Area */}
           <div className="flex-1 min-h-0 h-screen flex flex-col relative">
             {/* Toolbar */}
-            <div className=" h-[8%] rounded-2xl pt-4 pl-0 flex items-center justify-between">
+            <div className=" h-[8%] rounded-2xl pt-4 pl-0 max-w-[920px] flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* <button
                   onClick={() => setSortByNewest(!sortByNewest)}
@@ -180,10 +180,38 @@ export const ChatRoom: React.FC = () => {
                   </motion.div>
                 )}
               </div> */}
+              <div className="flex w-12">
+                <button
+                  onClick={() => setInputOpen(true)}
+                  className="space-x-2 text-sm libr-button bg-libr-accent1/20 hover:bg-muted rounded-2xl flex items-center justify-center"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className='mt-0.5'>Create</span>
+                </button>
+              </div>
+              {/* Message Input Dialog */}
+              <AlertDialog.Root open={inputOpen} onOpenChange={setInputOpen}>
+                <AnimatePresence>
+                  {inputOpen && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40 bg-black/50"
+                    />
+                  )}
+                </AnimatePresence>
+
+                <AlertDialog.Portal>
+                  <AlertDialog.Content className="fixed inset-0 z-50 translate-y-[4%] flex items-center justify-center">
+                    <MessageInput ref={messageInputRef} onClose={() => setInputOpen(false)} />
+                  </AlertDialog.Content>
+                </AlertDialog.Portal>
+              </AlertDialog.Root>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[76%]" ref={messagesContainerRef}>
+            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[76%] max-w-[975x]" ref={messagesContainerRef}>
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <motion.div
@@ -225,37 +253,11 @@ export const ChatRoom: React.FC = () => {
                 ))
               )}
               <div ref={messagesEndRef} />
-              <div className="fixed right-[16.5%] bottom-[1.5%] flex w-16 justify-start">
-                <button
-                  onClick={() => setInputOpen(true)}
-                  className="w-12 h-12 libr-button bg-libr-accent1/20 hover:bg-muted rounded-xl flex items-center justify-center"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
             </div>
 
             
 
-            {/* Message Input Dialog */}
-            <AlertDialog.Root open={inputOpen} onOpenChange={setInputOpen}>
-              <AnimatePresence>
-                {inputOpen && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-40 bg-black/50"
-                  />
-                )}
-              </AnimatePresence>
-
-              <AlertDialog.Portal>
-                <AlertDialog.Content className="fixed inset-0 z-50 translate-y-[4%] flex items-center justify-center">
-                  <MessageInput ref={messageInputRef} onClose={() => setInputOpen(false)} />
-                </AlertDialog.Content>
-              </AlertDialog.Portal>
-            </AlertDialog.Root>
+            
           </div>
           <div className='flex justify-center p-4 h-full w-[22%]'>
             <Menubar/>
