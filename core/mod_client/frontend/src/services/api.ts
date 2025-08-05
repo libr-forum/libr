@@ -1,4 +1,4 @@
-import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey } from "../../wailsjs/go/main/App"; 
+import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey,ManualModerate,FetchMessageReports } from "../../wailsjs/go/main/App"; 
 import axios from 'axios';
 import { Community, Message, User, ModLogEntry, useAppStore,ReportedMessage } from '../store/useAppStore';
 import {types} from '../../wailsjs/go/models'
@@ -173,9 +173,30 @@ export const apiService = {
 
   async getMessageReports(_communityId: string): Promise<ReportedMessage[]> {
     try {
-    }catch (err) {
+      const reports = await FetchMessageReports();
+      return reports.map((msg: any) => ({
+        content: msg.content,
+        authorPublicKey: msg.authorPublicKey,
+        authorAlias: msg.authorAlias,
+        timestamp: BigInt(msg.timestamp),
+        communityId: msg.communityId,
+        status: msg.status,
+        moderationNote: msg.moderationNote, 
+        avatarSvg: msg.avatarSvg,
+        sign: msg.sign,
+        note: msg.note
+      }));
+    } catch (err) {
       console.error("Failed to fetch messages:", err);
       return [];
+    }
+  },
+  
+  async manualModerate(sign:string, moderated: number): Promise<void> {
+    try {
+      await ManualModerate(sign, moderated);
+    }catch (err) {
+      console.error("Failed to fetch messages:", err);
     }
   },
 

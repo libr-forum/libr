@@ -23,7 +23,7 @@ const HowItWorks: React.FC = () => {
   ];
 
   return (
-    <section id="how-it-works" className="py-20 section-padding bg-muted/30">
+    <section id="how-it-works" className="py-20 section-padding">
       <div className="container mx-auto">
         <motion.div 
           className="text-center mb-16"
@@ -67,8 +67,8 @@ const HowItWorks: React.FC = () => {
 const Community: React.FC = () => {
   const stats = [
     { number: "Open Source", label: "MIT Licensed" },
-    { number: "Go + Docker", label: "Technology Stack" },
-    { number: "Research", label: "Academic Project" },
+    { number: "Go + SQLite", label: "Technology Stack" },
+    // { number: "Research", label: "Academic Project" },
     { number: "2025", label: "Development Year" }
   ];
 
@@ -83,14 +83,14 @@ const Community: React.FC = () => {
             viewport={{ once: true }}
           >
             <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
-              Open Source Research
+              Open Source
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
-              LIBR is an academic research project exploring novel approaches to decentralized 
-              forum design. Contribute to the future of censorship-resistant communication platforms.
+              libr is an academic research project exploring novel approaches to decentralized 
+              forum design. Contribute to the future of censorship-resistant yet moderated communication platforms.
             </p>
             
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="flex flex-row gap-6 mb-8">
               {stats.map((stat, index) => (
                 <motion.div
                   key={stat.label}
@@ -118,7 +118,7 @@ const Community: React.FC = () => {
             </div>
           </motion.div>
           
-          <motion.div
+          {/* <motion.div
             initial={{ x: 100, opacity: 0 }}
             whileInView={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.8 }}
@@ -155,7 +155,7 @@ const Community: React.FC = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
     </section>
@@ -285,7 +285,7 @@ const Footer: React.FC = () => {
               <span className="text-2xl font-bold text-foreground">LIBR</span>
             </div>
             <p className="text-muted-foreground mb-4">
-              Censorship-resistant forum framework for free expression.
+              Censorship-resistant yet moderated forum framework for free expression.
             </p>
             <div className="flex gap-4">
               <Linkedin onClick={() => window.open('https://www.linkedin.com/company/libr-social/', '_blank')}className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />

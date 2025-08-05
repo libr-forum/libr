@@ -14,6 +14,10 @@ export function FetchAll() {
   return window['go']['main']['App']['FetchAll']();
 }
 
+export function FetchMessageReports() {
+  return window['go']['main']['App']['FetchMessageReports']();
+}
+
 export function FetchPubKey() {
   return window['go']['main']['App']['FetchPubKey']();
 }
@@ -40,6 +44,10 @@ export function GetOnlineMods() {
 
 export function GetRelayStatus() {
   return window['go']['main']['App']['GetRelayStatus']();
+}
+
+export function ManualModerate(arg1, arg2) {
+  return window['go']['main']['App']['ManualModerate'](arg1, arg2);
 }
 
 export function ModAuthentication(arg1) {

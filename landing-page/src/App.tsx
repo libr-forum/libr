@@ -5,6 +5,7 @@ import { HowItWorks, Community, Roadmap, Footer } from './components/LandingPage
 import { TechStackSection, SecuritySection, CallToActionSection } from './components/AdditionalSections';
 import ArchitectureAnimation from './components/ArchitectureAnimation';
 import NetworkFlowAnimation from './components/MultiPartAnimation';
+import {BackgroundEffect} from './components/BackgroundEffect'; // Add this import at the top
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -91,7 +92,7 @@ const App: React.FC = () => {
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', isDarkMode ? '#0c101c' : '#fdfcf7');
+      metaThemeColor.setAttribute('content', isDarkMode ? '#080c18' : '#fdfcf7');
     }
   }, [isDarkMode]);
 
@@ -113,7 +114,9 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-libr-primary text-foreground">
+    <>
+    <BackgroundEffect />
+    <div className="min-h-screen bg-libr-primary/50 text-foreground relative">
       <ScrollProgress />
       <BackToTop />
       
@@ -122,16 +125,14 @@ const App: React.FC = () => {
         <Hero />
         <WhatIsLIBR/>
         <Features />
-        <SecuritySection />
         <HowItWorks />
         <ArchitectureAnimation />
         <TechStackSection />
         <Community />
-        <Roadmap />
-        <CallToActionSection />
         <Footer />
       </main>
     </div>
+    </>
   );
 };
 

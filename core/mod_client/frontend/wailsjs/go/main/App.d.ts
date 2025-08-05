@@ -9,6 +9,8 @@ export function Delete(arg1:types.MsgCert):Promise<string>;
 
 export function FetchAll():Promise<Array<types.RetMsgCert>>;
 
+export function FetchMessageReports():Promise<Array<models.MsgCert>>;
+
 export function FetchPubKey():Promise<string>;
 
 export function GenerateAlias(arg1:string):Promise<string>;
@@ -22,6 +24,8 @@ export function GetModerationLogs():Promise<Array<models.ModLogEntry>>;
 export function GetOnlineMods():Promise<Array<string>>;
 
 export function GetRelayStatus():Promise<string>;
+
+export function ManualModerate(arg1:string,arg2:number):Promise<void>;
 
 export function ModAuthentication(arg1:string):Promise<boolean>;
 

@@ -19,6 +19,7 @@ import (
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
 	"github.com/devlup-labs/Libr/core/mod_client/config"
 	"github.com/devlup-labs/Libr/core/mod_client/core"
+	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
 	service "github.com/devlup-labs/Libr/core/mod_client/internal/service"
 	"github.com/devlup-labs/Libr/core/mod_client/keycache"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
@@ -224,6 +225,19 @@ func (a *App) Delete(msgcert types.MsgCert) string {
 func (a *App) FetchAll() []types.RetMsgCert {
 	messages := core.FetchRecent(context.Background())
 	return messages
+}
+
+func (a *App) FetchMessageReports() []models.MsgCert {
+	reports, err := moddb.GetUnmoderatedMsgs()
+	if err != nil {
+		log.Printf("Error fetching unmoderated messages: %v", err)
+		return nil
+	}
+	return reports
+}
+
+func (a *App) ManualModerate(sign string, moderated int) {
+	moddb.UpdateModerationStatus(sign, moderated)
 }
 
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {

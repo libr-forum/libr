@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Mail, Package, ShieldCheck,Monitor,Database } from 'lucide-react';
-import BackgroundSVG from '../assets/Central-01.svg?react';
+import {IconMail,IconFileText} from '@tabler/icons-react';
 import WorkingBGDark from '../assets/HowItWorks.png';
 import WorkingBGLight from '../assets/HowItWorksLight.png'
 
@@ -212,21 +212,41 @@ export default function ArchitectureAnimation() {
     return () => ctx.revert();
   }, []);
 
+  useEffect(() => {
+    function handleResize() {
+      // Base SVG size
+      const baseWidth = 1536;
+      const baseHeight = 1024;
+      // Get current window or section size
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      // Calculate scale to fit both width and height, but keep aspect ratio
+      const scaleW = w / baseWidth;
+      const scaleH = h / baseHeight;
+      // Use the smaller scale to ensure it fits
+      setScale(Math.min(scaleW*2, scaleH*2, 2));
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <section
       ref={sectionRef}
       className="relative h-screen w-full flex items-center justify-center overflow-hidden"
     >
       {/* Background */}
-      <div
+      {/* <div
         className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center opacity-50 z-0 p-28"
         style={{backgroundImage: `url(${isDarkMode ? WorkingBGDark : WorkingBGLight})`,}}
-      />
+      /> */}
       <div
         className="relative origin-center"
         style={{
           transform: `scale(${scale})`,
           transformOrigin: 'center',
+          transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         {/* Foreground Animation */}
@@ -258,17 +278,17 @@ export default function ArchitectureAnimation() {
             />
           ))}
           {/* Mails */}
-          <Mail ref={mail1Ref} className="text-libr-secondary" />
-          <Mail ref={mail2Ref} className="text-libr-secondary" />
-          <Mail ref={mail3Ref} className="text-libr-secondary" />
-          <Mail ref={mail4Ref} className="text-green-500" />
-          <Mail ref={mail5Ref} className="text-green-500" />
-          <Mail ref={mail6Ref} className="text-red-500" />
+          <IconFileText ref={mail1Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconFileText ref={mail2Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconFileText ref={mail3Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconFileText ref={mail4Ref} className="text-green-500" fill='libr-primary'/>
+          <IconFileText ref={mail5Ref} className="text-green-500" fill='libr-primary'/>
+          <IconFileText ref={mail6Ref} className="text-red-500" fill='libr-primary'/>
           {/* Packets */}
-          <Package ref={packet1Ref} className="text-libr-secondary" />
-          <Package ref={packet2Ref} className="text-libr-secondary" />
-          <Package ref={packet3Ref} className="text-libr-secondary" />
-          <Package ref={packet4Ref} className="text-libr-secondary" />
+          <IconMail ref={packet1Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconMail ref={packet2Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconMail ref={packet3Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconMail ref={packet4Ref} className="text-libr-secondary" fill='libr-primary'/>
           {/* Optional Static Circles */}
           {circlePositions.map((pos, i) => (
             <circle

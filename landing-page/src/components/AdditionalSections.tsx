@@ -99,7 +99,7 @@ const SecuritySection: React.FC = () => {
   ];
 
   return (
-    <section className="py-20 section-padding bg-muted/30">
+    <section className="py-20 section-padding">
       <div className="container mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
@@ -217,7 +217,7 @@ const CallToActionSection: React.FC = () => {
             viewport={{ once: true }}
           >
             Dive into the research, examine the implementation, and contribute to the future 
-            of censorship-resistant communication systems.
+            of censorship-resistant yet moderated communication systems.
           </motion.p>
           
           <motion.div 

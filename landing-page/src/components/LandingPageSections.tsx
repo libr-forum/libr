@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, MessageSquare, Zap, Moon, Sun,Weight,LockIcon } from 'lucide-react';
+import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap } from 'lucide-react';
 import logo_bg_noname from "../assets/logo_bg_noname.png"
 import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
 import icon_transparent from "../assets/icon_transparent.png"
@@ -23,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
           whileHover={{ scale: 1.05 }}
           className="flex items-center space-x-2"
         >
+          <a href="#welcome" className='flex'>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center">
             <img
               src={icon_transparent}
@@ -30,6 +31,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             />
           </div>
           <span className="text-2xl font-bold text-libr-secondary">libr</span>
+          </a>
         </motion.div>
         
         <div className="hidden md:flex items-center space-x-8">
@@ -37,9 +39,9 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
           <a href="#features" className="text-foreground hover:text-libr-accent1 transition-colors">Architecture</a>
           <a href="#how-it-works" className="text-foreground hover:text-libr-accent1 transition-colors">Protocol</a>
           {/* <a href="#community" className="text-foreground hover:text-libr-accent1 transition-colors">Research</a> */}
-          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Roadmap</a>
-          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Docs</a>
-          <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">GitHub</a>
+          {/* <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Roadmap</a> */}
+          <a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target='_blank' className="text-foreground hover:text-libr-accent1 transition-colors">Docs</a>
+          <a href="https://github.com/devlup-labs/Libr" target="_blank" className="text-foreground hover:text-libr-accent1 transition-colors">GitHub</a>
           <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Join Beta</a>
         </div>
         
@@ -85,139 +87,145 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
   );
 };
 
-const Hero: React.FC = () => {
-  return (
-    <section className="hero-gradient min-h-screen flex items-center section-padding pt-20 pb-20">
-      <div className="container mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ x: -100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            <motion.h5 
-              className="text-7xl font-bold text-libr-secondary mb-6"
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              Censorship-Resistant
-              <span className="bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent"> Forums</span>
-            </motion.h5>
-            
-            <motion.p 
-              className="text-xl text-muted-foreground mb-8 leading-relaxed"
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              A novel framework for creating censorship-resilient yet moderated public forums. LIBR combines distributed hash tables, consensus protocols, and community-driven moderation to preserve free expression while ensuring constructive dialogue.
-            </motion.p>
-            
-            <motion.div 
-              className="flex sm:flex-row gap-4"
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-            >
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr/releases', '_blank')} className="flex flex-row items-center libr-button-primary text-lg">
-                <MessageSquare className="w-5 h-5 mr-3" />
-                Join Beta Community
-              </button>
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="flex flex-row items-center libr-button-secondary text-lg">
-                <Users className="w-5 h-5 mr-3" />
-                Read Documentation
-              </button>
-            </motion.div>
-            
-            <motion.div 
-              className="flex items-center gap-6 mt-8 text-sm text-muted-foreground"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 1 }}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-libr-accent1" />
-                <span>Open Source Project</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-libr-accent1" />
-                <span>Built with Go</span>
-              </div>
-            </motion.div>
-          </motion.div>
-          
-          <motion.div
-            initial={{ x: 100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="relative"
-          >
-            <div className="libr-card p-8 bg-gradient-to-br from-card to-muted/30">
-              <motion.div 
-                className="space-y-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 1.2 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">Community: Research Network</p>
-                      <p className="text-sm text-muted-foreground">12 moderators active</p>
-                    </div>
-                  </div>
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse-glow"></div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-sm">@researcher_a: The DHT replication factor should be adjusted based on network size</p>
-                  </div>
-                  <div className="bg-libr-accent1/10 rounded-lg p-3 ml-6">
-                    <p className="text-sm">@mod_bob: Validated. This follows our technical governance protocols.</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-sm">@charlie: Byzantine fault tolerance ensures consistency even with malicious nodes.</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 pt-2">
-                  <Lock className="w-4 h-4 text-libr-accent1" />
-                  <span className="text-sm text-muted-foreground">Cryptographically signed & validated</span>
-                </div>
-              </motion.div>
-            </div>
-            
-            <motion.div 
-              className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-r from-libr-accent1 to-libr-accent2 rounded-full opacity-20 animate-float"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            />
-          </motion.div>
-        </div>
-      </div>
+const Hero:React.FC = () => {
+  return(
+    <section id="welcome" className="min-h-screen flex items-center section-padding pt-20 pb-20">
     </section>
   );
 };
+
+// const Hero: React.FC = () => {
+//   return (
+//     <section id="welcome" className="hero-gradient min-h-screen flex items-center section-padding pt-20 pb-20">
+//       <div className="container mx-auto">
+//         <div className="grid lg:grid-cols-2 gap-12 items-center">
+//           <motion.div
+//             initial={{ x: -100, opacity: 0 }}
+//             animate={{ x: 0, opacity: 1 }}
+//             transition={{ duration: 0.8, delay: 0.2 }}
+//           >
+//             <motion.h5 
+//               className="text-7xl font-bold text-libr-secondary mb-6"
+//               initial={{ y: 50, opacity: 0 }}
+//               animate={{ y: 0, opacity: 1 }}
+//               transition={{ duration: 0.8, delay: 0.4 }}
+//             >
+//               Censorship-Resistant
+//               <span className="bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent"> Forums</span>
+//             </motion.h5>
+            
+//             <motion.p 
+//               className="text-xl text-muted-foreground mb-8 leading-relaxed"
+//               initial={{ y: 30, opacity: 0 }}
+//               animate={{ y: 0, opacity: 1 }}
+//               transition={{ duration: 0.8, delay: 0.6 }}
+//             >
+//               A novel framework for creating censorship-resilient yet moderated public forums. LIBR combines distributed hash tables, consensus protocols, and community-driven moderation to preserve free expression while ensuring constructive dialogue.
+//             </motion.p>
+            
+//             <motion.div 
+//               className="flex sm:flex-row gap-4"
+//               initial={{ y: 30, opacity: 0 }}
+//               animate={{ y: 0, opacity: 1 }}
+//               transition={{ duration: 0.8, delay: 0.8 }}
+//             >
+//               <button onClick={() => window.open('https://github.com/devlup-labs/Libr/releases', '_blank')} className="flex flex-row items-center libr-button-primary text-lg">
+//                 <MessageSquare className="w-5 h-5 mr-3" />
+//                 Join Beta Community
+//               </button>
+//               <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="flex flex-row items-center libr-button-secondary text-lg">
+//                 <Users className="w-5 h-5 mr-3" />
+//                 Read Documentation
+//               </button>
+//             </motion.div>
+            
+//             <motion.div 
+//               className="flex items-center gap-6 mt-8 text-sm text-muted-foreground"
+//               initial={{ opacity: 0 }}
+//               animate={{ opacity: 1 }}
+//               transition={{ duration: 0.8, delay: 1 }}
+//             >
+//               <div className="flex items-center gap-2">
+//                 <Users className="w-4 h-4 text-libr-accent1" />
+//                 <span>Open Source Project</span>
+//               </div>
+//               <div className="flex items-center gap-2">
+//                 <Globe className="w-4 h-4 text-libr-accent1" />
+//                 <span>Built with Go</span>
+//               </div>
+//             </motion.div>
+//           </motion.div>
+          
+//           <motion.div
+//             initial={{ x: 100, opacity: 0 }}
+//             animate={{ x: 0, opacity: 1 }}
+//             transition={{ duration: 0.8, delay: 0.4 }}
+//             className="relative"
+//           >
+//             <div className="libr-card p-8 bg-gradient-to-br from-card to-muted/30">
+//               <motion.div 
+//                 className="space-y-4"
+//                 initial={{ opacity: 0 }}
+//                 animate={{ opacity: 1 }}
+//                 transition={{ duration: 0.8, delay: 1.2 }}
+//               >
+//                 <div className="flex items-center justify-between">
+//                   <div className="flex items-center gap-3">
+//                     <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center">
+//                       <Users className="w-5 h-5 text-white" />
+//                     </div>
+//                     <div>
+//                       <p className="font-semibold">Community: Research Network</p>
+//                       <p className="text-sm text-muted-foreground">12 moderators active</p>
+//                     </div>
+//                   </div>
+//                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse-glow"></div>
+//                 </div>
+                
+//                 <div className="space-y-3">
+//                   <div className="bg-muted/50 rounded-lg p-3">
+//                     <p className="text-sm">@researcher_a: The DHT replication factor should be adjusted based on network size</p>
+//                   </div>
+//                   <div className="bg-libr-accent1/10 rounded-lg p-3 ml-6">
+//                     <p className="text-sm">@mod_bob: Validated. This follows our technical governance protocols.</p>
+//                   </div>
+//                   <div className="bg-muted/50 rounded-lg p-3">
+//                     <p className="text-sm">@charlie: Byzantine fault tolerance ensures consistency even with malicious nodes.</p>
+//                   </div>
+//                 </div>
+                
+//                 <div className="flex items-center gap-2 pt-2">
+//                   <Lock className="w-4 h-4 text-libr-accent1" />
+//                   <span className="text-sm text-muted-foreground">Cryptographically signed & validated</span>
+//                 </div>
+//               </motion.div>
+//             </div>
+            
+//             <motion.div 
+//               className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-r from-libr-accent1 to-libr-accent2 rounded-full opacity-20 animate-float"
+//               animate={{ rotate: 360 }}
+//               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+//             />
+//           </motion.div>
+//         </div>
+//       </div>
+//     </section>
+//   );
+// };
 
 const WhatIsLIBR: React.FC = () => {
   return (
     <section id="what-is-libr" className="flex items-center pt-20 pb-20">
       <div className="container mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="flex flex-row gap-12 items-center">
           <motion.div
             initial={{ x: -100, opacity: 0 }}
             whileInView={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className=''
           >
             <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
-              What is libr?
+              Do we have the freedom of speech?
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
               Tired of platforms that quietly delete your posts?<br/>
@@ -227,23 +235,23 @@ const WhatIsLIBR: React.FC = () => {
             </p>
             
             <p className='text-md mb-8'>
-              libr is a <b>censorship-resistant forum protocol</b> where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
+              libr is a <b>censorship-resistant yet moderated</b> forum protocol where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
             </p>
             
             <div className='flex flex-col gap-4'>
               <div className='flex flew-row gap-2'>
-                🛡️ No Silent Bans
+                <Shield/> No Silent Bans
               </div>
               <div className='flex flew-row gap-2'>
-                ⚖️ Quorum-based Moderation
+                <Users/> Moderation Per Community Rules
               </div>
               <div className='flex flew-row gap-2'>
-                🔐 Proof of every vote
+                <Lock/> Proof of every vote
               </div>
             </div>
           </motion.div>
           
-          <motion.div
+          {/* <motion.div
             initial={{ x: 100, opacity: 0 }}
             whileInView={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.8 }}
@@ -280,7 +288,7 @@ const WhatIsLIBR: React.FC = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
     </section>
@@ -292,7 +300,7 @@ const Features: React.FC = () => {
     {
       icon: Shield,
       title: "Censorship Resistant",
-      description: "Built on distributed hash tables (DHTs) for immutable message storage with partial immutability for efficient forum operations."
+      description: "Built on DHTs for immutable message storage with partial immutability for efficient forum operations."
     },
     {
       icon: Users,
@@ -302,7 +310,7 @@ const Features: React.FC = () => {
     {
       icon: Lock,
       title: "Cryptographic Security",
-      description: "Digital signatures and moderation certificates provide tamper-proof validation with public key cryptography."
+      description: "Digital signatures with ED25519 keys used at each stage ensuring end-to-end immutability."
     },
     {
       icon: Zap,
@@ -310,14 +318,14 @@ const Features: React.FC = () => {
       description: "Go-based implementation with optimized DHT lookup and concurrent message processing for high performance."
     },
     {
-      icon: Globe,
-      title: "Decentralized Architecture",
-      description: "Role-based node system with clients, database nodes, and moderators operating without central authority."
+      icon: DatabaseZap,
+      title: "Replicated DHT",
+      description: "Distributed hash table with replication ensures permanent data availability."
     },
     {
-      icon: MessageSquare,
-      title: "Message Integrity",
-      description: "Hashchain-based state reconstruction and replicated storage ensure data availability and consistency."
+      icon: Globe,
+      title: "Decentralized Architecture",
+      description: "No central servers, ever.\nRelays and databases also run on community nodes."
     }
   ];
 
@@ -334,10 +342,10 @@ const Features: React.FC = () => {
           <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
             Technical Architecture
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             LIBR leverages cutting-edge distributed systems concepts to create a platform where 
             censorship resistance meets community-driven governance through innovative protocol design.
-          </p>
+          </p> */}
         </motion.div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -350,7 +358,7 @@ const Features: React.FC = () => {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <div className="w-12 h-12 bg-gradient-to-r from-libr-accent1 to-libr-accent2 rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-libr-accent1 rounded-lg flex items-center justify-center mb-4">
                 <feature.icon className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-libr-secondary mb-2">{feature.title}</h3>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
@@ -122,69 +121,71 @@ export const Sidebar: React.FC = () => {
             <h3 className="text-sm font-semibold text-muted-foreground mb-3">
               Moderation
             </h3>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/modlogs')}
-              className={`w-full text-left p-3 rounded-lg transition-all duration-200 mb-2 ${
-                location.pathname === '/modlogs'
-                  ? 'bg-libr-accent2/20 border border-libr-accent2/30'
-                  : 'hover:bg-muted/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Shield className={`w-5 h-5 ${
+            <div className="flex flex-col gap-3"> {/* Consistent spacing between buttons */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/modlogs')}
+                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                   location.pathname === '/modlogs'
-                    ? 'text-libr-accent2'
-                    : 'text-muted-foreground'
-                }`} />
-                <span className="font-medium mt-1 text-foreground">
-                  Moderation Logs
-                </span>
-              </div>
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/modconfig')}
-              className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                location.pathname === '/modconfig'
-                  ? 'bg-libr-accent2/20 border border-libr-accent2/30'
-                  : 'hover:bg-muted/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Wrench className={`w-5 h-5 ${
+                    ? 'bg-libr-accent2/20 border border-libr-accent2/30'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Shield className={`w-5 h-5 ${
+                    location.pathname === '/modlogs'
+                      ? 'text-libr-accent2'
+                      : 'text-muted-foreground'
+                  }`} />
+                  <span className="font-medium text-foreground">
+                    Moderation Logs
+                  </span>
+                </div>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/modconfig')}
+                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                   location.pathname === '/modconfig'
-                    ? 'text-libr-accent2'
-                    : 'text-muted-foreground'
-                }`} />
-                <span className="font-medium mt-1 text-foreground">
-                  Moderation Config
-                </span>
-              </div>
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/msgreports')}
-              className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                location.pathname === '/msgreports'
-                  ? 'bg-libr-accent2/20 border border-libr-accent2/30'
-                  : 'hover:bg-muted/50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className={`w-5 h-5 ${
+                    ? 'bg-libr-accent2/20 border border-libr-accent2/30'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Wrench className={`w-5 h-5 ${
+                    location.pathname === '/modconfig'
+                      ? 'text-libr-accent2'
+                      : 'text-muted-foreground'
+                  }`} />
+                  <span className="font-medium text-foreground">
+                    Moderation Config
+                  </span>
+                </div>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/msgreports')}
+                className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                   location.pathname === '/msgreports'
-                    ? 'text-libr-accent2'
-                    : 'text-muted-foreground'
-                }`} />
-                <span className="font-medium mt-1 text-foreground">
-                  Message Reports
-                </span>
-              </div>
-            </motion.button>
+                    ? 'bg-libr-accent2/20 border border-libr-accent2/30'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className={`w-5 h-5 ${
+                    location.pathname === '/msgreports'
+                      ? 'text-libr-accent2'
+                      : 'text-muted-foreground'
+                  }`} />
+                  <span className="font-medium text-foreground">
+                    Message Reports
+                  </span>
+                </div>
+              </motion.button>
+            </div>
           </div>
         )}
       </div>

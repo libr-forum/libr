@@ -30,16 +30,29 @@ export const MsgReports: React.FC = () => {
 
   const handleModerate = async (messageId: string, action: 'approve' | 'reject', note?: string) => {
     try {
-      await apiService.moderateMessage(action, note);
-      setReports(reports.map(report =>
-        report.authorPublicKey === messageId.split('_')[0] &&
-        report.timestamp.toString() === messageId.split('_')[1]
+      // Find the report to get its sign
+      const report = reports.find(
+        r =>
+          r.authorPublicKey === messageId.split('_')[0] &&
+          r.timestamp.toString() === messageId.split('_')[1]
+      );
+      if (!report) return;
+
+      // Pass sign and moderate as int (1 for approve, 0 for reject)
+      await apiService.manualModerate(
+        report.sign,
+        action === 'approve' ? 1 : 0
+      );
+
+      setReports(reports.map(r =>
+        r.authorPublicKey === messageId.split('_')[0] &&
+        r.timestamp.toString() === messageId.split('_')[1]
           ? {
-              ...report,
+              ...r,
               status: action === 'approve' ? 'approved' : 'rejected',
               note: note || "",
             }
-          : report
+          : r
       ));
     } catch (error) {
       console.error('Failed to moderate message:', error);
@@ -94,9 +107,6 @@ export const MsgReports: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="max-w-6xl mx-auto"
           >
-            {/* (HTML untouched) */}
-            {/* It will still show “Moderation Logs”, but logic uses reports */}
-            
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <motion.div
@@ -133,32 +143,53 @@ export const MsgReports: React.FC = () => {
                       transition={{ delay: index * 0.05 }}
                       className="libr-card p-6"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          {/* JSX untouched */}
+                      <div className="flex flex-col gap-2">
+                        <div>
+                          <span className="font-semibold text-libr-secondary">Message:</span>
+                          <span className="ml-2 text-foreground">{report.content}</span>
                         </div>
-                        {report.status === 'pending' && (
-                          <div className="flex items-center space-x-2 ml-4">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleModerate(uniqueKey, 'approve')}
-                              className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
-                            >
-                              <Check className="w-4 h-4" />
-                              <span>Approve</span>
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleModerate(uniqueKey, 'reject', 'Inappropriate content')}
-                              className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>Reject</span>
-                            </motion.button>
-                          </div>
-                        )}
+                        <div>
+                          <span className="font-semibold text-libr-secondary">Timestamp:</span>
+                          <span className="ml-2 text-foreground">{new Date(Number(report.timestamp)).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-libr-secondary">Reason:</span>
+                          <span className="ml-2 text-foreground">{report.note || "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          {report.status === 'pending' && (
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(uniqueKey, 'approve')}
+                                className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
+                              >
+                                <Check className="w-4 h-4" />
+                                <span>Approve</span>
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(uniqueKey, 'reject', 'Inappropriate content')}
+                                className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Reject</span>
+                              </motion.button>
+                            </>
+                          )}
+                          {report.status === 'approved' && (
+                            <span className="text-green-600 font-semibold flex items-center gap-1">
+                              <Check className="w-4 h-4" /> Approved
+                            </span>
+                          )}
+                          {report.status === 'rejected' && (
+                            <span className="text-red-600 font-semibold flex items-center gap-1">
+                              <X className="w-4 h-4" /> Rejected
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
