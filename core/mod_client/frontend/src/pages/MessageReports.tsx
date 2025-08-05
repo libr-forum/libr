@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '../store/useAppStore';
+import { ReportedMessage, useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/api';
 import { Message } from '../store/useAppStore';
 import { Shield, Check, X, Filter, Search, Clock, MessageSquare, FileWarning, MessageSquareWarning, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 export const MsgReports: React.FC = () => {
   const { user } = useAppStore();
-  const [reports, setReports] = useState<Message[]>([]);
+  const [reports, setReports] = useState<ReportedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +19,7 @@ export const MsgReports: React.FC = () => {
   const loadReports = async () => {
     setIsLoading(true);
     try {
-      const moderationReports = await apiService.getMessages("1");
+      const moderationReports = await apiService.getMessageReports("1");
       setReports(moderationReports);
     } catch (error) {
       console.error('Failed to load moderation reports:', error);
@@ -30,10 +30,15 @@ export const MsgReports: React.FC = () => {
 
   const handleModerate = async (messageId: string, action: 'approve' | 'reject', note?: string) => {
     try {
-      await apiService.moderateMessage(messageId, action, note);
-      setReports(reports.map(report => 
-        report.id === messageId 
-          ? { ...report, status: action === 'approve' ? 'approved' : 'rejected', moderationNote: note }
+      await apiService.moderateMessage(action, note);
+      setReports(reports.map(report =>
+        report.authorPublicKey === messageId.split('_')[0] &&
+        report.timestamp.toString() === messageId.split('_')[1]
+          ? {
+              ...report,
+              status: action === 'approve' ? 'approved' : 'rejected',
+              note: note || "",
+            }
           : report
       ));
     } catch (error) {
@@ -118,43 +123,46 @@ export const MsgReports: React.FC = () => {
               </motion.div>
             ) : (
               <div className="grid gap-4">
-                {filteredReports.map((report, index) => (
-                  <motion.div
-                    key={report.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="libr-card p-6"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        {/* JSX untouched */}
-                      </div>
-                      {report.status === 'pending' && (
-                        <div className="flex items-center space-x-2 ml-4">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleModerate(report.id, 'approve')}
-                            className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>Approve</span>
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleModerate(report.id, 'reject', 'Inappropriate content')}
-                            className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
-                          >
-                            <X className="w-4 h-4" />
-                            <span>Reject</span>
-                          </motion.button>
+                {filteredReports.map((report, index) => {
+                  const uniqueKey = `${report.authorPublicKey}_${report.timestamp.toString()}`;
+                  return (
+                    <motion.div
+                      key={uniqueKey}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="libr-card p-6"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {/* JSX untouched */}
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
+                        {report.status === 'pending' && (
+                          <div className="flex items-center space-x-2 ml-4">
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleModerate(uniqueKey, 'approve')}
+                              className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>Approve</span>
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleModerate(uniqueKey, 'reject', 'Inappropriate content')}
+                              className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
+                            >
+                              <X className="w-4 h-4" />
+                              <span>Reject</span>
+                            </motion.button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </motion.div>

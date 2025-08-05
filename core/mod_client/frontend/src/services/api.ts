@@ -1,6 +1,6 @@
 import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey } from "../../wailsjs/go/main/App"; 
 import axios from 'axios';
-import { Community, Message, User, ModLogEntry, useAppStore } from '../store/useAppStore';
+import { Community, Message, User, ModLogEntry, useAppStore,ReportedMessage } from '../store/useAppStore';
 import {types} from '../../wailsjs/go/models'
 import {emojify} from 'node-emoji';
 
@@ -147,7 +147,7 @@ export const apiService = {
   },
 
   // Messages
-    async getMessages(_communityId: string): Promise<Message[]> {
+  async getMessages(_communityId: string): Promise<Message[]> {
     try {
       const fetched = await FetchAll();
       const response:Message[]=[];
@@ -171,6 +171,13 @@ export const apiService = {
     }
   },
 
+  async getMessageReports(_communityId: string): Promise<ReportedMessage[]> {
+    try {
+    }catch (err) {
+      console.error("Failed to fetch messages:", err);
+      return [];
+    }
+  },
 
   async sendMessage(communityId: string, content: string): Promise<Message> {
     let response: string | null = null;
@@ -206,9 +213,9 @@ export const apiService = {
     return logs;
   },
 
-  async moderateMessage(messageId: string, action: 'approve' | 'reject', note?: string): Promise<void> {
+  async moderateMessage(action: 'approve' | 'reject', note?: string): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 300));
-    console.log(`Message ${messageId} ${action}ed with note: ${note}`);
+    console.log(`Message ${action}ed with note: ${note}`);
   },
 
   async GetModConfig():Promise<{ forbidden: string[]; thresholds: string }>{

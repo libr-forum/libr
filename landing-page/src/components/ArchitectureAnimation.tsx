@@ -46,11 +46,12 @@ export default function ArchitectureAnimation() {
   const mail4Ref = useRef(null);
   const mail5Ref = useRef(null);
   const mail6Ref = useRef(null);
-
   const packet1Ref = useRef(null);
   const packet2Ref = useRef(null);
   const packet3Ref = useRef(null);
   const packet4Ref = useRef(null);
+
+  const [scale, setScale] = useState(1);
 
   const pathRefs = useRef<SVGPathElement[]>([]);
   const pathD = [
@@ -220,91 +221,77 @@ export default function ArchitectureAnimation() {
       <div
         className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center opacity-50 z-0 p-28"
         style={{backgroundImage: `url(${isDarkMode ? WorkingBGDark : WorkingBGLight})`,}}
-      >
-      </div>
-
+      />
       <div
         className="relative origin-center"
         style={{
-          transform: 'scale(2)',
+          transform: `scale(${scale})`,
           transformOrigin: 'center',
         }}
       >
-      {/* Foreground Animation */}
-      <svg
-        width="1536"
-        height="1024"
-        viewBox="0 0 1536 1024"
-        className="rounded shadow-xl z-10"
-      >
-        
-        {/* Paths */}
-        <path ref={path1Ref} d="M761 558 Q838 380 903 548" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path2Ref} d="M761 558 Q723 430 658 465" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path3Ref} d="M761 558 Q813 480 846 640" stroke="black" strokeWidth="0.5" fill="none" />
-
-        <path ref={path4Ref} d="M903 548 Q838 380 761 558" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path5Ref} d="M658 465 Q723 430 761 558" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path6Ref} d="M846 640 Q813 480 761 558" stroke="black" strokeWidth="0.5" fill="none" />
-
-        <path ref={path7Ref} d="M761 558 Q813 480 835 502" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path8Ref} d="M761 558 Q830 520 792 687" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path9Ref} d="M761 558 Q700 510 666 627" stroke="black" strokeWidth="0.5" fill="none" />
-        <path ref={path10Ref} d="M761 558 Q770 470 753 455" stroke="black" strokeWidth="0.5" fill="none" />
-        
-        {pathD.map((d, i) => (
-          <path
-            key={i}
-            ref={(el) => (pathRefs.current[i] = el!)}
-            d={d}
-            strokeWidth="0.5"
-            fill="none"
-            style={{ transition: 'stroke 0.3s ease-in-out' }}
-          />
+        {/* Foreground Animation */}
+        <svg
+          width="1536"
+          height="1024"
+          viewBox="0 0 1536 1024"
+          className="rounded shadow-xl z-10"
+        >
+          {/* Paths */}
+          <path ref={path1Ref} d="M761 558 Q838 380 903 548" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path2Ref} d="M761 558 Q723 430 658 465" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path3Ref} d="M761 558 Q813 480 846 640" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path4Ref} d="M903 548 Q838 380 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path5Ref} d="M658 465 Q723 430 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path6Ref} d="M846 640 Q813 480 761 558" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path7Ref} d="M761 558 Q813 480 835 502" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path8Ref} d="M761 558 Q830 520 792 687" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path9Ref} d="M761 558 Q700 510 666 627" stroke="black" strokeWidth="0.5" fill="none" />
+          <path ref={path10Ref} d="M761 558 Q770 470 753 455" stroke="black" strokeWidth="0.5" fill="none" />
+          {pathD.map((d, i) => (
+            <path
+              key={i}
+              ref={(el) => (pathRefs.current[i] = el!)}
+              d={d}
+              strokeWidth="0.5"
+              fill="none"
+              style={{ transition: 'stroke 0.3s ease-in-out' }}
+            />
           ))}
-
-
-        {/* Mails */}
-        <Mail ref={mail1Ref} className="text-libr-secondary" />
-        <Mail ref={mail2Ref} className="text-libr-secondary" />
-        <Mail ref={mail3Ref} className="text-libr-secondary" />
-
-        <Mail ref={mail4Ref} className="text-green-500" />
-        <Mail ref={mail5Ref} className="text-green-500" />
-        <Mail ref={mail6Ref} className="text-red-500" />
-
-
-        {/* Packets */}
-        <Package ref={packet1Ref} className="text-libr-secondary" />
-        <Package ref={packet2Ref} className="text-libr-secondary" />
-        <Package ref={packet3Ref} className="text-libr-secondary" />
-        <Package ref={packet4Ref} className="text-libr-secondary" />
-
-        {/* Optional Static Circles */}
-        {circlePositions.map((pos, i) => (
-          <circle
-            key={i}
-            ref={(el) => (circleRefs.current[i] = el!)}
-            cx={pos.cx}
-            cy={pos.cy}
-            r="20"
-            opacity={1}
-            style={{ transition: 'fill 0.3s ease-in-out' }}
-          />
-        ))}
-
-      </svg>
-      <Monitor style={{ left: 761, top: 558 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <ShieldCheck style={{ left: 846, top: 640 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <ShieldCheck style={{ left: 658, top: 465 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <ShieldCheck style={{ left: 903, top: 548 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Monitor style={{ left: 866, top: 426 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Monitor style={{ left: 621, top: 534 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Database style={{ left: 835, top: 502 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Database style={{ left: 792, top: 687 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Database style={{ left: 666, top: 627 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      <Database style={{ left: 753, top: 455 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-
+          {/* Mails */}
+          <Mail ref={mail1Ref} className="text-libr-secondary" />
+          <Mail ref={mail2Ref} className="text-libr-secondary" />
+          <Mail ref={mail3Ref} className="text-libr-secondary" />
+          <Mail ref={mail4Ref} className="text-green-500" />
+          <Mail ref={mail5Ref} className="text-green-500" />
+          <Mail ref={mail6Ref} className="text-red-500" />
+          {/* Packets */}
+          <Package ref={packet1Ref} className="text-libr-secondary" />
+          <Package ref={packet2Ref} className="text-libr-secondary" />
+          <Package ref={packet3Ref} className="text-libr-secondary" />
+          <Package ref={packet4Ref} className="text-libr-secondary" />
+          {/* Optional Static Circles */}
+          {circlePositions.map((pos, i) => (
+            <circle
+              key={i}
+              ref={(el) => (circleRefs.current[i] = el!)}
+              cx={pos.cx}
+              cy={pos.cy}
+              r="20"
+              opacity={1}
+              style={{ transition: 'fill 0.3s ease-in-out' }}
+            />
+          ))}
+        </svg>
+        <Monitor style={{ left: 761, top: 558 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <ShieldCheck style={{ left: 846, top: 640 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <ShieldCheck style={{ left: 658, top: 465 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <ShieldCheck style={{ left: 903, top: 548 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Monitor style={{ left: 866, top: 426 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Monitor style={{ left: 621, top: 534 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 835, top: 502 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 792, top: 687 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 666, top: 627 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 753, top: 455 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
       </div>
     </section>
   );

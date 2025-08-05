@@ -54,13 +54,13 @@ export const ChatRoom: React.FC = () => {
     if (selectedDate) {
       const selectedDateString = selectedDate.toDateString();
       filtered = filtered.filter(message => 
-        new Date(message.timestamp).toDateString() === selectedDateString
+        new Date(Number(message.timestamp)).toDateString() === selectedDateString
       );
     }
     
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
+      const dateA = new Date(Number(a.timestamp)).getTime();
+      const dateB = new Date(Number(b.timestamp)).getTime();
       return sortByNewest ? dateB - dateA : dateA - dateB;
     });
   }, [messages, sortByNewest, selectedDate]);
@@ -247,7 +247,7 @@ export const ChatRoom: React.FC = () => {
               ) : (
                 sortedMessages.map((message) => (
                   <MessageBubble
-                    key={message.id}
+                    key={message.authorPublicKey}
                     message={message}
                   />
                 ))

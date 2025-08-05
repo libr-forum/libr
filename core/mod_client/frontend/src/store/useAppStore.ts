@@ -33,6 +33,19 @@ export interface Message {
   sign:string;
 }
 
+export interface ReportedMessage {
+  content: string;
+  authorPublicKey: string;
+  authorAlias: string;
+  timestamp: bigint;
+  communityId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  moderationNote?: types.ModCert[];
+  avatarSvg?:string;
+  sign:string;
+  note:string;
+}
+
 export interface ModLogEntry {
   content: string;
   timestamp: number;
