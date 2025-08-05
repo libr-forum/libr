@@ -23,7 +23,7 @@ const HowItWorks: React.FC = () => {
   ];
 
   return (
-    <section id="how-it-works" className="py-20 section-padding">
+    <section id="how-it-works" className="pt-20">
       <div className="container mx-auto">
         <motion.div 
           className="text-center mb-16"
@@ -32,16 +32,16 @@ const HowItWorks: React.FC = () => {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
+          <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary">
             Protocol Architecture
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             LIBR's novel framework combines distributed systems, cryptographic protocols, and 
             consensus mechanisms to achieve censorship resistance with community governance.
-          </p>
+          </p> */}
         </motion.div>
         
-        <div className="grid md:grid-cols-3 gap-8">
+        {/* <div className="grid md:grid-cols-3 gap-8">
           {steps.map((step, index) => (
             <motion.div
               key={step.step}
@@ -58,7 +58,7 @@ const HowItWorks: React.FC = () => {
               <p className="text-muted-foreground">{step.description}</p>
             </motion.div>
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );
@@ -87,7 +87,7 @@ const Community: React.FC = () => {
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
               libr is an academic research project exploring novel approaches to decentralized 
-              forum design. Contribute to the future of censorship-resistant yet moderated communication platforms.
+              forum design. Contribute to the future of censorship-resilient yet moderated communication platforms.
             </p>
             
             <div className="flex flex-row gap-6 mb-8">
@@ -285,7 +285,7 @@ const Footer: React.FC = () => {
               <span className="text-2xl font-bold text-foreground">LIBR</span>
             </div>
             <p className="text-muted-foreground mb-4">
-              Censorship-resistant yet moderated forum framework for free expression.
+              Censorship-resilient yet moderated forum framework for free expression.
             </p>
             <div className="flex gap-4">
               <Linkedin onClick={() => window.open('https://www.linkedin.com/company/libr-social/', '_blank')}className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />

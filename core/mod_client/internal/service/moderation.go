@@ -15,6 +15,7 @@ import (
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
 	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
+	"github.com/devlup-labs/Libr/core/mod_client/types"
 	"github.com/joho/godotenv"
 )
 
@@ -128,7 +129,7 @@ func AutoModerateMsg(msg models.UserMsg) (string, error) {
 	return "0", nil
 }
 
-func ManModerateMsg(cert models.MsgCert) (*models.ModResponse, error) {
+func ManModerateMsg(cert types.MsgCert) (*models.ModResponse, error) {
 	resp, err := moddb.StoreMsgResult(cert)
 	if err != nil {
 		return nil, err

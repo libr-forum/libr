@@ -9,6 +9,7 @@ import (
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/config"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
+	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
 // func StoreMsgResult(cert models.MsgCert) ([]byte, string, error) {
@@ -60,7 +61,7 @@ import (
 // 	return nil, "acknowledged", nil
 // }
 
-func StoreMsgResult(cert models.MsgCert) (*models.ModResponse, error) {
+func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 	insertQuery := `
     INSERT INTO msgresult (sign, content, reason)
     VALUES (?, ?, ?);`

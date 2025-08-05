@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap } from 'lucide-react';
+import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints } from 'lucide-react';
 import logo_bg_noname from "../assets/logo_bg_noname.png"
 import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
 import icon_transparent from "../assets/icon_transparent.png"
@@ -40,6 +40,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
           <a href="#how-it-works" className="text-foreground hover:text-libr-accent1 transition-colors">Protocol</a>
           {/* <a href="#community" className="text-foreground hover:text-libr-accent1 transition-colors">Research</a> */}
           {/* <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Roadmap</a> */}
+          <a href="#technical-modules" className="text-foreground hover:text-libr-accent1 transition-colors">Modules</a>
           <a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target='_blank' className="text-foreground hover:text-libr-accent1 transition-colors">Docs</a>
           <a href="https://github.com/devlup-labs/Libr" target="_blank" className="text-foreground hover:text-libr-accent1 transition-colors">GitHub</a>
           <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Join Beta</a>
@@ -64,9 +65,9 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
                   {isDark ? (
-                    <Moon className="w-5 h-5 text-libr-accent1" />
+                    <Sun className="w-5 h-5 text-libr-accent1" />
                   ) : (
-                    <Sun className="w-5 h-5 text-libr-accent2" />
+                    <Moon className="w-5 h-5 text-libr-accent2" />
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -110,7 +111,7 @@ const Hero:React.FC = () => {
 //               animate={{ y: 0, opacity: 1 }}
 //               transition={{ duration: 0.8, delay: 0.4 }}
 //             >
-//               Censorship-Resistant
+//               Censorship-resilient
 //               <span className="bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent"> Forums</span>
 //             </motion.h5>
             
@@ -235,7 +236,7 @@ const WhatIsLIBR: React.FC = () => {
             </p>
             
             <p className='text-md mb-8'>
-              libr is a <b>censorship-resistant yet moderated</b> forum protocol where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
+              libr is a <b>censorship-resilient yet moderated</b> forum protocol where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
             </p>
             
             <div className='flex flex-col gap-4'>
@@ -246,7 +247,7 @@ const WhatIsLIBR: React.FC = () => {
                 <Users/> Moderation Per Community Rules
               </div>
               <div className='flex flew-row gap-2'>
-                <Lock/> Proof of every vote
+                <VenetianMask/> Pseudo-anonymity
               </div>
             </div>
           </motion.div>
@@ -299,22 +300,22 @@ const Features: React.FC = () => {
   const features = [
     {
       icon: Shield,
-      title: "Censorship Resistant",
+      title: "Censorship resilient",
       description: "Built on DHTs for immutable message storage with partial immutability for efficient forum operations."
     },
     {
       icon: Users,
-      title: "Community Moderation",
+      title: "Community Moderated",
       description: "Byzantine Consistent Broadcast ensures democratic moderation quorums with 2f+1 moderator consensus for content validation."
     },
     {
       icon: Lock,
-      title: "Cryptographic Security",
+      title: "Cryptographically Secure",
       description: "Digital signatures with ED25519 keys used at each stage ensuring end-to-end immutability."
     },
     {
-      icon: Zap,
-      title: "Efficient Protocol",
+      icon: Waypoints,
+      title: "Modern Web Net Infra",
       description: "Go-based implementation with optimized DHT lookup and concurrent message processing for high performance."
     },
     {
@@ -358,10 +359,12 @@ const Features: React.FC = () => {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <div className="w-12 h-12 bg-libr-accent1 rounded-lg flex items-center justify-center mb-4">
-                <feature.icon className="w-6 h-6 text-white" />
+              <div className='flex flex-row items-center space-x-2'>
+              <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mb-4">
+                <feature.icon className="w-6 h-6 text-libr-primary" />
               </div>
               <h3 className="text-xl font-semibold text-libr-secondary mb-2">{feature.title}</h3>
+              </div>
               <p className="text-muted-foreground">{feature.description}</p>
             </motion.div>
           ))}

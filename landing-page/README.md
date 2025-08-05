@@ -1,6 +1,6 @@
 # Libr Landing Page
 
-A modern, responsive landing page for Libr - the censorship-resistant social network.
+A modern, responsive landing page for Libr - the censorship-resilient social network.
 
 ## Features
 
