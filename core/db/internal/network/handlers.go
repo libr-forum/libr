@@ -70,8 +70,8 @@ func FindValueHandler(key string, localNode *node.Node, rt *routing.RoutingTable
 	if values != nil {
 		fmt.Println("Found the value")
 		type FoundResponse struct {
-			Type   string           `json:"type"`
-			Values []models.MsgCert `json:"values"`
+			Type   string              `json:"type"`
+			Values []models.RetMsgCert `json:"values"`
 		}
 		resp := FoundResponse{
 			Type:   "found",
@@ -121,7 +121,7 @@ func StoreHandler(body models.MsgCert, localNode *node.Node, rt *routing.Routing
 	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	fmt.Println(tsmin, keyBytes)
 
-	closest := StoreValue(keyBytes, msgcert, localNode, rt)
+	closest := StoreValue(keyBytes, &msgcert, localNode, rt)
 
 	if closest != nil {
 		fmt.Println("Sending list of k closest nodes")
@@ -143,6 +143,63 @@ func StoreHandler(body models.MsgCert, localNode *node.Node, rt *routing.Routing
 	fmt.Println("Store at: ", localNode)
 	resp := StoredResponse{
 		Type:   "stored",
+		Status: "ok",
+	}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Println("Error while marshiling the PingResponse: ", err)
+	}
+	return data
+}
+
+func DeleteHandler(body *models.ReportCert, localNode *node.Node, rt *routing.RoutingTable) []byte {
+
+	repCert := body
+
+	tsmin := repCert.Msgcert.Msg.Ts
+	tsmin = tsmin - (tsmin % 60)
+	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
+	fmt.Println(tsmin, keyBytes)
+
+	closest, err := DeleteValue(&keyBytes, repCert, localNode, rt) //for now err is ignored
+
+	if err != nil {
+		fmt.Println("Error", err)
+		type ErrorResponse struct {
+			Type  string `json:"type"`
+			Error error  `json:"error"`
+		}
+		resp := ErrorResponse{
+			Type:  "redirect",
+			Error: err,
+		}
+		data, err := json.Marshal(resp)
+		if err != nil {
+			fmt.Println("Error while marshiling the PingResponse: ", err)
+		}
+		return data
+	}
+
+	if closest != nil {
+		fmt.Println("Sending list of k closest nodes")
+		type RedirectResponse struct {
+			Type  string       `json:"type"`
+			Nodes []*node.Node `json:"nodes"`
+		}
+		resp := RedirectResponse{
+			Type:  "redirect",
+			Nodes: closest,
+		}
+		data, err := json.Marshal(resp)
+		if err != nil {
+			fmt.Println("Error while marshiling the PingResponse: ", err)
+		}
+		return data
+	}
+
+	fmt.Println("Store at: ", localNode)
+	resp := StoredResponse{
+		Type:   "deleted",
 		Status: "ok",
 	}
 	data, err := json.Marshal(resp)

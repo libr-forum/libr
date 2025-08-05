@@ -3,8 +3,13 @@ package peer
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"log"
+	"math/big"
+	"sort"
 
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -28,7 +33,7 @@ import (
 
 const ChatProtocol = protocol.ID("/chat/1.0.0")
 
-var publicAddr string
+var OwnPubIP string
 
 type ChatPeer struct {
 	Host      host.Host
@@ -44,7 +49,47 @@ type reqFormat struct {
 	Body      json.RawMessage `json:"body,omitempty"`
 }
 
-func NewChatPeer(relayAddr string) (*ChatPeer, error) {
+func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
+
+	var relayList []string
+	for _, multiaddr := range relayMultiAddrList {
+		parts := strings.Split(multiaddr, "/")
+		relayList = append(relayList, parts[len(parts)-1])
+	}
+
+	var distmap []RelayDist
+	OwnPubIP = GetPublicIP()
+	h1 := sha256.New()
+	h1.Write([]byte(OwnPubIP))
+	peerIDhash := hex.EncodeToString(h1.Sum(nil))
+
+	for _, relay := range relayList {
+
+		h_R := sha256.New()
+		h_R.Write([]byte(relay))
+		RelayIDhash := hex.EncodeToString(h_R.Sum(nil))
+
+		dist := XorHexToBigInt(peerIDhash, RelayIDhash)
+
+		distmap = append(distmap, RelayDist{dist: dist, relayID: relay})
+	}
+
+	sort.Slice(distmap, func(i, j int) bool {
+		return distmap[i].dist.Cmp(distmap[j].dist) < 0
+	})
+
+	relayIDused := distmap[0].relayID
+	fmt.Println(relayIDused)
+	var relayAddr string
+
+	for _, multiaddr := range relayMultiAddrList {
+		parts := strings.Split(multiaddr, "/")
+		if parts[len(parts)-1] == relayIDused {
+			relayAddr = multiaddr
+			break
+		}
+	}
+
 	fmt.Println("[DEBUG] Parsing relay address:", relayAddr)
 	relayMA, err := multiaddr.NewMultiaddr(relayAddr)
 	if err != nil {
@@ -171,8 +216,7 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	var reqSent reqFormat
 	reqSent.Type = "register"
-	reqSent.PubIP = GetPublicIP() // have too use a stun server to get public ip first and then send register command
-	publicAddr = reqSent.PubIP
+	reqSent.PubIP = OwnPubIP // have too use a stun server to get public ip first and then send register command
 	fmt.Println(reqSent.PubIP)
 	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
 
@@ -252,7 +296,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 		}
 
 		if reqData["Method"] == "POST" {
-			resp := ServePostReq(reqStruct.ReqParams, reqStruct.Body)
+			resp := ServePostReq([]byte(reqStruct.PubIP), reqStruct.ReqParams, reqStruct.Body)
 			resp = bytes.TrimRight(resp, "\x00")
 			_, err = s.Write(resp)
 			if err != nil {
@@ -348,4 +392,26 @@ func GetPublicIP() string {
 
 	peerAd := xorAddr.IP.String() + ":" + strconv.Itoa(xorAddr.Port)
 	return peerAd
+}
+
+func XorHexToBigInt(hex1, hex2 string) *big.Int {
+
+	bytes1, err1 := hex.DecodeString(hex1)
+	bytes2, err2 := hex.DecodeString(hex2)
+
+	if err1 != nil || err2 != nil {
+		log.Fatalf("Error decoding hex: %v %v", err1, err2)
+	}
+
+	if len(bytes1) != len(bytes2) {
+		log.Fatalf("Hex strings must be the same length")
+	}
+
+	xorBytes := make([]byte, len(bytes1))
+	for i := 0; i < len(bytes1); i++ {
+		xorBytes[i] = bytes1[i] ^ bytes2[i]
+	}
+
+	result := new(big.Int).SetBytes(xorBytes)
+	return result
 }

@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build-go:
+    name: Build Go Binaries
+    needs: create-release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goarch: arm64
+            goos: windows
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Build
+        run: |
+          # Build core-protocol if it exists
+          if [ -d "src/core-protocol" ] && [ -f "src/core-protocol/go.mod" ]; then
+            cd src/core-protocol
+            GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
+            cd ..
+          fi
+          
+          # Build network layer if it exists
+          if [ -d "src/network" ] && [ -f "src/network/go.mod" ]; then
+            cd src/network
+            GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+            cd ..
+          fi
+      - name: Upload Core Protocol Binary
+        if: ${{ success() && matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./src/core-protocol/libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: libr-core-protocol-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+      
+      - name: Upload Network Binary
+        if: ${{ success() && matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./src/network/libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: libr-network-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+  build-web:
+    name: Build Web Client
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Build
+        run: |
+          cd src/web-client
+          if [ -f "package.json" ]; then
+            npm ci
+            npm run build
+            zip -r web-client.zip build/
+          else
+            echo "No package.json found, skipping web client build"
+            exit 0
+          fi
+      - name: Upload Release Asset
+        if: ${{ success() }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./src/web-client/web-client.zip
+          asset_name: libr-web-client.zip
+          asset_content_type: application/zip
+
+  build-mobile:
+    name: Build Mobile Client
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+      - name: Build APK
+        run: |
+          cd src/mobile-client
+          if [ -d "lib" ]; then
+            flutter pub get
+            flutter build apk --release
+          else
+            echo "No Flutter project found, skipping mobile client build"
+            exit 0
+          fi
+      - name: Upload Release Asset
+        if: ${{ success() }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./src/mobile-client/build/app/outputs/flutter-apk/app-release.apk
+          asset_name: libr-mobile.apk
+          asset_content_type: application/vnd.android.package-archive

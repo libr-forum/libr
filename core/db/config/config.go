@@ -12,6 +12,7 @@ import (
 )
 
 const K = 4
+const RepMajority = 0.5
 
 // DB is the global SQLite connection
 var DB *sql.DB
@@ -68,8 +69,11 @@ func createTables() error {
 		content TEXT NOT NULL,
 		ts INTEGER NOT NULL,
 		mod_certs TEXT NOT NULL,
-		sign TEXT NOT NULL
-	);`
+		sign TEXT NOT NULL,
+		deleted INTEGER DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS indx_ts ON msgcert(ts);
+	CREATE INDEX IF NOT EXISTS indx_ts_sender ON msgcert(ts, sender);`
 
 	createRoutingTable := `
 	CREATE TABLE IF NOT EXISTS RoutingTable (

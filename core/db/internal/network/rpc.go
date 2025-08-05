@@ -12,6 +12,7 @@ import (
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
 	"github.com/devlup-labs/Libr/core/db/internal/storage"
+	"github.com/devlup-labs/Libr/core/db/internal/utils"
 )
 
 var GlobalPinger Pinger
@@ -67,12 +68,17 @@ func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*node.Node {
 	return ClosestNodes
 }
 
-func StoreValue(key [20]byte, cert models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
+func StoreValue(key [20]byte, cert *models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
 	closest := rt.FindClosest(key, config.K)
 	fmt.Println(closest)
 
 	selfDist := node.XORBigInt(self.NodeId, key)
 	fmt.Println(selfDist)
+
+	if len(closest) < config.K {
+		storage.StoreMsgCert(cert)
+		return nil
+	}
 
 	// Check if self is closer than any of the closest nodes
 	for _, n := range closest {
@@ -85,7 +91,7 @@ func StoreValue(key [20]byte, cert models.MsgCert, self *node.Node, rt *routing.
 	return closest
 }
 
-func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]models.MsgCert, []*node.Node) {
+func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]models.RetMsgCert, []*node.Node) {
 	ts, err := (strconv.ParseInt(key, 10, 64))
 	if err != nil {
 		return nil, nil
@@ -101,16 +107,100 @@ func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]mod
 	return nil, rt.FindClosest(keyBytes, config.K)
 }
 
-func DeleteValue(key [20]byte, cert models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
-	closest := rt.FindClosest(key, config.K)
-	selfDist := node.XORBigInt(self.NodeId, key)
+// func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *node.Node, rt *routing.RoutingTable) ([]*node.Node, error) {
 
-	for _, n := range closest {
-		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
-			storage.DeleteMsgCert(cert)
-			return nil
-		}
+// 	appr, rej := utils.CountModCerts(repCert.Msgcert.ModCerts)
+// 	validMods, _ := utils.GetValidMods()
+// 	modCount := len(repCert.Msgcert.ModCerts)
+// 	shouldContinue := false
+// 	var closest []*node.Node
+
+// 	switch repCert.Mode {
+// 	case "delete":
+// 		if repCert.RepModCerts[0].Sign != repCert.Msgcert.Sign {
+// 			return nil, fmt.Errorf("Wrong Mode")
+// 		}
+// 		closest = rt.FindClosest(*key, config.K)
+// 		selfDist := node.XORBigInt(self.NodeId, *key)
+
+// 		last := closest[len(closest)-1]
+// 		lastDist := node.XORBigInt(last.NodeId, *key)
+
+// 		if selfDist.Cmp(lastDist) < 0 {
+// 			err := storage.DeleteMsgCert(repCert)
+// 			if err != nil {
+// 				if err.Error() != "MsgCert not found" {
+// 					return nil, err
+// 				}
+// 			}
+// 			return nil, nil
+// 		}
+// 	case "report":
+// 		if err := storage.ValidateRepCert(repCert, validMods); err != nil {
+// 			return nil, err
+// 		}
+// 		closest = rt.FindClosest(*key, config.K)
+// 		selfDist := node.XORBigInt(self.NodeId, *key)
+
+// 		last := closest[len(closest)-1]
+// 		lastDist := node.XORBigInt(last.NodeId, *key)
+
+// 		if selfDist.Cmp(lastDist) < 0 {
+// 			err := storage.DeleteMsgCert(repCert)
+// 			if err != nil {
+// 				if err.Error() != "MsgCert not found" {
+// 					return nil, err
+// 				}
+// 			}
+// 			return nil, nil
+// 		}
+// 	}
+
+// 	// switch {
+// 	// case modCount == 0 && repCert.Msgcert.PublicKey == repCert.Msgcert.Msg.PublicKey:
+// 	// 	shouldContinue = true
+
+// 	// case modCount == 0 && repCert.PublicKey != repCert.ReportMsg.PublicKey:
+// 	// 	return nil, fmt.Errorf("empty ModCert — invalid backup or post request")
+
+// 	// case float32(appr)/float32(len(validMods)) <= config.MinApprove:
+// 	// 	return nil, fmt.Errorf("less than 40% mod approval")
+
+// 	// case appr < rej:
+// 	// 	return nil, fmt.Errorf("more rejections than approvals")
+
+// 	// case float32(appr)/float32(len(validMods)) > config.MinApprove && appr > rej:
+// 	// 	shouldContinue = true
+// 	// }
+
+// 	// if !shouldContinue {
+// 	// 	return nil, fmt.Errorf("less than 40% mod approval")
+// 	// }
+
+// 	return closest, nil
+// }
+
+func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *node.Node, rt *routing.RoutingTable) ([]*node.Node, error) {
+	validMods, _ := utils.GetModData()
+
+	// 🔒 Validate the full ReportCert (including MsgCert & RepModCerts)
+	if err := storage.ValidateRepCert(repCert, validMods); err != nil {
+		return nil, fmt.Errorf("repCert validation failed: %v", err)
 	}
 
-	return closest
+	selfDist := node.XORBigInt(self.NodeId, *key)
+	closest := rt.FindClosest(*key, config.K)
+	lastDist := node.XORBigInt(closest[len(closest)-1].NodeId, *key)
+
+	// 🔁 If this node is responsible
+	if selfDist.Cmp(lastDist) < 0 {
+		err := storage.DeleteMsgCert(repCert)
+		if err != nil && err.Error() != "MsgCert not found" {
+			return nil, fmt.Errorf("deletion failed: %v", err)
+		}
+		return nil, nil
+	}
+
+	// 📡 Forward to closest peers
+	return closest, nil
 }

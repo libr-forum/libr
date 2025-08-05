@@ -34,9 +34,10 @@ func GetBucketIndex(selfID, targetID [20]byte) int {
 }
 
 func (rt *RoutingTable) InsertNode(newNode *node.Node, pinger Pinger) string {
-	if rt.SelfID == newNode.NodeId && rt.SelfPort == newNode.Port {
+	if bytes.Equal(rt.SelfID[:], newNode.NodeId[:]) && rt.SelfPort == newNode.Port {
 		return "Can't add self node"
 	}
+
 	index := GetBucketIndex(rt.SelfID, newNode.NodeId)
 
 	if rt.Buckets[index] == nil {

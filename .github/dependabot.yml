@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # Smart contracts - only runs if package.json exists in directory
+  - package-ecosystem: "npm"
+    directory: "/src/contracts"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "deps(contracts)"
+      include: "scope"
+
+  # GitHub Actions - always check for workflow updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@lakshyajain-0291"
+      - "@Aradhya2708"
+    assignees:
+      - "@lakshyajain-0291"
+    commit-message:
+      prefix: "deps(ci)"
+      include: "scope"
+
+# Note: Additional ecosystems can be added when files are created:
+# - Add "gomod" ecosystem for "/src/core-protocol" when go.mod is created
+# - Add "gomod" ecosystem for "/src/network" when go.mod is created  
+# - Add "npm" ecosystem for "/src/web-client" when package.json is created
+# - Add "pub" ecosystem for "/src/mobile-client" when pubspec.yaml is created

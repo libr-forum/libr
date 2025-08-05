@@ -1,0 +1,289 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-core-protocol:
+    name: Test Core Protocol (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if core-protocol folder exists
+        id: check_core_protocol
+        run: |
+          if [ -d "src/core-protocol" ] && [ -f "src/core-protocol/go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Core protocol folder or go.mod not found, skipping tests"
+          fi
+      - name: Set up Go
+        if: steps.check_core_protocol.outputs.exists == 'true'
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Test core-protocol modules
+        if: steps.check_core_protocol.outputs.exists == 'true'
+        run: |
+          cd src/core-protocol
+          go test -v ./...
+
+  test-network:
+    name: Test Network Layer (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if network folder exists
+        id: check_network
+        run: |
+          if [ -d "src/network" ] && [ -f "src/network/go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Network folder or go.mod not found, skipping tests"
+          fi
+      - name: Set up Go
+        if: steps.check_network.outputs.exists == 'true'
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Test network modules
+        if: steps.check_network.outputs.exists == 'true'
+        run: |
+          cd src/network
+          go test -v ./...
+
+  test-web:
+    name: Test Web Client (React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if web folder exists
+        id: check_web
+        run: |
+          if [ -d "src/web-client" ] && [ -f "src/web-client/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Web client folder or package.json not found, skipping tests"
+          fi
+      - name: Set up Node.js
+        if: steps.check_web.outputs.exists == 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        if: steps.check_web.outputs.exists == 'true'
+        run: |
+          cd src/web-client
+          npm ci
+      - name: Run tests
+        if: steps.check_web.outputs.exists == 'true'
+        run: |
+          cd src/web-client
+          npm test -- --passWithNoTests
+
+  test-mobile:
+    name: Test Mobile Client (Flutter)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if mobile folder exists
+        id: check_mobile
+        run: |
+          if [ -d "src/mobile-client" ] && [ -f "src/mobile-client/pubspec.yaml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Mobile client folder or pubspec.yaml not found, skipping tests"
+          fi
+      - name: Set up Flutter
+        if: steps.check_mobile.outputs.exists == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+      - name: Install dependencies
+        if: steps.check_mobile.outputs.exists == 'true'
+        run: |
+          cd src/mobile-client
+          flutter pub get
+      - name: Run tests
+        if: steps.check_mobile.outputs.exists == 'true'
+        run: |
+          cd src/mobile-client
+          flutter test --no-pub
+
+  test-contracts:
+    name: Test Smart Contracts (Solidity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if contracts folder exists
+        id: check_contracts
+        run: |
+          if [ -d "src/contracts" ] && [ -f "src/contracts/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Contracts folder or package.json not found, skipping tests"
+          fi
+      - name: Set up Node.js
+        if: steps.check_contracts.outputs.exists == 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        if: steps.check_contracts.outputs.exists == 'true'
+        run: |
+          cd src/contracts
+          npm ci
+      - name: Compile contracts
+        if: steps.check_contracts.outputs.exists == 'true'
+        run: |
+          cd src/contracts
+          npm run compile
+      - name: Run contract tests
+        if: steps.check_contracts.outputs.exists == 'true'
+        run: |
+          cd src/contracts
+          npm test
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      # Lint Core Protocol
+      - name: Check if core-protocol folder exists
+        id: check_core_protocol
+        run: |
+          if [ -d "src/core-protocol" ] && [ -f "src/core-protocol/go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Core protocol folder not found, skipping Go linting"
+          fi
+      - name: Lint Core Protocol (Go)
+        if: steps.check_core_protocol.outputs.exists == 'true'
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55.2
+          working-directory: src/core-protocol
+          args: --timeout=5m
+          skip-pkg-cache: true
+          skip-build-cache: true
+        continue-on-error: true
+
+      # Lint Network Layer
+      - name: Check if network folder exists
+        id: check_network
+        run: |
+          if [ -d "src/network" ] && [ -f "src/network/go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Network folder not found, skipping Go linting"
+          fi
+      - name: Lint Network Layer (Go)
+        if: steps.check_network.outputs.exists == 'true'
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55.2
+          working-directory: src/network
+          args: --timeout=5m
+          skip-pkg-cache: true
+          skip-build-cache: true
+        continue-on-error: true
+
+      # Lint Web Client
+      - name: Check if web folder exists
+        id: check_web
+        run: |
+          if [ -d "src/web-client" ] && [ -f "src/web-client/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Web client folder not found, skipping JS/TS linting"
+          fi
+      - name: Set up Node.js
+        if: steps.check_web.outputs.exists == 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Lint Web Client
+        if: steps.check_web.outputs.exists == 'true'
+        run: |
+          cd src/web-client
+          npm ci
+          npm run lint || echo "⚠️ Linting not configured or failed"
+        continue-on-error: true
+
+      # Lint Smart Contracts
+      - name: Check if contracts folder exists
+        id: check_contracts
+        run: |
+          if [ -d "src/contracts" ] && [ -f "src/contracts/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Contracts folder not found, skipping Solidity linting"
+          fi
+      - name: Lint Smart Contracts
+        if: steps.check_contracts.outputs.exists == 'true'
+        run: |
+          cd src/contracts
+          npm ci
+          npm run lint || echo "⚠️ Contract linting not configured or failed"
+        continue-on-error: true
+
+  # Summary job to show overall status
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test-core-protocol, test-network, test-web, test-mobile, test-contracts, lint]
+    if: always()
+    steps:
+      - name: Check results and provide summary
+        run: |
+          echo "🔍 LIBR CI Pipeline Summary"
+          echo "=========================="
+          echo ""
+          echo "📊 Test Results:"
+          echo "  • Core Protocol: ${{ needs.test-core-protocol.result }}"
+          echo "  • Network Layer: ${{ needs.test-network.result }}"
+          echo "  • Web Client: ${{ needs.test-web.result }}"
+          echo "  • Mobile Client: ${{ needs.test-mobile.result }}"
+          echo "  • Smart Contracts: ${{ needs.test-contracts.result }}"
+          echo "  • Code Linting: ${{ needs.lint.result }}"
+          echo ""
+          
+          # Count successful jobs
+          success_count=0
+          if [ "${{ needs.test-core-protocol.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          if [ "${{ needs.test-network.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          if [ "${{ needs.test-web.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          if [ "${{ needs.test-mobile.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          if [ "${{ needs.test-contracts.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          if [ "${{ needs.lint.result }}" == "success" ]; then success_count=$((success_count+1)); fi
+          
+          # Count skipped jobs
+          skipped_count=0
+          if [ "${{ needs.test-core-protocol.result }}" == "skipped" ]; then skipped_count=$((skipped_count+1)); fi
+          if [ "${{ needs.test-network.result }}" == "skipped" ]; then skipped_count=$((skipped_count+1)); fi
+          if [ "${{ needs.test-web.result }}" == "skipped" ]; then skipped_count=$((skipped_count+1)); fi
+          if [ "${{ needs.test-mobile.result }}" == "skipped" ]; then skipped_count=$((skipped_count+1)); fi
+          if [ "${{ needs.test-contracts.result }}" == "skipped" ]; then skipped_count=$((skipped_count+1)); fi
+          
+          echo "📈 Summary: $success_count successful, $skipped_count skipped"
+          echo ""
+          
+          if [ $success_count -gt 0 ]; then
+            echo "✅ At least one component tested successfully!"
+          else
+            echo "ℹ️ No components were tested (this is normal for new projects)"
+          fi
