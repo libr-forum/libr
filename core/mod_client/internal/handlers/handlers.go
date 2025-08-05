@@ -19,7 +19,7 @@ func MsgIN(bodyBytes []byte) []byte {
 	}
 
 	// Moderate message
-	moderationStatus, err := service.ModerateMsg(req)
+	moderationStatus, err := service.AutoModerateMsg(req)
 	fmt.Println(moderationStatus)
 	if err != nil {
 		log.Printf("Moderation error: %v", err)
@@ -44,4 +44,33 @@ func MsgIN(bodyBytes []byte) []byte {
 	_ = service.AppendToModLog(req, moderationStatus)
 
 	return []byte(signed)
+}
+
+func MsgReport(bodyBytes []byte) []byte {
+	var req models.MsgCert
+	err := json.Unmarshal(bodyBytes, &req)
+	if err != nil {
+		fmt.Println("Invalid JSON")
+		return nil
+	}
+
+	// Moderate message
+	moderationStatus, err := service.ManModerateMsg(req)
+	fmt.Println(moderationStatus)
+	if err != nil {
+		log.Printf("Moderation error: %v", err)
+		return nil
+	}
+
+	// // ✅ Save log for this mod
+	// _ = service.AppendToModLog(req, moderationStatus) for now
+
+	// Return the ModResponse as JSON
+	respBytes, err := json.Marshal(moderationStatus)
+	if err != nil {
+		log.Printf("JSON marshal error: %v", err)
+		return nil
+	}
+
+	return respBytes
 }

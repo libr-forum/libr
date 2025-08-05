@@ -58,7 +58,8 @@ func createTables() error {
 	CREATE TABLE IF NOT EXISTS msgresult (
 		sign TEXT PRIMARY KEY,
 		content TEXT NOT NULL,
-		moderated INTEGER DEFAULT 0,
+		reason TEXT,
+		moderated INTEGER,
 		modsign TEXT
 	);
 	CREATE INDEX IF NOT EXISTS indx_sign ON msgresult(sign);`

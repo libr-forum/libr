@@ -33,3 +33,22 @@ type Category struct {
 	Name       string  `json:"name"`
 	Confidence float64 `json:"confidence"`
 }
+
+type MsgCert struct {
+	PublicKey string    `json:"public_key"`
+	Msg       Msg       `json:"msg"`
+	ModCerts  []ModCert `json:"mod_certs"`
+	Sign      string    `json:"sign"`
+	Reason    string    `json:"reason,omitempty"`
+}
+
+type Msg struct {
+	Content string `json:"content"`
+	Ts      int64  `json:"ts"`
+}
+
+type ModCert struct {
+	Sign      string `json:"sign"`
+	PublicKey string `json:"public_key"`
+	Status    string `json:"status"`
+}

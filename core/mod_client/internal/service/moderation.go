@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
+	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	"github.com/joho/godotenv"
 )
@@ -110,7 +111,7 @@ func LoadForbiddenWords() []string {
 	return config.Forbidden
 }
 
-func ModerateMsg(msg models.UserMsg) (string, error) {
+func AutoModerateMsg(msg models.UserMsg) (string, error) {
 	for _, word := range forbidden {
 		if msg.Content == word {
 			return "0", nil
@@ -125,6 +126,14 @@ func ModerateMsg(msg models.UserMsg) (string, error) {
 		return "1", nil
 	}
 	return "0", nil
+}
+
+func ManModerateMsg(cert models.MsgCert) (*models.ModResponse, error) {
+	resp, err := moddb.StoreMsgResult(cert)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func SelectModel(method string) (ModelFunc, error) {

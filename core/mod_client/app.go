@@ -155,23 +155,7 @@ func (a *App) SendInput(input string) (string, []types.ModCert) {
 
 	ts := time.Now().Unix()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancel()
-
-	// Run SendToMods with timeout
-	modChan := make(chan []types.ModCert, 1)
-
-	go func() {
-		modcerts := core.AutoSendToMods(input, ts)
-		modChan <- modcerts
-	}()
-
-	var modcertlist []types.ModCert
-	select {
-	case modcertlist = <-modChan:
-	case <-ctx.Done():
-		return ":x: Moderator timeout", nil
-	}
+	modcertlist := core.AutoSendToMods(input, ts)
 
 	if len(modcertlist) == 0 {
 		return ":x: Message rejected by moderators.", nil
