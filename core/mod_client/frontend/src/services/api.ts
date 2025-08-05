@@ -162,8 +162,9 @@ export const apiService = {
           status:"approved",
           sign:message.sign,
         }
+        response.push(msg);
       }
-      return response
+      return response;
     } catch (err) {
       console.error("Failed to fetch messages:", err);
       return [];

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 		// Use the valid public key from disk
 		pubKey = ed25519.PublicKey(pubData)
 	}
-
+	fmt.Println("Public Key : ", base64.StdEncoding.EncodeToString(pubKey))
 	return pubKey, privKey, nil
 }
 

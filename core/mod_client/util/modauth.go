@@ -1,40 +1,30 @@
 package util
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"time"
+
+	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
 func AmIMod(myKey string) (bool, error) {
-	url := fmt.Sprintf("https://raw.githubusercontent.com/cherry-aggarwal/LIBR/integration/docs/all_mods.csv?nocache=%d", time.Now().UnixNano())
-	resp, err := http.Get(url)
+	rows, err := fetchRawData("1379617454")
+	fmt.Println(rows)
 	if err != nil {
-		return false, fmt.Errorf("failed to fetch CSV: %w", err)
+		return false, err
 	}
-	defer resp.Body.Close()
-
-	reader := csv.NewReader(resp.Body)
-
-	// Skip header
-	if _, err := reader.Read(); err != nil {
-		return false, fmt.Errorf("failed to read header: %w", err)
+	var mods []types.Mod
+	for _, r := range rows {
+		if len(r) >= 3 {
+			mod := types.Mod{
+				IP:        r[0],
+				Port:      r[1],
+				PublicKey: r[2],
+			}
+			mods = append(mods, mod)
+		}
 	}
-
-	for {
-		row, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Printf("skipping bad row: %v", err)
-			continue
-		}
-
-		if len(row) > 0 && row[0] == myKey {
+	for _, mod := range mods {
+		if len(mod.PublicKey) > 0 && mod.PublicKey == myKey {
 			return true, nil
 		}
 	}

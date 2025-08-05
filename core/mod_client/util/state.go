@@ -7,7 +7,8 @@ import (
 )
 
 func GetOnlineMods() ([]types.Mod, error) {
-	rows, err := fetchRawData("mod")
+	rows, err := fetchRawData("1379617454")
+	fmt.Println(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -15,9 +16,9 @@ func GetOnlineMods() ([]types.Mod, error) {
 	for _, r := range rows {
 		if len(r) >= 3 {
 			mod := types.Mod{
-				IP:        fmt.Sprint(r[0]),
-				Port:      fmt.Sprint(r[1]),
-				PublicKey: fmt.Sprint(r[2]),
+				IP:        r[0],
+				Port:      r[1],
+				PublicKey: r[2],
 			}
 			mods = append(mods, mod)
 		}

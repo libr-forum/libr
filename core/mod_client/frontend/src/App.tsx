@@ -1,4 +1,3 @@
-
 import React, { useState,useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +32,7 @@ import { MsgReports } from './pages/MessageReports';
 
 const queryClient = new QueryClient();
 
-const baseURL = 'https://script.google.com/macros/s/AKfycbw5yRBiPoDTWsqMcQLhEeaxRnW2UJwscjuNNLKH5juziwAdwPrsvUh7Uzci-UhTSpOzKg/exec';
+const baseURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv';
 
 interface RelayErrorDialogProps {
   open: boolean;
@@ -105,24 +104,23 @@ export function useRelayConnection() {
 
 async function fetchRelayAddrs(): Promise<string[]> {
   try {
-    const url = `${baseURL}?sheet=relay`; // Adjust baseURL as needed
-    console.log("▶ fetching from URL:", url);
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv&gid=1789680527";
+    console.log("▶ fetching relay addrs from CSV:", url);
 
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch relay data (HTTP ${response.status})`);
+    if (!response.ok) throw new Error(`Failed to fetch relay CSV (HTTP ${response.status})`);
 
-    const rows: any[][] = await response.json();
+    const csvText = await response.text();
+    // Split by lines, always skip the first line (header)
+    const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const dataLines = lines.slice(1); // Always skip header
 
-    if (!Array.isArray(rows) || rows.length === 0) {
-      throw new Error("No data found in sheet");
-    }
+    // Each line is an address (or first column if comma separated), only keep valid multiaddrs
+    const addrs = dataLines
+      .map(line => line.split(',')[0].trim())
+      .filter(addr => addr.startsWith('/'));
 
-    const addrs = rows
-      .map(row => row[0])                // take first column
-      .filter(addr => typeof addr === 'string' && addr.trim() !== '') // ensure it's a valid string
-      .map(addr => addr.trim());         // trim spaces
-
-    console.log(addrs);
+    console.log('[RelayAddrs] Valid relay addresses:', addrs);
     return addrs;
   } catch (error) {
     console.error("Error loading relay addresses:", error);
@@ -173,11 +171,11 @@ const App: React.FC = () => {
     const initializeApp = async () => {
       try {
         console.log("🔄 Fetching relay addresses...");
-        //const relayAddrs = await fetchRelayAddrs();
-        const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWG9JXRbHZXPG3B4JrvGpZHDAGAzXgVU7mecGb5u5LkQVd"]
+        const relayAddrs = await fetchRelayAddrs();
+        // const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWCG3Jp3Jm3AeD9WgUVAVeze71X3mPaCz2jfQAAGnCDgku"]
+        const status = await GetRelayStatus();
         let connected = false;
         for (let i = 0; i < 10; i++) {
-          const status = await GetRelayStatus();
           if (status === "online") {
             connected = true;
             break;

@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -493,6 +492,11 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 		wg.Add(1)
 		go func(mod types.Mod) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[PANIC] Recovered in mod goroutine for %s:%s: %v", mod.IP, mod.Port, r)
+				}
+			}()
 
 			modCtx, modCancel := context.WithTimeout(ctx, 3*time.Second)
 			defer modCancel()
@@ -501,34 +505,41 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 
 			// Send the request to the mod
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("[PANIC] Recovered in mod response goroutine for %s:%s: %v", mod.IP, mod.Port, r)
+					}
+				}()
 				response, err := network.SendTo(mod.IP, mod.Port, "/route=submit", msg, "mod")
-				fmt.Println("Response:", response)
+				log.Printf("[DEBUG] Sent to mod %s:%s, response: %v, err: %v", mod.IP, mod.Port, response, err)
 				if err != nil {
-					log.Printf("Failed to contact mod at %s:%s: %v", mod.IP, mod.Port, err)
+					log.Printf("[ERROR] Failed to contact mod at %s:%s: %v", mod.IP, mod.Port, err)
 					return
 				}
 
 				modcert, ok := response.(types.ModCert)
-				fmt.Println("Modcert:", modcert)
+				log.Printf("[DEBUG] Modcert from %s:%s: %v (ok=%v)", mod.IP, mod.Port, modcert, ok)
 				if !ok {
-					log.Printf("Invalid mod response format from %s:%s", mod.IP, mod.Port)
+					log.Printf("[ERROR] Invalid mod response format from %s:%s: %v", mod.IP, mod.Port, response)
 					return
 				}
 
 				if modcert.PublicKey != mod.PublicKey {
-					log.Printf("Response public key mismatch from mod %s:%s", mod.IP, mod.Port)
+					log.Printf("[ERROR] Response public key mismatch from mod %s:%s. Expected: %s, Got: %s", mod.IP, mod.Port, mod.PublicKey, modcert.PublicKey)
 					return
 				}
 
 				if cryptoutils.VerifySignature(modcert.PublicKey, message+strconv.FormatInt(ts, 10)+modcert.Status, modcert.Sign) {
+					log.Printf("[INFO] Valid signature from mod %s:%s, status: %s", mod.IP, mod.Port, modcert.Status)
 					responseChan <- modcert
 				} else {
-					log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)
+					log.Printf("[ERROR] Invalid signature from mod %s:%s. Data: %s, Sign: %s", mod.IP, mod.Port, message+strconv.FormatInt(ts, 10)+modcert.Status, modcert.Sign)
 				}
 			}()
 
 			select {
 			case res := <-responseChan:
+				log.Printf("[INFO] Received modcert from %s:%s, status: %s", mod.IP, mod.Port, res.Status)
 				if res.Status == "1" {
 					mu.Lock()
 					modcertList = append(modcertList, res)
@@ -540,6 +551,7 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 					curTotal := totalMods
 					mu.Unlock()
 
+					log.Printf("[WARN] Mod %s:%s rejected. RejCount: %d, TotalMods: %d", mod.IP, mod.Port, curRej, curTotal)
 					if curRej > (curTotal / 2) {
 						once.Do(func() {
 							log.Println("🚫 Majority rejected — cancelling.")
@@ -549,13 +561,14 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 				}
 
 			case <-modCtx.Done():
-				log.Printf("Mod %s:%s timed out or cancelled", mod.IP, mod.Port)
+				log.Printf("[WARN] Mod %s:%s timed out or cancelled", mod.IP, mod.Port)
 				mu.Lock()
 				totalMods--
 				curRej := rejCount
 				curTotal := totalMods
 				mu.Unlock()
 
+				log.Printf("[WARN] Timeout. RejCount: %d, TotalMods: %d", curRej, curTotal)
 				if curRej > (curTotal / 2) {
 					once.Do(func() {
 						log.Println("🚫 Majority rejected after timeouts — cancelling.")

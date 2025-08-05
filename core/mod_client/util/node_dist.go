@@ -2,7 +2,7 @@ package util
 
 import (
 	"crypto/sha1"
-	"encoding/json"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"math/big"
@@ -33,7 +33,7 @@ func GenerateNodeID(input string) [20]byte {
 }
 
 func GetStartNodes() ([]*types.Node, error) {
-	rows, err := fetchRawData("db")
+	rows, err := fetchRawData("26032376")
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +55,9 @@ func GetStartNodes() ([]*types.Node, error) {
 	return nodeList, nil
 }
 
-func fetchRawData(sheet string) ([][]interface{}, error) {
-	url := fmt.Sprintf("%s?sheet=%s", "https://script.google.com/macros/s/AKfycbw5yRBiPoDTWsqMcQLhEeaxRnW2UJwscjuNNLKH5juziwAdwPrsvUh7Uzci-UhTSpOzKg/exec", sheet)
-	fmt.Println("▶ fetching sheet:", sheet, "from URL:", url)
+func fetchRawData(gid string) ([][]string, error) {
+	url := fmt.Sprintf("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv&gid=%s", gid)
+	fmt.Println("▶ fetching sheet:", gid, "from URL:", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -65,15 +65,20 @@ func fetchRawData(sheet string) ([][]interface{}, error) {
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var rows [][]interface{}
-	if err := json.Unmarshal(bodyBytes, &rows); err != nil {
-		return nil, fmt.Errorf("invalid JSON: %w", err)
+	reader := csv.NewReader(resp.Body)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("invalid CSV: %w", err)
 	}
-	return rows, nil
+
+	if len(records) <= 1 {
+		return nil, fmt.Errorf("no data rows in sheet")
+	}
+
+	return records[1:], nil // 👈 skip the header row
 }
