@@ -111,7 +111,7 @@ func GetOnlineMods() ([]types.Mod, error) {
 }
 
 func GetRelayAddr() ([]string, error) {
-	collection := MongoClient.Database("your_db_name").Collection("relays") // replace with actual DB & collection
+	collection := MongoClient.Database("Addrs").Collection("relays") // replace with actual DB & collection
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
