@@ -160,6 +160,7 @@ export const apiService = {
           timestamp:BigInt(message.msg.ts),
           communityId:"1",
           status:"approved",
+          moderationNote:message.mod_certs,
           sign:message.sign,
         }
         response.push(msg);
