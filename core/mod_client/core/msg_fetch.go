@@ -24,12 +24,15 @@ func Fetch(ts int64) []types.RetMsgCert {
 	startNodes, _ := util.GetStartNodes()
 	known := append([]*types.Node{}, startNodes...)
 	queried := make(map[string]bool)
-	printed := sync.Map{}
-	var results []types.RetMsgCert
+
+	var allCerts []types.RetMsgCert
+	deleteCount := make(map[string]int)
+	mu := sync.Mutex{}
 
 	const maxRounds = 50
 	const alpha = 3
 	const k = config.K
+	const deleteThreshold = 2
 
 	for round := 0; round < maxRounds; round++ {
 		sort.Slice(known, func(i, j int) bool {
@@ -62,7 +65,6 @@ func Fetch(ts int64) []types.RetMsgCert {
 
 		var wg sync.WaitGroup
 		newNodes := []*types.Node{}
-		var mu sync.Mutex
 
 		for _, n := range toQuery {
 			wg.Add(1)
@@ -80,7 +82,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
 				}
-				fmt.Println(base)
+
 				switch base.Type {
 				case "found":
 					var val struct {
@@ -90,6 +92,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 					if err := json.Unmarshal(respBytes, &val); err != nil {
 						return
 					}
+
 					for _, cert := range val.Values {
 						if cert.Sign == "" {
 							continue
@@ -102,18 +105,20 @@ func Fetch(ts int64) []types.RetMsgCert {
 						dataToSign := types.DataToSign{
 							Content:   cert.Msg.Content,
 							Timestamp: cert.Msg.Ts,
-							ModCerts:  cert.ModCerts, // sorted before signing
+							ModCerts:  cert.ModCerts,
 						}
 						jsonBytes, _ := json.Marshal(dataToSign)
 
 						if cryptoutils.VerifySignature(cert.PublicKey, string(jsonBytes), cert.Sign) {
-							if _, loaded := printed.LoadOrStore(cert.Sign, true); !loaded {
-								mu.Lock()
-								results = append(results, cert)
-								mu.Unlock()
+							mu.Lock()
+							allCerts = append(allCerts, cert)
+							if cert.Deleted == "1" {
+								deleteCount[cert.Sign]++
 							}
+							mu.Unlock()
 						}
 					}
+
 				case "redirect":
 					var redir struct {
 						Type  string       `json:"type"`
@@ -122,6 +127,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 					if err := json.Unmarshal(respBytes, &redir); err != nil {
 						return
 					}
+
 					mu.Lock()
 					for _, node := range redir.Nodes {
 						exists := false
@@ -146,6 +152,21 @@ func Fetch(ts int64) []types.RetMsgCert {
 			break
 		}
 		known = append(known, newNodes...)
+	}
+
+	// Filter certs: keep only one per Sign, if Deleted == "0" and delete count ≤ threshold
+	unique := make(map[string]types.RetMsgCert)
+	for _, cert := range allCerts {
+		if cert.Deleted == "0" && deleteCount[cert.Sign] <= deleteThreshold {
+			if _, exists := unique[cert.Sign]; !exists {
+				unique[cert.Sign] = cert
+			}
+		}
+	}
+
+	var results []types.RetMsgCert
+	for _, cert := range unique {
+		results = append(results, cert)
 	}
 
 	sort.Slice(results, func(i, j int) bool {

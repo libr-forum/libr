@@ -238,6 +238,7 @@ func (a *App) Delete(msgcert types.MsgCert) string {
 		Status:    "",
 	},
 	}
+	fmt.Println("msgcert:", msgcert)
 	repCert := core.CreateRepCert(msgcert, delcert, "delete")
 	tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
