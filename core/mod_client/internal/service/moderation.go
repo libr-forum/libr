@@ -16,7 +16,6 @@ import (
 	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
-	"github.com/joho/godotenv"
 )
 
 var forbidden = LoadForbiddenWords()
@@ -24,8 +23,6 @@ var forbidden = LoadForbiddenWords()
 type ModelFunc func(content string) (bool, error)
 
 func init() {
-	envPath := GetModEnvPath()
-	_ = godotenv.Load(envPath)
 	ensureModConfigExists()
 }
 
@@ -49,24 +46,44 @@ func GetModConfigPath() string {
 	return path
 }
 
-func GetModEnvPath() string {
+func GetModKeysPath() string {
 	var path string
 
 	switch runtime.GOOS {
 	case "windows":
 		appData := os.Getenv("APPDATA")
-		path = filepath.Join(appData, "libr", "modconfig", ".env")
+		path = filepath.Join(appData, "libr", "modconfig", "modkeys.json")
 	case "darwin":
 		home, _ := os.UserHomeDir()
-		path = filepath.Join(home, "Library", "Application Support", "libr", "modconfig", ".env")
+		path = filepath.Join(home, "Library", "Application Support", "libr", "modconfig", "modkeys.json")
 	case "linux":
 		home, _ := os.UserHomeDir()
-		path = filepath.Join(home, ".config", "libr", "modconfig", ".env")
+		path = filepath.Join(home, ".config", "libr", "modconfig", "modkeys.json")
 	default:
-		path = filepath.Join("modconfig", ".env")
+		path = filepath.Join("modconfig", "modkeys.json")
 	}
 
 	return path
+}
+
+func GetGoogleApiKey() (string, error) {
+	path := GetModKeysPath()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read modkeys.json: %w", err)
+	}
+
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		return "", fmt.Errorf("failed to parse modkeys.json: %w", err)
+	}
+
+	key, ok := data["GOOGLE_NLP_API_KEY"]
+	if !ok || key == "" {
+		return "", fmt.Errorf("GOOGLE_NLP_API_KEY not found in modkeys.json")
+	}
+
+	return key, nil
 }
 
 func ensureModConfigExists() {
@@ -185,7 +202,11 @@ func ParseThresholds() map[string]float64 {
 }
 
 func AnalyzeWithGoogleNLP(content string) (bool, error) {
-	apiKey := os.Getenv("GOOGLE_NLP_API_KEY")
+	apiKey, err := GetGoogleApiKey()
+	if err != nil {
+		return false, err
+	}
+
 	if apiKey == "" {
 		return false, fmt.Errorf("missing GOOGLE_NLP_API_KEY in environment")
 	}

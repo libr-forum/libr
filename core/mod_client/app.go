@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
@@ -314,34 +313,24 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 }
 
 func (a *App) SaveGoogleApiKey(key string) error {
-	path := service.GetModEnvPath()
+	path := service.GetModKeysPath()
 
-	content, err := os.ReadFile(path)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create modkeys directory: %w", err)
+	}
+
+	data := map[string]string{
+		"GOOGLE_NLP_API_KEY": key,
+	}
+
+	content, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to read env file: %w", err)
+		return fmt.Errorf("failed to encode API key as JSON: %w", err)
 	}
 
-	lines := strings.Split(string(content), "\n")
-	found := false
-
-	for i, line := range lines {
-		if strings.HasPrefix(line, "GOOGLE_NLP_API_KEY=") {
-			lines[i] = "GOOGLE_NLP_API_KEY=" + key
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		// If not found, append at the end
-		lines = append(lines, "GOOGLE_NLP_API_KEY="+key)
-	}
-
-	newContent := strings.Join(lines, "\n")
-
-	err = os.WriteFile(path, []byte(newContent), 0644)
+	err = os.WriteFile(path, content, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write env file: %w", err)
+		return fmt.Errorf("failed to write modkeys.json: %w", err)
 	}
 
 	return nil
