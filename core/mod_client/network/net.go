@@ -48,6 +48,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 		default:
 			return nil, errors.New("expected Msg or MsgCert struct for mod")
 		}
+
 	case "db":
 		switch v := data.(type) {
 		case types.MsgCert:

@@ -15,7 +15,7 @@ import { ModLogs } from './pages/ModLogs';
 import { ModConfig } from './pages/ModConfig';
 import { Communities } from './pages/Communities';
 
-import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme } from '../wailsjs/go/main/App';
+import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, GetRelayAddr } from '../wailsjs/go/main/App';
 import { EventsOn,Quit } from 'wailsjs/runtime/runtime';
 import {
   AlertDialog,
@@ -104,26 +104,13 @@ export function useRelayConnection() {
 
 async function fetchRelayAddrs(): Promise<string[]> {
   try {
-    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv&gid=1789680527";
-    console.log("▶ fetching relay addrs from CSV:", url);
-
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch relay CSV (HTTP ${response.status})`);
-
-    const csvText = await response.text();
-    // Split by lines, always skip the first line (header)
-    const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    const dataLines = lines.slice(1); // Always skip header
-
-    // Each line is an address (or first column if comma separated), only keep valid multiaddrs
-    const addrs = dataLines
-      .map(line => line.split(',')[0].trim())
-      .filter(addr => addr.startsWith('/'));
-
-    console.log('[RelayAddrs] Valid relay addresses:', addrs);
-    return addrs;
+    const addrs = await GetRelayAddr();
+    // Only keep valid multiaddrs
+    const validAddrs = addrs.filter(addr => addr.startsWith('/'));
+    console.log('[RelayAddrs] Valid relay addresses:', validAddrs);
+    return validAddrs;
   } catch (error) {
-    console.error("Error loading relay addresses:", error);
+    console.error("Error loading relay addresses from MongoDB:", error);
     return [];
   }
 }

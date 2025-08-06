@@ -7,8 +7,6 @@ import (
 	"io"
 	"math/big"
 	"net/http"
-
-	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
 func XOR(a, b [20]byte) [20]byte {
@@ -30,29 +28,6 @@ func GenerateNodeID(input string) [20]byte {
 	var id [20]byte
 	copy(id[:], h.Sum(nil))
 	return id
-}
-
-func GetStartNodes() ([]*types.Node, error) {
-	rows, err := fetchRawData("26032376")
-	if err != nil {
-		return nil, err
-	}
-	var nodeList []*types.Node
-	for _, r := range rows {
-		if len(r) >= 2 {
-			ip := fmt.Sprint(r[0])
-			port := fmt.Sprint(r[1])
-			addr := fmt.Sprintf("%s:%s", ip, port)
-
-			nodeList = append(nodeList, &types.Node{
-				NodeId: GenerateNodeID(addr),
-				IP:     ip,
-				Port:   port,
-			})
-		}
-	}
-
-	return nodeList, nil
 }
 
 func fetchRawData(gid string) ([][]string, error) {

@@ -110,6 +110,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 				go func(n *types.Node) {
 					defer wg.Done()
 					resp, err := network.SendTo(n.IP, n.Port, route, msgcert, "db")
+					fmt.Println(err)
 					if err != nil {
 						log.Printf("Failed to store to %s:%s: %v", n.IP, n.Port, err)
 						return

@@ -42,6 +42,10 @@ export function GetOnlineMods() {
   return window['go']['main']['App']['GetOnlineMods']();
 }
 
+export function GetRelayAddr() {
+  return window['go']['main']['App']['GetRelayAddr']();
+}
+
 export function GetRelayStatus() {
   return window['go']['main']['App']['GetRelayStatus']();
 }

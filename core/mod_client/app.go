@@ -39,6 +39,7 @@ func NewApp() *App {
 	keycache.InitKeys()
 	config.LoadConfig()
 	config.InitDB()
+	util.SetupMongo(config.MongoURI)
 	return &App{relayStatus: "offline"}
 }
 
@@ -67,6 +68,10 @@ func (a *App) GetOnlineMods() []string {
 	}
 
 	return publicKeys
+}
+
+func (a *App) GetRelayAddr() ([]string, error) {
+	return util.GetRelayAddr()
 }
 
 func (a *App) GenerateAvatar(key string) string {
@@ -156,11 +161,29 @@ func (a *App) SendInput(input string) (string, []types.ModCert) {
 
 	ts := time.Now().Unix()
 
-	modcertlist := core.AutoSendToMods(input, ts)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	// Run SendToMods with timeout
+	modChan := make(chan []types.ModCert, 1)
+
+	go func() {
+		modcerts := core.AutoSendToMods(input, ts)
+		modChan <- modcerts
+	}()
+
+	var modcertlist []types.ModCert
+	select {
+	case modcertlist = <-modChan:
+	case <-ctx.Done():
+		return ":x: Moderator timeout", nil
+	}
 
 	if len(modcertlist) == 0 {
 		return ":x: Message rejected by moderators.", nil
 	}
+
+	fmt.Println("ModCerts received:", modcertlist)
 
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
 	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
@@ -203,6 +226,7 @@ func (a *App) Delete(msgcert types.MsgCert) string {
 	if a.relayStatus != "online" {
 		return "Offline"
 	}
+	fmt.Println("Preparing to delete message with cert:", msgcert)
 	payload := msgcert.Sign
 	pubkey, sign, err := cryptoutils.SignMessage(keycache.PrivKey, payload)
 	if err != nil {
@@ -239,7 +263,6 @@ func (a *App) FetchMessageReports() []models.MsgCert {
 func (a *App) ManualModerate(sign string, moderated int) {
 	moddb.UpdateModerationStatus(sign, moderated)
 }
-
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {
 	cacheDir := cache.GetCacheDir()
 	filePath := filepath.Join(cacheDir, "modlog.json")

@@ -23,6 +23,8 @@ export function GetModerationLogs():Promise<Array<models.ModLogEntry>>;
 
 export function GetOnlineMods():Promise<Array<string>>;
 
+export function GetRelayAddr():Promise<Array<string>>;
+
 export function GetRelayStatus():Promise<string>;
 
 export function ManualModerate(arg1:string,arg2:number):Promise<void>;
