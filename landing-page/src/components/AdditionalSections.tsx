@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound } from 'lucide-react';
+import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Settings, Play } from 'lucide-react';
+import { FaCogs, FaDownload, FaPlay } from 'react-icons/fa';
 
 const TechModules: React.FC = () => {
   const techStack1 = [
@@ -178,7 +179,7 @@ const SecuritySection: React.FC = () => {
                   viewport={{ once: false }}
                 >
                   <div className="w-10 h-10 bg-libr-accent1 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="w-5 h-5 text-white" />
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-libr-secondary mb-1">{feature.title}</h3>
@@ -213,7 +214,7 @@ const SecuritySection: React.FC = () => {
                 viewport={{ once: false }}
               >
                 <div className="w-10 h-10 bg-libr-accent2 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-5 h-5 text-white" />
+                  <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-libr-secondary mb-1">{feature.title}</h3>
@@ -297,11 +298,11 @@ const CallToActionSection: React.FC = () => {
             viewport={{ once: false }}
           >
             <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="flex flex-row items-center libr-button-primary text-lg">
-              <Users className="w-5 h-5 mr-3" />
+              <Users className="w-6 h-6 mr-3" />
               View Documentation
             </button>
             <button onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')}className="flex flex-row items-center libr-button-secondary text-lg">
-              <Code className="w-5 h-5 mr-3" />
+              <Code className="w-6 h-6 mr-3" />
               Explore Code
             </button>
           </motion.div>
@@ -324,4 +325,82 @@ const CallToActionSection: React.FC = () => {
   );
 };
 
-export { TechModules, SecuritySection, CallToActionSection };
+const HowToUse: React.FC = () => {
+  const steps = [
+    {
+      icon: <Download className="w-6 h-6 text-libr-primary" />,
+      title: "Download & Install",
+      description: "Get LIBR for your platform and install it in a few clicks.",
+    },
+    {
+      icon: <Play className="w-6 h-6 text-libr-primary" />,
+      title: "Run & Start Posting",
+      description: "Run the application and start sharing your thoughts.",
+    },
+    {
+      icon: <Database className="w-6 h-6 text-libr-primary" />,
+      title: "Host Your Database",
+      description: "If you like, host a database node and contribute to the network.",
+    },
+  ];
+
+  return (
+    <section id='how-to-use' className="py-20 section-padding">
+      <div className="container mx-auto">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{
+            duration: 0.8,
+            ease: [0.4, 0, 0.2, 1],
+          }}
+          viewport={{ once: false }}
+        >
+          <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
+            How to Use
+          </h2>
+        </motion.div>
+
+        <div className="flex flex-row items-center justify-center w-full space-x-6">
+          {steps.map((step, index) => {
+            const isFirst = index === 0;
+
+            return (
+              <motion.div
+                key={index}
+                className={`feature-card p-6 w-[20%] h-full text-center ${
+                  isFirst ? "cursor-pointer" : ""
+                }`}
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{
+                  duration: 0.8,
+                  ease: [0.4, 0, 0.2, 1],
+                  delay: index * 0.1,
+                }}
+                viewport={{ once: false }}
+                onClick={() => {
+                  if (isFirst) {
+                    window.location.href = "#join-beta";
+                  }
+                }}
+              >
+                <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                  {step.icon}
+                </div>
+                <h3 className="text-lg font-semibold text-libr-secondary mb-3">
+                  {step.title}
+                </h3>
+                <p className="text-muted-foreground">{step.description}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+
+export { TechModules, SecuritySection, CallToActionSection, HowToUse };

@@ -22,6 +22,7 @@ import (
 	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
 	service "github.com/devlup-labs/Libr/core/mod_client/internal/service"
 	"github.com/devlup-labs/Libr/core/mod_client/keycache"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	Peers "github.com/devlup-labs/Libr/core/mod_client/peers"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
@@ -344,4 +345,8 @@ func (a *App) SaveGoogleApiKey(key string) error {
 	}
 
 	return nil
+}
+
+func (a *App) LogToFile(msg string) {
+	logger.LogToFile(msg)
 }

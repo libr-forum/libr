@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Hero, TechArch,WhatIsLIBR} from './components/LandingPageSections';
 import { HowItWorks, Community, Roadmap, Footer } from './components/LandingPageExtended';
-import { TechModules, SecuritySection, CallToActionSection } from './components/AdditionalSections';
+import { TechModules, SecuritySection, CallToActionSection, HowToUse } from './components/AdditionalSections';
 import ArchitectureAnimation from './components/ArchitectureAnimation';
-import NetworkFlowAnimation from './components/MultiPartAnimation';
 import {BackgroundEffect} from './components/BackgroundEffect'; // Add this import at the top
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -127,6 +126,7 @@ const App: React.FC = () => {
         <TechArch />
         <HowItWorks />
         <TechModules />
+        <HowToUse />
         <Community />
         <Footer />
       </main>

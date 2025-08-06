@@ -55,7 +55,7 @@ func DisconnectMongo() {
 
 // 🚀 Uses global MongoClient and ctx
 func GetStartNodes() ([]*types.Node, error) {
-	collection := MongoClient.Database("your_db_name").Collection("nodes") // replace with actual DB & collection
+	collection := MongoClient.Database("Addrs").Collection("nodes") // replace with actual DB & collection
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func GetStartNodes() ([]*types.Node, error) {
 }
 
 func GetOnlineMods() ([]types.Mod, error) {
-	collection := MongoClient.Database("your_db_name").Collection("mods") // replace with actual DB & collection
+	collection := MongoClient.Database("Addrs").Collection("mods") // replace with actual DB & collection
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
