@@ -1,7 +1,9 @@
 package core
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 
@@ -26,6 +28,11 @@ func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.
 
 	jsonBytes, _ := json.Marshal(dataToSign)
 	pubKeyStr, sign, err := cryptoutils.SignMessage(privKey, string(jsonBytes))
+	fmt.Println("data to sign = ", string(jsonBytes))
+	fmt.Print("Private Key = ", base64.StdEncoding.EncodeToString(privKey))
+	fmt.Println("Public Key = ", pubKeyStr)
+	fmt.Print("Signature = ", sign)
+	fmt.Print("\n")
 	if err != nil {
 		log.Fatalf("failed to sign message: %v", err)
 	}

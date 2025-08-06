@@ -24,7 +24,7 @@ type MsgCert struct {
 type DataToSign struct {
 	Content   string    `json:"message"`
 	Timestamp int64     `json:"timestamp"`
-	ModCerts  []ModCert `json:"modcerts"`
+	ModCerts  []ModCert `json:"mod_certs"`
 }
 
 type Mod struct {
