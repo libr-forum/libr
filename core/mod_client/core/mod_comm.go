@@ -406,7 +406,7 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 					log.Printf("Invalid mod cert from %s:%s (wrong pubkey)", mod.IP, mod.Port)
 					return
 				}
-				if modcert.Status == "acknowledgement" && modcert.Sign == "" {
+				if modcert.Status == "acknowledgement" && modcert.Sign == cert.Sign {
 					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
 					mu.Lock()
 					ackCount++
@@ -498,7 +498,7 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 				}
 			}()
 
-			modCtx, modCancel := context.WithTimeout(ctx, 3*time.Second)
+			modCtx, modCancel := context.WithTimeout(ctx, 5*time.Second)
 			defer modCancel()
 
 			responseChan := make(chan types.ModCert, 1)

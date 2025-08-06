@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Header, Hero, Features,WhatIsLIBR} from './components/LandingPageSections';
+import { Header, Hero, TechArch,WhatIsLIBR} from './components/LandingPageSections';
 import { HowItWorks, Community, Roadmap, Footer } from './components/LandingPageExtended';
-import { TechStackSection, SecuritySection, CallToActionSection } from './components/AdditionalSections';
+import { TechModules, SecuritySection, CallToActionSection } from './components/AdditionalSections';
 import ArchitectureAnimation from './components/ArchitectureAnimation';
 import NetworkFlowAnimation from './components/MultiPartAnimation';
 import {BackgroundEffect} from './components/BackgroundEffect'; // Add this import at the top
@@ -60,7 +60,7 @@ const BackToTop: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0 }}
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-libr-accent1 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+          className="fixed bottom-8 right-8 w-12 h-12 bg-libr-secondary text-libr-primary rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
         >
@@ -124,10 +124,9 @@ const App: React.FC = () => {
         <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
         <Hero />
         <WhatIsLIBR/>
-        <Features />
+        <TechArch />
         <HowItWorks />
-        <ArchitectureAnimation />
-        <TechStackSection />
+        <TechModules />
         <Community />
         <Footer />
       </main>

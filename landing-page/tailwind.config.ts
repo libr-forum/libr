@@ -124,6 +124,15 @@ export default {
         "float": "float 3s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
+      fontSize: {
+        '9.5xl': '9rem',
+        '10xl': '10rem',
+        '11xl': '12rem',
+      },
+      translate: {
+        '17': '4.25rem',
+        '18': '4.5rem', 
+      },
     },
   },
   plugins: [tailwindcssAnimate],

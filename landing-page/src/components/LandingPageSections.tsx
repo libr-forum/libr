@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints } from 'lucide-react';
+import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Volume2} from 'lucide-react';
 import logo_bg_noname from "../assets/logo_bg_noname.png"
 import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
 import icon_transparent from "../assets/icon_transparent.png"
+
 
 interface HeaderProps {
   isDark?: boolean;
@@ -73,15 +74,6 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
               </AnimatePresence>
             </motion.button>
           )}
-          
-          {/* <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="libr-button-primary"
-            onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')}
-          >
-            View Docs
-          </motion.button> */}
         </div>
       </nav>
     </motion.header>
@@ -89,8 +81,55 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
 };
 
 const Hero:React.FC = () => {
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+
+  const handlePlay = () => {
+    audioRef.current?.play();
+  };
   return(
-    <section id="welcome" className="min-h-screen flex items-center section-padding pt-20 pb-20">
+    <section id="welcome" className="min-h-screen flex items-center justify-center section-padding pt-20">
+      <div className="h-screen w-screen pb-20 flex items-center justify-center">
+        <motion.div
+          initial={{ x: -100, opacity: 0 }}
+          whileInView={{ x: 0, opacity: 1 }}
+          transition={{
+            duration: 0.8,
+            ease: [0.4, 0, 0.2, 1],
+          }}
+          viewport={{ once: false }}
+          className="w-full h-full flex items-center justify-center"
+        >
+          <div className='flex flex-col p-0 items-center justify-center w-full h-full'>
+            <div className="pl-6 p-4 w-full flex flex-row items-center justify-center">
+              <div className="flex flex-col h-full pl-10 justify-center">
+                <span className="text-libr-secondary/20 text-3xl translate-y-16">свобода</span>
+                <span className="text-libr-secondary/30 text-4xl translate-y-16 tracking-wider">स्वतंत्रता</span>
+                <span className="text-libr-secondary/40 text-5xl translate-y-14">Liberté</span>
+                <div className='flex flex-row -translate-x-2'>
+                  <span className="text-libr-secondary text-11xl ">libr</span>
+                  <button onClick={handlePlay} className="bg-black pl-2 text-libr-secondary">
+                    <Volume2/>
+                  </button>
+                  <audio ref={audioRef} src="../assets/libr.mp3" preload="auto" />
+                </div>
+                <span className="text-libr-secondary/40 text-4xl -translate-y-16 tracking-wider">স্বাধীনতা</span>
+                <span className="text-libr-secondary/30 text-3xl -translate-y-17">Libertad</span>
+                <span className="text-libr-secondary/20 text-2xl -translate-y-18">స్వేచ్ఛ</span>
+              </div>
+              <div className="flex flex-row justify-center p-4 w-full">
+                <p className="text-muted-foreground text-9xl opacity-10 blur-sm">
+                  Your Space.<br />
+                  Your Quorum.<br />
+                  Your Rules.
+                </p>
+              </div>
+            </div>
+            <div className='flex flex-row h-full w-full items-center justify-center'>
+              <button className='libr-button bg-libr-secondary text-libr-primary'>Join Beta</button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </section>
   );
 };
@@ -213,7 +252,6 @@ const Hero:React.FC = () => {
 //     </section>
 //   );
 // };
-
 const WhatIsLIBR: React.FC = () => {
   return (
     <section id="what-is-libr" className="flex items-center pt-20 pb-20">
@@ -222,8 +260,11 @@ const WhatIsLIBR: React.FC = () => {
           <motion.div
             initial={{ x: -100, opacity: 0 }}
             whileInView={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            transition={{
+              duration: 0.8,
+              ease: [0.4, 0, 0.2, 1],
+            }}
+            viewport={{ once: false }}
           >
             <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
               Do we have the freedom of speech?
@@ -241,13 +282,13 @@ const WhatIsLIBR: React.FC = () => {
             
             <div className='flex flex-col gap-4'>
               <div className='flex flew-row gap-2'>
-                <Shield/> No Silent Bans
+                <Shield/> No Shadow Bans
               </div>
               <div className='flex flew-row gap-2'>
                 <Users/> Moderation Per Community Rules
               </div>
               <div className='flex flew-row gap-2'>
-                <VenetianMask/> Pseudo-anonymity
+                <VenetianMask/> Pseudonomity
               </div>
             </div>
           </motion.div>
@@ -296,7 +337,7 @@ const WhatIsLIBR: React.FC = () => {
   );
 };
 
-const Features: React.FC = () => {
+const TechArch: React.FC = () => {
   const features = [
     {
       icon: Shield,
@@ -337,16 +378,18 @@ const Features: React.FC = () => {
           className="text-center mb-16"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
+          transition={{
+            duration: 0.8,
+            ease: [0.4, 0, 0.2, 1],
+          }}
+          viewport={{ once: false }}
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
             Technical Architecture
           </h2>
-          {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            LIBR leverages cutting-edge distributed systems concepts to create a platform where 
-            censorship resistance meets community-driven governance through innovative protocol design.
-          </p> */}
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            A Moderated, Censorship-Resilient Social Network Framework
+          </p>
         </motion.div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -356,8 +399,12 @@ const Features: React.FC = () => {
               className="feature-card"
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
+              transition={{
+                duration: 0.8,
+                ease: [0.4, 0, 0.2, 1],
+                delay: index * 0.1
+              }}
+              viewport={{ once: false }}
             >
               <div className='flex flex-row items-center space-x-2'>
               <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mb-4">
@@ -374,4 +421,4 @@ const Features: React.FC = () => {
   );
 };
 
-export { Header, Hero, Features,WhatIsLIBR };
+export { Header, Hero, TechArch, WhatIsLIBR };

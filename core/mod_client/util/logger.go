@@ -36,3 +36,16 @@ func CanonicalizeMsgCert(msgcert types.MsgCert) (string, error) {
 
 	return string(canonicalBytes), nil
 }
+
+func CanonicalizeReportCert(reportCert types.ReportCert) (string, error) {
+	sort.SliceStable(reportCert.Msgcert.ModCerts, func(i, j int) bool {
+		return reportCert.Msgcert.ModCerts[i].PublicKey < reportCert.Msgcert.ModCerts[j].PublicKey
+	})
+
+	canonicalBytes, err := json.Marshal(reportCert)
+	if err != nil {
+		return "", err
+	}
+
+	return string(canonicalBytes), nil
+}
