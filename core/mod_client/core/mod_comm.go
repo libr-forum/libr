@@ -406,11 +406,7 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 					log.Printf("Invalid mod cert from %s:%s (wrong pubkey)", mod.IP, mod.Port)
 					return
 				}
-<<<<<<< HEAD
 				if modcert.Status == "acknowledgement" && modcert.Sign != cert.Sign {
-=======
-				if modcert.Status == "acknowledgement" && modcert.Sign == "" {
->>>>>>> a8ae2b6feefbdaf6087505ad01c3d52e52dd800d
 					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
 					mu.Lock()
 					ackCount++
