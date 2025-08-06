@@ -11,7 +11,8 @@ import (
 )
 
 func main() {
-	relayAddrs, err := utils.GetRelayData()
+	utils.SetupMongo("mongodb+srv://lemongrass8923:lmao1234@cluster0.vswojqe.mongodb.net/")
+	relayAddrs, err := utils.GetRelayAddr()
 
 	if err != nil {
 		fmt.Println("Error while getting relay address, ", err)

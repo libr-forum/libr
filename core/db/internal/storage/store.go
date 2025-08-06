@@ -11,7 +11,13 @@ import (
 
 func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
 	fmt.Println("Storing MsgCert")
+	if err := ValidateMsgCert(msgcert); err != nil {
+		log.Printf("Error validating MsgCert: %v", err)
+		return "", err
+	}
+
 	if err := ValidateModCert(msgcert); err != nil {
+		log.Printf("Error validating ModCert: %v", err)
 		return "", err
 	}
 
@@ -19,6 +25,7 @@ func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
 
 	modCertsJSON, err := json.Marshal(msgcert.ModCerts)
 	if err != nil {
+		log.Printf("Error marshaling modCerts: %v", err)
 		return "Error marshaling modCerts", err
 	}
 
@@ -39,9 +46,10 @@ func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
 }
 
 func DeleteMsgCert(repCert *models.ReportCert) error {
+	fmt.Println("Deleting MsgCert :]")
 	query := "UPDATE msgcert SET deleted = 1 WHERE ts = ? AND sender = ?;"
 
-	result, err := config.DB.Exec(query, repCert.Msgcert.Msg.Ts, repCert.Msgcert.Msg.Content)
+	result, err := config.DB.Exec(query, repCert.Msgcert.Msg.Ts, repCert.Msgcert.PublicKey)
 	if err != nil {
 		log.Printf("Error soft-deleting MsgCert: %v", err)
 		return err
@@ -95,7 +103,7 @@ func GetMsgCert(ts int64) []models.RetMsgCert {
 			log.Printf("Error unmarshaling modCerts: %v", err)
 			continue
 		}
-
+		fmt.Println("retMsgCert:", retMsgCert)
 		retMsgCerts = append(retMsgCerts, retMsgCert)
 	}
 

@@ -52,7 +52,7 @@ func initDHT() {
 
 	// 2.Bootstrap nodes from csv
 	start := time.Now()
-	bootstrapAddrs, _ := utils.GetDbData()
+	bootstrapAddrs, _ := utils.GetDbAddr()
 	elapsed := time.Since(start)
 	fmt.Printf("⏱️ utils.GetDBAddrList() took %s\n", elapsed)
 

@@ -14,9 +14,10 @@ import (
 	"github.com/devlup-labs/Libr/core/db/internal/models"
 )
 
-func ValidateMsgCert(msgcert models.MsgCert) error {
-	fmt.Println(msgcert)
+func ValidateMsgCert(msgcert *models.MsgCert) error {
+	fmt.Println("Validating MsgCert")
 	if err := ValidateMsgCertFields(msgcert); err != nil {
+		fmt.Println("Error validating MsgCert fields:", err)
 		return err
 	}
 
@@ -31,10 +32,13 @@ func ValidateMsgCert(msgcert models.MsgCert) error {
 	}
 
 	jsonBytes, err := json.Marshal(dataToVerify)
+	fmt.Println("Data to verify:", string(jsonBytes))
 	if err != nil {
 		log.Printf("DB failed to marshal DataToSign: %v", err)
 		return err
 	}
+
+	fmt.Print("Public Key:", msgcert.PublicKey)
 
 	if !cryptoutils.VerifySignature(msgcert.PublicKey, string(jsonBytes), msgcert.Sign) {
 		return fmt.Errorf("❌ Invalid MsgCert signature")
@@ -43,7 +47,7 @@ func ValidateMsgCert(msgcert models.MsgCert) error {
 	return nil
 }
 
-func ValidateMsgCertFields(msgcert models.MsgCert) error {
+func ValidateMsgCertFields(msgcert *models.MsgCert) error {
 	if msgcert.PublicKey == "" {
 		return errors.New("sender public key is required")
 	}
@@ -82,19 +86,18 @@ func ValidateRepCert(repCert *models.ReportCert, validMods []*models.Mod) error 
 		return repCert.Msgcert.ModCerts[i].PublicKey < repCert.Msgcert.ModCerts[j].PublicKey
 	})
 
-	dataToVerify := map[string]interface{}{
-		"PublicKey": repCert.Msgcert.PublicKey,
-		"Content":   repCert.Msgcert.Msg.Content,
-		"Ts":        repCert.Msgcert.Msg.Ts,
-		"ModCerts":  repCert.Msgcert.ModCerts,
+	dataToVerify := models.DataToSign{
+		Content:  repCert.Msgcert.Msg.Content,
+		Ts:       repCert.Msgcert.Msg.Ts,
+		ModCerts: repCert.Msgcert.ModCerts,
 	}
-
+	fmt.Println("Data to verify:", dataToVerify)
 	jsonBytes, err := json.Marshal(dataToVerify)
 	if err != nil {
 		log.Printf("DB failed to marshal DataToSign: %v", err)
 		return err
 	}
-
+	fmt.Println("Data to verify JSON:", string(jsonBytes))
 	if !cryptoutils.VerifySignature(repCert.Msgcert.PublicKey, string(jsonBytes), repCert.Msgcert.Sign) {
 		return fmt.Errorf("❌ Invalid MsgCert signature")
 	}
@@ -108,6 +111,7 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 	for _, mod := range validMods {
 		validMap[mod.PublicKey] = struct{}{}
 	}
+	totalMods := len(validMods)
 
 	msg := repCert.Msgcert.Msg
 	msgCertSign := repCert.Msgcert.Sign
@@ -124,6 +128,7 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 			if !cryptoutils.VerifySignature(repmodcert.PublicKey, msgCertSign, repmodcert.Sign) {
 				return fmt.Errorf("❌ Delete mode: invalid signature from original user %s", repmodcert.PublicKey)
 			}
+			approveCount = totalMods
 			break
 		}
 
@@ -144,7 +149,7 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 
 	// Check if majority of valid mods approved
 	threshold := int(math.Ceil(float64(len(validMods)) * float64(config.RepMajority)))
-	if approveCount <= threshold {
+	if approveCount < threshold {
 		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, threshold)
 	}
 
@@ -155,9 +160,9 @@ func ValidateModCert(msgCert *models.MsgCert) error {
 
 	for _, modcert := range msgCert.ModCerts {
 		payload := msgCert.Msg.Content + strconv.FormatInt(msgCert.Msg.Ts, 10) + modcert.Status
-
-		if !cryptoutils.VerifySignature(msgCert.PublicKey, payload, modcert.Sign) {
-			return fmt.Errorf("❌ Invalid MsgCert signature")
+		fmt.Println("Payload:", payload)
+		if !cryptoutils.VerifySignature(modcert.PublicKey, payload, modcert.Sign) {
+			return fmt.Errorf("❌ Invalid ModCert signature")
 		}
 	}
 

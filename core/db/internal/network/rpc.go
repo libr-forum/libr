@@ -181,26 +181,32 @@ func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]mod
 // }
 
 func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *node.Node, rt *routing.RoutingTable) ([]*node.Node, error) {
-	validMods, _ := utils.GetModData()
-
-	// 🔒 Validate the full ReportCert (including MsgCert & RepModCerts)
-	if err := storage.ValidateRepCert(repCert, validMods); err != nil {
-		return nil, fmt.Errorf("repCert validation failed: %v", err)
-	}
+	validMods, _ := utils.GetOnlineMods()
 
 	selfDist := node.XORBigInt(self.NodeId, *key)
 	closest := rt.FindClosest(*key, config.K)
-	lastDist := node.XORBigInt(closest[len(closest)-1].NodeId, *key)
 
-	// 🔁 If this node is responsible
-	if selfDist.Cmp(lastDist) < 0 {
+	close := false
+	if len(closest) < config.K {
+		close = true
+	} else {
+		lastDist := node.XORBigInt(closest[len(closest)-1].NodeId, *key)
+		if selfDist.Cmp(lastDist) < 0 {
+			close = true
+		}
+	}
+	if close {
+		// 🔒 Validate the full ReportCert (including MsgCert & RepModCerts)
+
+		if err := storage.ValidateRepCert(repCert, validMods); err != nil {
+			return nil, fmt.Errorf("repCert validation failed: %v", err)
+		}
 		err := storage.DeleteMsgCert(repCert)
 		if err != nil && err.Error() != "MsgCert not found" {
 			return nil, fmt.Errorf("deletion failed: %v", err)
 		}
 		return nil, nil
 	}
-
 	// 📡 Forward to closest peers
 	return closest, nil
 }
