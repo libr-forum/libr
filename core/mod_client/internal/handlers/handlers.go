@@ -36,6 +36,7 @@ func MsgIN(bodyBytes []byte) []byte {
 	// Sign
 	signed, err := service.ModSign(req, moderationStatus, priv, pub)
 	if err != nil {
+
 		log.Printf("Signing error: %v", err)
 		return nil
 	}

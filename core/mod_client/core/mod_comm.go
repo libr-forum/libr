@@ -397,34 +397,34 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 				responded[mod.PublicKey] = true
 				mu.Unlock()
 
-				switch v := res.(type) {
-				case string:
-					if v == "ack" {
-						log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
-						mu.Lock()
-						ackCount++
-						mu.Unlock()
-					}
-				case types.ModCert:
-					if v.PublicKey != mod.PublicKey {
-						log.Printf("Invalid mod cert from %s:%s (wrong pubkey)", mod.IP, mod.Port)
-						return
-					}
-					// Verify signature
-					msgHash := cert.Sign + v.Status
-					if cryptoutils.VerifySignature(v.PublicKey, msgHash, v.Sign) {
-						log.Printf("Received valid modcert from %s:%s", mod.IP, mod.Port)
-						mu.Lock()
-						modcertList = append(modcertList, v)
-						if v.Status != "1" {
-							rejCount++
-						}
-						mu.Unlock()
-					} else {
-						log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)
-					}
-				default:
+				modcert, ok := res.(types.ModCert)
+				if !ok {
 					log.Printf("Unknown response type from %s:%s", mod.IP, mod.Port)
+					return
+				}
+				if modcert.PublicKey != mod.PublicKey {
+					log.Printf("Invalid mod cert from %s:%s (wrong pubkey)", mod.IP, mod.Port)
+					return
+				}
+				if modcert.Status == "acknowledgement" && modcert.Sign != cert.Sign {
+					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
+					mu.Lock()
+					ackCount++
+					mu.Unlock()
+					return
+				}
+				// Verify signature for non-acknowledgement
+				msgHash := cert.Sign + modcert.Status
+				if cryptoutils.VerifySignature(modcert.PublicKey, msgHash, modcert.Sign) {
+					log.Printf("Received valid modcert from %s:%s", mod.IP, mod.Port)
+					mu.Lock()
+					modcertList = append(modcertList, modcert)
+					if modcert.Status != "1" {
+						rejCount++
+					}
+					mu.Unlock()
+				} else {
+					log.Printf("Invalid signature from mod %s:%s", mod.IP, mod.Port)
 				}
 			}
 		}(mod)

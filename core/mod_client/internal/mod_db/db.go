@@ -114,7 +114,7 @@ func StoreMsgResult(cert models.MsgCert) (*models.ModResponse, error) {
 
 	return &models.ModResponse{
 		Sign:      cert.Sign,
-		PublicKey: "",
+		PublicKey: cert.PublicKey,
 		Status:    "acknowledged",
 	}, nil
 }

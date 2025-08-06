@@ -18,42 +18,64 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 
 	switch expect {
 	case "mod":
-		msg, ok := data.(types.Msg)
-		if !ok {
-			return nil, errors.New("expected Msg struct for mod")
+		switch v := data.(type) {
+		case types.Msg:
+			msgString, err := util.CanonicalizeMsg(v)
+			if err != nil {
+				log.Printf("Failed to generate canonical JSON: %v", err)
+				return nil, err
+			}
+			resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgString))
+			if err != nil {
+				return nil, err
+			}
+			var response types.ModCert
+			json.Unmarshal(resp, &response)
+			return response, nil
+		case types.MsgCert:
+			msgcertJSON, err := util.CanonicalizeMsgCert(v)
+			if err != nil {
+				log.Printf("Failed to generate canonical JSON: %v", err)
+				return nil, err
+			}
+			resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgcertJSON))
+			if err != nil {
+				return nil, err
+			}
+			var response types.ModCert
+			json.Unmarshal(resp, &response)
+			return response, nil
+		default:
+			return nil, errors.New("expected Msg or MsgCert struct for mod")
 		}
-
-		msgString, err := util.CanonicalizeMsg(msg)
-		if err != nil {
-			log.Printf("Failed to generate canonical JSON: %v", err)
-			return nil, err
-		}
-
-		resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgString))
-		if err != nil {
-			return nil, err
-		}
-
-		var response types.ModCert
-
-		json.Unmarshal(resp, &response)
-
-		return response, nil
 
 	case "db":
-		msgcert, ok := data.(types.MsgCert)
-		if !ok {
-			return nil, errors.New("expected MsgCert struct for db")
+		switch v := data.(type) {
+		case types.MsgCert:
+			msgcertJSON, err := util.CanonicalizeMsgCert(v)
+			if err != nil {
+				log.Printf("Failed to generate canonical JSON: %v", err)
+				return nil, err
+			}
+			resp, err := Peers.POST(ip, port, route, []byte(msgcertJSON))
+			if err != nil {
+				return nil, err
+			}
+			return resp, nil
+		case types.ReportCert:
+			reportCertJSON, err := util.CanonicalizeReportCert(v)
+			if err != nil {
+				log.Printf("Failed to generate canonical JSON: %v", err)
+				return nil, err
+			}
+			resp, err := Peers.POST(ip, port, route, []byte(reportCertJSON))
+			if err != nil {
+				return nil, err
+			}
+			return resp, nil
+		default:
+			return nil, errors.New("expected MsgCert or ReportCert struct for db")
 		}
-
-		msgcertJSON, _ := util.CanonicalizeMsgCert(msgcert)
-
-		resp, err := Peers.POST(ip, port, route, []byte(msgcertJSON))
-		if err != nil {
-			return nil, err
-		}
-
-		return resp, nil
 
 	default:
 		return nil, errors.New("unknown response type requested")

@@ -10,6 +10,7 @@ import (
 const K = 4
 const Alpha = 4
 const DeleteThreshold = 40.0
+const MongoURI = "mongodb+srv://lemongrass8923:lmao1234@cluster0.vswojqe.mongodb.net/" // Default MongoDB URI, can be overridden by environment variable
 
 type Config struct {
 
