@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -11,6 +12,7 @@ gsap.registerPlugin(MotionPathPlugin, ScrollTrigger);
 
 export default function ArchitectureAnimation() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   useEffect(() => {
@@ -70,11 +72,14 @@ export default function ArchitectureAnimation() {
   const circleRefs = useRef<SVGCircleElement[]>([]);
   const circlePositions = [
     { cx: 761, cy: 558 },
+
     { cx: 846, cy: 640 },
     { cx: 658, cy: 465 },
     { cx: 903, cy: 548 },
-    { cx: 866, cy: 426 },
+
+    // { cx: 866, cy: 426 },
     { cx: 621, cy: 534 },
+
     { cx: 835, cy: 502 },
     { cx: 792, cy: 687 },
     { cx: 666, cy: 627 },
@@ -231,29 +236,46 @@ export default function ArchitectureAnimation() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.2 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section
       ref={sectionRef}
-      className="relative h-screen w-full flex items-center justify-center overflow-hidden"
+      className="relative h-[80vh] w-full flex items-center justify-center overflow-hidden"
     >
       {/* Background */}
       {/* <div
         className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center opacity-50 z-0 p-28"
         style={{backgroundImage: `url(${isDarkMode ? WorkingBGDark : WorkingBGLight})`,}}
       /> */}
-      <div
+      <motion.div
         className="relative origin-center"
         style={{
-          transform: `scale(${scale})`,
           transformOrigin: 'center',
-          transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        initial={{ opacity: 0, y: 40, scale: scale }}
+        animate={{
+          opacity: isVisible ? 1 : 0,
+          y: isVisible ? 0 : 40,
+          scale,
+        }}
+        transition={{
+          duration: 0.8,
+          ease: [0.4, 0, 0.2, 1],
         }}
       >
         {/* Foreground Animation */}
         <svg
           width="1536"
           height="1024"
-          viewBox="0 0 1536 1024"
+          viewBox="0 60 1536 1024"
           className="rounded shadow-xl z-10"
         >
           {/* Paths */}
@@ -278,17 +300,17 @@ export default function ArchitectureAnimation() {
             />
           ))}
           {/* Mails */}
-          <IconFileText ref={mail1Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconFileText ref={mail2Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconFileText ref={mail3Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconFileText ref={mail4Ref} className="text-green-500" fill='libr-primary'/>
-          <IconFileText ref={mail5Ref} className="text-green-500" fill='libr-primary'/>
-          <IconFileText ref={mail6Ref} className="text-red-500" fill='libr-primary'/>
+          <IconFileText ref={mail1Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconFileText ref={mail2Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconFileText ref={mail3Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconFileText ref={mail4Ref} className="text-green-500 fill-libr-primary"/>
+          <IconFileText ref={mail5Ref} className="text-green-500 fill-libr-primary"/>
+          <IconFileText ref={mail6Ref} className="text-red-500 fill-libr-primary"/>
           {/* Packets */}
-          <IconMail ref={packet1Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconMail ref={packet2Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconMail ref={packet3Ref} className="text-libr-secondary" fill='libr-primary'/>
-          <IconMail ref={packet4Ref} className="text-libr-secondary" fill='libr-primary'/>
+          <IconMail ref={packet1Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconMail ref={packet2Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconMail ref={packet3Ref} className="text-libr-secondary fill-libr-primary"/>
+          <IconMail ref={packet4Ref} className="text-libr-secondary fill-libr-primary"/>
           {/* Optional Static Circles */}
           {circlePositions.map((pos, i) => (
             <circle
@@ -302,17 +324,64 @@ export default function ArchitectureAnimation() {
             />
           ))}
         </svg>
-        <Monitor style={{ left: 761, top: 558 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <ShieldCheck style={{ left: 846, top: 640 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <ShieldCheck style={{ left: 658, top: 465 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <ShieldCheck style={{ left: 903, top: 548 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Monitor style={{ left: 866, top: 426 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Monitor style={{ left: 621, top: 534 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Database style={{ left: 835, top: 502 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Database style={{ left: 792, top: 687 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Database style={{ left: 666, top: 627 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-        <Database style={{ left: 753, top: 455 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
-      </div>
+
+        <Monitor style={{ left: 761, top: 498 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+
+        <ShieldCheck style={{ left: 846, top: 580 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <ShieldCheck style={{ left: 658, top: 405 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <ShieldCheck style={{ left: 903, top: 488 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+
+        {/* <Monitor style={{ left: 866, top: 366 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" /> */}
+        <Monitor style={{ left: 621, top: 474 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+
+        <Database style={{ left: 835, top: 442 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 792, top: 627 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 666, top: 567 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+        <Database style={{ left: 753, top: 395 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
+
+        <motion.div
+          className="absolute libr-card p-4 text-left"
+          style={{ left: 960, top: 320 }}
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6}}
+          viewport={{ once: true }}
+        >
+          <div className='flex flex-row items-center space-x-2 mb-2'>
+            <Monitor className="w-6 h-6 text-libr-secondary" />
+            <h3 className="text-lg font-semibold text-libr-secondary">Client</h3>
+          </div>
+          <p className="text-muted-foreground text-xs">Send a message<br/>Wait for moderators<br/>Aggregate responses, sign and<br/>send to database if approved</p>
+        </motion.div>
+        <motion.div
+          className="absolute libr-card p-4 text-left"
+          style={{ left: 360, top: 420 }}
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6}}
+          viewport={{ once: true }}
+        >
+          <div className='flex flex-row items-center space-x-2 mb-2'>
+            <Database className="w-6 h-6 text-libr-secondary" />
+            <h3 className="text-lg font-semibold text-libr-secondary">Database</h3>
+          </div>
+          <p className="text-muted-foreground text-xs">Uses timestamp hash to<br/>calculate storage nodes<br/>Verify signatures<br/>Store with replication</p>
+        </motion.div>
+        <motion.div
+          className="absolute libr-card p-4 text-left"
+          style={{ left: 960, top: 570 }}
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6}}
+          viewport={{ once: true }}
+        >
+          <div className='flex flex-row items-center space-x-2 mb-2'>
+            <ShieldCheck className="w-6 h-6 text-libr-secondary" />
+            <h3 className="text-lg font-semibold text-libr-secondary">Moderator</h3>
+          </div>
+          <p className="text-muted-foreground text-xs">Recieve new messages<br/>Moderate per community rules<br/>Sign and return to client</p>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

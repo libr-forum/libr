@@ -125,7 +125,7 @@ func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
 		fmt.Println("route param missing or not string")
 		return nil
 	}
-
+	fmt.Println(route, string(bodyBytes))
 	switch route {
 	case "auto":
 		return handlers.MsgIN(bodyBytes)

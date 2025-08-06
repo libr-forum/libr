@@ -8,6 +8,7 @@ import (
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
+	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
 func MsgIN(bodyBytes []byte) []byte {
@@ -43,12 +44,11 @@ func MsgIN(bodyBytes []byte) []byte {
 
 	// ✅ Save log for this mod
 	_ = service.AppendToModLog(req, moderationStatus)
-
 	return []byte(signed)
 }
 
 func MsgReport(bodyBytes []byte) []byte {
-	var req models.MsgCert
+	var req types.MsgCert
 	err := json.Unmarshal(bodyBytes, &req)
 	if err != nil {
 		fmt.Println("Invalid JSON")

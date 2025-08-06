@@ -1,33 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Zap, Globe, Users, Lock, Code } from 'lucide-react';
+import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound } from 'lucide-react';
 
 const TechStackSection: React.FC = () => {
-  const techStack = [
+  const techStack1 = [
     {
-      category: "Core Protocol",
-      icon: Code,
-      technologies: ["Go Language", "Docker", "PostgreSQL", "Cobra CLI"]
+      category: "Client",
+      icon: Monitor,
+      technologies: ["Go+React", "Wails Integration", "Pseudo Anonymous"]
     },
     {
-      category: "Consensus",
-      icon: Shield,
-      technologies: ["Byzantine BCB", "Proof-of-Work", "Blockshare Fork", "Smart Contracts"]
+      category: "Moderator",
+      icon: ShieldCheck,
+      technologies: ["Community Ruled", "Pluggable", "Google Cloud NLP"]
     },
     {
       category: "Network",
       icon: Globe,
-      technologies: ["Distributed DHT", "Chord/Kademlia", "Hashchains", "P2P Architecture"]
+      technologies: ["libp2p", "WebSockets", "Relayed Connections"]
+    }    
+  ];
+
+  const techStack2=[
+    {
+      category: "Database",
+      icon: Database,
+      technologies: ["SQLite", "Kademlia", "Replicated DHT"]
     },
     {
       category: "Crypto",
-      icon: Zap,
-      technologies: ["Digital Signatures", "Public Key Crypto", "Hash Functions", "ModCerts"]
-    }
-  ];
+      icon: KeyRound,
+      technologies: ["Digital Signatures", "ED25519 Key-Pair", "sha256 Hashing"]
+    }  ];
 
   return (
-    <section className="py-20 section-padding">
+    <section id="technical-modules"className="py-20 section-padding">
       <div className="container mx-auto">
         <motion.div 
           className="text-center mb-16"
@@ -37,37 +44,63 @@ const TechStackSection: React.FC = () => {
           viewport={{ once: true }}
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
-            Technical Implementation
+            Technical Modules
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             LIBR leverages proven distributed systems technologies and novel consensus mechanisms 
             to achieve both censorship resistance and effective community moderation.
-          </p>
+          </p> */}
         </motion.div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {techStack.map((stack, index) => (
-            <motion.div
-              key={stack.category}
-              className="libr-card p-6 text-center"
-              initial={{ y: 50, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <div className="w-12 h-12 bg-gradient-to-r from-libr-accent1 to-libr-accent2 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <stack.icon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
-              <div className="space-y-2">
-                {stack.technologies.map((tech) => (
-                  <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-1">
-                    {tech}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+        <div className="flex flex-col items-center justify-center w-full space-y-6">
+          <div className='flex flex-row items-center justify-center w-full space-x-6'>
+            {techStack1.map((stack, index) => (
+              <motion.div
+                key={stack.category}
+                className="libr-card p-6 w-[20%] h-full text-center"
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <stack.icon className="w-6 h-6 text-libr-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                <div className="space-y-2">
+                  {stack.technologies.map((tech) => (
+                    <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-1">
+                      {tech}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          <div className='flex flex-row items-center justify-center w-full space-x-6'>
+            {techStack2.map((stack, index) => (
+              <motion.div
+                key={stack.category}
+                className="libr-card p-6 w-[20%] h-full text-center"
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <stack.icon className="w-6 h-6 text-libr-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                <div className="space-y-2">
+                  {stack.technologies.map((tech) => (
+                    <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-1">
+                      {tech}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -217,7 +250,7 @@ const CallToActionSection: React.FC = () => {
             viewport={{ once: true }}
           >
             Dive into the research, examine the implementation, and contribute to the future 
-            of censorship-resistant yet moderated communication systems.
+            of censorship-resilient yet moderated communication systems.
           </motion.p>
           
           <motion.div 

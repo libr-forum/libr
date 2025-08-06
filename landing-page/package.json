@@ -1,7 +1,7 @@
 {
   "name": "libr-landing-page",
   "version": "1.0.0",
-  "description": "Landing page for Libr - Censorship-resistant social network",
+  "description": "Landing page for Libr - Censorship-resilient social network",
   "type": "module",
   "scripts": {
     "dev": "vite",

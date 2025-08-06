@@ -3,6 +3,7 @@ package keycache
 import (
 	"crypto/ed25519"
 	"encoding/base64"
+	"fmt"
 	"log"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
@@ -19,6 +20,8 @@ func InitKeys() {
 	if err != nil {
 		log.Fatalf("Failed to load keys: %v", err)
 	}
+	fmt.Println("private:", base64.StdEncoding.EncodeToString(PrivKey))
+	fmt.Println("public:", base64.StdEncoding.EncodeToString(PubKey))
 }
 
 func LoadPubKey() string {
