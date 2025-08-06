@@ -153,6 +153,7 @@ export const apiService = {
       const response:Message[]=[];
       for (const message of fetched){
         const alias=await GenerateAlias(message.public_key);
+        const svg=await GenerateAvatar(message.public_key);
         const msg:Message={
           content:message.msg.content,
           authorAlias:alias,
@@ -161,6 +162,7 @@ export const apiService = {
           communityId:"1",
           status:"approved",
           moderationNote:message.mod_certs,
+          avatarSvg:svg,
           sign:message.sign,
         }
         response.push(msg);
