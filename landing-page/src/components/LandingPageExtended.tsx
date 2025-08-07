@@ -290,11 +290,11 @@ const Footer: React.FC = () => {
               Censorship-resilient yet moderated forum framework for free expression.
             </p>
             <div className="flex gap-4">
-              <Linkedin onClick={() => window.open('https://www.linkedin.com/company/libr-social/', '_blank')}className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
-              <Instagram onClick={() => window.open('https://www.instagram.com/libr.social/', '_blank')}className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
+              <Linkedin onClick={() => window.open('https://www.linkedin.com/company/libr-social/', '_blank')} className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
+              <Instagram onClick={() => window.open('https://www.instagram.com/libr.social/', '_blank')} className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
               <Github onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')} className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
-              <BookOpen className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
-              <Mail onClick={() => window.open('https://mail.google.com/mail/?view=cm&fs=1&to=libr.forum@gmail.com', '_blank')}className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
+              <BookOpen onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
+              <Mail onClick={() => window.open('https://mail.google.com/mail/?view=cm&fs=1&to=libr.forum@gmail.com', '_blank')} className="w-5 h-5 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
             </div>
           </div>
           
@@ -303,8 +303,8 @@ const Footer: React.FC = () => {
             <ul className="space-y-2 text-muted-foreground">
               <li><a href="#features" className="hover:text-libr-accent1 transition-colors">Architecture</a></li>
               <li><a href="#how-it-works" className="hover:text-libr-accent1 transition-colors">Protocol</a></li>
-              <li><a href="#roadmap" className="hover:text-libr-accent1 transition-colors">Roadmap</a></li>
-              <li><a href="#" className="hover:text-libr-accent1 transition-colors">Documentation</a></li>
+              <li><a href="#technical-modules" className="hover:text-libr-accent1 transition-colors">Modules</a></li>
+              <li><a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target='_blank' className="hover:text-libr-accent1 transition-colors">Documentation</a></li>
             </ul>
           </div>
           

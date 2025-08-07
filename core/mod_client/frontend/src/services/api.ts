@@ -204,32 +204,39 @@ export const apiService = {
   },
 
   async sendMessage(communityId: string, content: string): Promise<Message> {
-    let response: string | null = null;
-    let modcerts:types.ModCert[] | null = null;
+    let response: string = '';
+    let modcerts: types.ModCert[] = [];
+
     const result = await SendInput(content);
+
     if (typeof result === 'string') {
       response = result;
     } else if (Array.isArray(result)) {
       modcerts = result;
     }
+
     const approved = response.includes("Sent");
-    const user=useAppStore.getState().user;
+    const rejected = response.includes("rejected");
+    const timeout = response.includes("timeout");
+
+    const user = useAppStore.getState().user;
     const signMatch = response.match(/Sign:\s*(\S+)/);
     const tsMatch = response.match(/Time:\s*(\d+)/);
+
     const newMessage: Message = {
       content,
       authorPublicKey: user.publicKey,
       authorAlias: user.alias,
-      timestamp: BigInt(tsMatch[1]),
+      timestamp: BigInt(tsMatch?.[1] ?? Date.now()),
       communityId,
-      status: approved ? 'approved' : 'rejected', // timeout = rejected
-      avatarSvg:user.avatarSvg,
-      moderationNote:modcerts,
-      sign:signMatch[1],
+      status: approved ? 'approved' : timeout ? 'pending' : 'rejected',
+      avatarSvg: user.avatarSvg,
+      moderationNote: modcerts,
+      sign: signMatch?.[1] ?? '',
     };
+
     return newMessage;
   },
-
 
   // Moderation
   async getModerationLogs():Promise<ModLogEntry[]> {
