@@ -125,7 +125,7 @@ func AddToCache(key string, svg string, alias string) error {
 
 // Func for pending moderation
 func SavePendingModeration(pending types.PendingModeration) error {
-	dir := "pending_mods"
+	dir := filepath.Join(GetCacheDir(), "pending_mods")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create pending_mods dir: %w", err)
 	}
@@ -144,7 +144,8 @@ func SavePendingModeration(pending types.PendingModeration) error {
 }
 
 func LoadPendingModeration(msgSign string) (types.PendingModeration, error) {
-	filePath := filepath.Join("pending_mods", msgSign+".json")
+	dir := filepath.Join(GetCacheDir(), "pending_mods")
+	filePath := filepath.Join(dir, msgSign+".json")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return types.PendingModeration{}, fmt.Errorf("failed to read pending file: %w", err)
@@ -159,7 +160,8 @@ func LoadPendingModeration(msgSign string) (types.PendingModeration, error) {
 }
 
 func DeletePendingModeration(msgSign string) error {
-	filePath := filepath.Join("pending_mods", msgSign+".json")
+	dir := filepath.Join(GetCacheDir(), "pending_mods")
+	filePath := filepath.Join(dir, msgSign+".json")
 	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to delete pending moderation file: %w", err)
 	}

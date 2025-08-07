@@ -41,6 +41,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 	const maxSame = 2
 	sameCount := 0
 	var prevClosest []*types.Node
+	madeProgress := false
 
 	// Worker goroutine
 	go func() {
@@ -61,7 +62,6 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 				currentClosest = currentClosest[:config.K]
 			}
 
-			// Convergence check
 			same := len(currentClosest) == len(prevClosest)
 			if same {
 				for i := range currentClosest {
@@ -72,11 +72,17 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 				}
 			}
 
+			// ✅ Hybrid convergence strategy
 			if same {
-				sameCount++
+				if madeProgress {
+					sameCount = max(0, sameCount-1)
+				} else {
+					sameCount++
+				}
 			} else {
 				sameCount = 0
 			}
+			madeProgress = false // reset for next round
 
 			if sameCount >= maxSame {
 				mu.Unlock()
@@ -138,6 +144,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 						}
 						mu.Lock()
 						stored[fmt.Sprintf("%s:%s", n.IP, n.Port)] = true
+						madeProgress = true
 						if len(stored) >= config.K {
 							mu.Unlock()
 							close(done)
@@ -187,4 +194,11 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 			return nil
 		}
 	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

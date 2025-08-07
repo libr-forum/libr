@@ -464,7 +464,7 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 	return modcertList
 }
 
-func AutoSendToMods(message string, ts int64) []types.ModCert {
+func AutoSendToMods(message string, ts int64) ([]types.ModCert, error) {
 
 	msg := types.Msg{
 		Content: message,
@@ -475,11 +475,12 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 	if err != nil {
 		log.Fatalf("failed to get online mods: %v", err)
 	}
+	noOfMods := len(onlineMods)
 
 	var (
-		totalMods   = len(onlineMods)
+		totalMods   = noOfMods
 		modcertList []types.ModCert
-		rejCount    int
+		accpCount   int
 		mu          sync.Mutex
 		wg          sync.WaitGroup
 		once        sync.Once
@@ -543,18 +544,15 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 				if res.Status == "1" {
 					mu.Lock()
 					modcertList = append(modcertList, res)
-					mu.Unlock()
-				} else {
-					mu.Lock()
-					rejCount++
-					curRej := rejCount
+					accpCount++
+					curAccp := accpCount
 					curTotal := totalMods
 					mu.Unlock()
 
-					log.Printf("[WARN] Mod %s:%s rejected. RejCount: %d, TotalMods: %d", mod.IP, mod.Port, curRej, curTotal)
-					if curRej > (curTotal / 2) {
+					log.Printf("[WARN] Mod %s:%s Accepted. AccCount: %d, TotalMods: %d", mod.IP, mod.Port, curAccp, curTotal)
+					if curAccp > (noOfMods / 2) {
 						once.Do(func() {
-							log.Println("🚫 Majority rejected — cancelling.")
+							log.Println("Majority accepted.")
 							cancel()
 						})
 					}
@@ -564,14 +562,14 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 				log.Printf("[WARN] Mod %s:%s timed out or cancelled", mod.IP, mod.Port)
 				mu.Lock()
 				totalMods--
-				curRej := rejCount
+				curAcc := accpCount
 				curTotal := totalMods
 				mu.Unlock()
 
-				log.Printf("[WARN] Timeout. RejCount: %d, TotalMods: %d", curRej, curTotal)
-				if curRej > (curTotal / 2) {
+				log.Printf("[WARN] Timeout. RejCount: %d, TotalMods: %d", curAcc, curTotal)
+				if curAcc > (noOfMods / 2) {
 					once.Do(func() {
-						log.Println("🚫 Majority rejected after timeouts — cancelling.")
+						log.Println("Majority Accepted.")
 						cancel()
 					})
 				}
@@ -582,12 +580,12 @@ func AutoSendToMods(message string, ts int64) []types.ModCert {
 	wg.Wait()
 
 	mu.Lock()
-	finalRej := rejCount
+	finalAccp := accpCount
 	finalTotal := totalMods
 	mu.Unlock()
 
-	if finalRej > (finalTotal / 2) {
-		return nil
+	if finalTotal > (noOfMods/2) && float32(finalAccp)/float32(noOfMods) >= 0.3 && float32(finalAccp)/float32(finalTotal) >= 0.5 {
+		return modcertList, nil
 	}
-	return modcertList
+	return nil, nil
 }

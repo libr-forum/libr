@@ -166,11 +166,16 @@ func (a *App) SendInput(input string) (string, []types.ModCert) {
 
 	// Run SendToMods with timeout
 	modChan := make(chan []types.ModCert, 1)
-
+	var err error
 	go func() {
-		modcerts := core.AutoSendToMods(input, ts)
+		var modcerts []types.ModCert
+		modcerts, err = core.AutoSendToMods(input, ts)
 		modChan <- modcerts
 	}()
+
+	if err != nil {
+		return ":x: Moderator timeout", nil
+	}
 
 	var modcertlist []types.ModCert
 	select {
