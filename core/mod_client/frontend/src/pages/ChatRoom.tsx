@@ -211,7 +211,7 @@ export const ChatRoom: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[76%] max-w-[975x]" ref={messagesContainerRef}>
+            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[83%] max-w-[975x]" ref={messagesContainerRef}>
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <motion.div

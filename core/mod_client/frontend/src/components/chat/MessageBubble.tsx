@@ -12,18 +12,29 @@ import {
 import {emojify} from 'node-emoji';
 import { Delete, Report } from 'wailsjs/go/main/App';
 import { types } from 'wailsjs/go/models';
-import { parseFormatting } from '@/services/api';
+import { parseFormatting,apiService } from '@/services/api';
+
 interface MessageBubbleProps {
   message: Message;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const formatTime = (date: Date) => {
+  const formatTime = (unixTimestamp: bigint) => {
+    const timestampNumber = Number(unixTimestamp); // convert bigint to number
+    const date = new Date(timestampNumber);
+
     return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
     }).format(date);
   };
+
+  
+  const{setMessages}=useAppStore();
 
   const getStatus = () => {
     switch (message.status) {
@@ -61,7 +72,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       className="flex w-full mb-4"
     >
       <div className="w-[99%]">
-        <div className="relative rounded-3xl px-4 py-3 bg-card shadow-md border-b">
+        <div className="relative rounded-3xl px-4 py-3 bg-card shadow-md border-b max-w-[80vw] break-words">
           <div className="absolute top-3 right-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -77,14 +88,30 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               >
                 <DropdownMenuItem disabled className="flex items-center justify-between">
                   <span className="text-foreground">Time</span>
-                  <span>{message.timestamp.toString()}</span>
+                  <span>{formatTime(message.timestamp)}</span>
                 </DropdownMenuItem>
+
                 {status && (
                   <DropdownMenuItem disabled className="flex items-center justify-between">
                     <span className="flex items-center gap-1 text-foreground">
                       {status.icon}
                       {status.label}
                     </span>
+                  </DropdownMenuItem>
+                )}
+                {message.status === 'pending' && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const retried = await apiService.sendMessage(message.communityId, message.content);
+                      const currentMessages = useAppStore.getState().messages;
+                      const updatedMessages = currentMessages.map((msg) =>
+                        msg.timestamp === message.timestamp ? retried : msg
+                      );
+                      setMessages(updatedMessages);
+                    }}
+                    className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
+                  >
+                    Retry Send
                   </DropdownMenuItem>
                 )}
                 {message.moderationNote && (
@@ -173,7 +200,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               )}
 
               <p
-                className="text-sm leading-relaxed text-foreground mt-1"
+                className="text-sm leading-relaxed text-foreground mt-1 break-words max-w-[55vw] whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: safeHtml }}
               />
             </div>

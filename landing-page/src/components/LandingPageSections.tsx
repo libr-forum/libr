@@ -1,6 +1,6 @@
-import React from 'react';
+import React,{useRef,useEffect,useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Volume2, ChevronDown, Download} from 'lucide-react';
+import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Volume2, ChevronDown, Download, X, Menu} from 'lucide-react';
 import logo_bg_noname from "../assets/logo_bg_noname.png"
 import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
 import icon_transparent from "../assets/icon_transparent.png"
@@ -12,44 +12,81 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen]);
+
+  const navLinks = [
+    { href: "#what-is-libr", label: "Product" },
+    { href: "#features", label: "Architecture" },
+    { href: "#how-it-works", label: "Protocol" },
+    { href: "#technical-modules", label: "Modules" },
+    { href: "#how-to-use", label: "How To" },
+    { href: "https://github.com/devlup-labs/Libr/blob/main/README.md", label: "Docs", external: true },
+    { href: "https://github.com/devlup-labs/Libr", label: "GitHub", external: true },
+    { href: "#join-beta", label: "Join Beta" },
+  ];
+
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8 }}
       className="fixed top-0 left-0 right-0 z-50 bg-libr-primary/80 backdrop-blur-lg border-b border-border/50"
     >
       <nav className="container mx-auto section-padding py-4 flex items-center justify-between">
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-          className="flex items-center space-x-2"
-        >
-          <a href="#welcome" className='flex'>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-            <img
-              src={icon_transparent}
-              className="w-8 h-8 rounded-lg"
-            />
-          </div>
-          <span className="text-2xl font-bold text-libr-secondary">libr</span>
+        {/* Logo */}
+        <div className="flex items-center space-x-2">
+          <a href="#welcome" className="flex items-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
+            </div>
+            <span className="text-2xl font-bold text-libr-secondary">libr</span>
           </a>
-        </motion.div>
-        
-        <div className="hidden md:flex items-center space-x-8">
-          <a href="#what-is-libr" className="text-foreground hover:text-libr-accent1 transition-colors">Product</a>
-          <a href="#features" className="text-foreground hover:text-libr-accent1 transition-colors">Architecture</a>
-          <a href="#how-it-works" className="text-foreground hover:text-libr-accent1 transition-colors">Protocol</a>
-          {/* <a href="#community" className="text-foreground hover:text-libr-accent1 transition-colors">Research</a> */}
-          {/* <a href="#roadmap" className="text-foreground hover:text-libr-accent1 transition-colors">Roadmap</a> */}
-          <a href="#technical-modules" className="text-foreground hover:text-libr-accent1 transition-colors">Modules</a>
-          <a href="#how-to-use" className="text-foreground hover:text-libr-accent1 transition-colors">How To</a>
-          <a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target='_blank' className="text-foreground hover:text-libr-accent1 transition-colors">Docs</a>
-          <a href="https://github.com/devlup-labs/Libr" target="_blank" className="text-foreground hover:text-libr-accent1 transition-colors">GitHub</a>
-          <a href="#join-beta" className="text-foreground hover:text-libr-accent1 transition-colors">Join Beta</a>
         </div>
-        
-        <div className="flex items-center gap-4">
-          {/* Theme Toggle Button */}
+
+        {/* Desktop Nav Links */}
+        <div className="hidden md:flex items-center space-x-8">
+          {navLinks.map(({ href, label, external }) => (
+            <a
+              key={href}
+              href={href}
+              target={external ? "_blank" : undefined}
+              rel={external ? "noopener noreferrer" : undefined}
+              className="text-foreground hover:text-libr-accent1 transition-colors"
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+
+        {/* Mobile Menu Toggle + Theme Toggle */}
+        <div className="flex items-center gap-4 md:gap-2">
+          {/* Hamburger Menu (mobile only) */}
+          <button
+            onClick={() => setIsMenuOpen(prev => !prev)}
+            className="md:hidden w-10 h-10 rounded-lg border border-border/50 bg-card hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+          >
+            {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
+          </button>
+
+          {/* Theme Toggle */}
           {toggleTheme && (
             <motion.button
               onClick={toggleTheme}
@@ -60,7 +97,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={isDark ? 'moon' : 'sun'}
+                  key={isDark ? "moon" : "sun"}
                   initial={{ y: -20, opacity: 0, rotate: -90 }}
                   animate={{ y: 0, opacity: 1, rotate: 0 }}
                   exit={{ y: 20, opacity: 0, rotate: 90 }}
@@ -77,6 +114,33 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
           )}
         </div>
       </nav>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            ref={menuRef}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            className="md:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
+          >
+            {navLinks.map(({ href, label, external }) => (
+              <a
+                key={href}
+                href={href}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
+                onClick={() => setIsMenuOpen(false)}
+                className="text-foreground hover:text-libr-accent1 transition-colors text-base"
+              >
+                {label}
+              </a>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 };

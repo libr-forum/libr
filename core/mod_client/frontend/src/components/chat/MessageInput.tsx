@@ -106,7 +106,12 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
         setTitle('');
         setBodyText('');
         editor?.commands.setContent('');
-        onClose?.();
+
+        // ✅ Only auto-close if message is not approved
+        if (newMsg.status !== 'approved') {
+          onClose?.();
+        }
+
       } catch (err) {
         console.error('Send failed:', err);
       } finally {
