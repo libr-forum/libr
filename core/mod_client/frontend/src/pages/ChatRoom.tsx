@@ -27,11 +27,11 @@ export const ChatRoom: React.FC = () => {
   const messageInputRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // useEffect(() => {
-  //   if (currentCommunity) {
-  //     loadMessages();
-  //   }
-  // }, [currentCommunity]);
+  useEffect(() => {
+    if (currentCommunity) {
+      loadMessages();
+    }
+  }, [currentCommunity]);
 
   const loadMessages = async () => {
     if (!currentCommunity) return;

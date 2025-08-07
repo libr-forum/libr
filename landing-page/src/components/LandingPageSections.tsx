@@ -255,7 +255,11 @@ const Hero:React.FC = () => {
               </div>
             </div>
             <div id='join-beta' className='flex flex-row h-full w-full items-center justify-center gap-4'>
-              <JoinBetaDropdown />
+              {/* <JoinBetaDropdown /> */}
+              <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="flex flex-row items-center libr-button bg-libr-secondary text-libr-primary">
+                <Download className="w-5 h-5 mr-3" />
+                Join Beta
+              </button>
               <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
