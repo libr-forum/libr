@@ -130,7 +130,7 @@ func SavePendingModeration(pending types.PendingModeration) error {
 		return fmt.Errorf("failed to create pending_mods dir: %w", err)
 	}
 
-	filePath := filepath.Join(dir, pending.MsgSign+".json")
+	filePath := filepath.Join(dir, sanitizeFileName(pending.MsgSign)+".json")
 	data, err := json.MarshalIndent(pending, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal pending moderation: %w", err)
@@ -143,9 +143,8 @@ func SavePendingModeration(pending types.PendingModeration) error {
 	return nil
 }
 
-func LoadPendingModeration(msgSign string) (types.PendingModeration, error) {
-	dir := filepath.Join(GetCacheDir(), "pending_mods")
-	filePath := filepath.Join(dir, msgSign+".json")
+func LoadPendingModeration(path string) (types.PendingModeration, error) {
+	filePath := filepath.Join(path)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return types.PendingModeration{}, fmt.Errorf("failed to read pending file: %w", err)
@@ -161,9 +160,13 @@ func LoadPendingModeration(msgSign string) (types.PendingModeration, error) {
 
 func DeletePendingModeration(msgSign string) error {
 	dir := filepath.Join(GetCacheDir(), "pending_mods")
-	filePath := filepath.Join(dir, msgSign+".json")
+	filePath := filepath.Join(dir, sanitizeFileName(msgSign)+".json")
 	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to delete pending moderation file: %w", err)
 	}
 	return nil
+}
+
+func sanitizeFileName(msgSign string) string {
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString([]byte(msgSign))
 }

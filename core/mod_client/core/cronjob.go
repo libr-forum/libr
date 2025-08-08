@@ -20,12 +20,13 @@ func StartModerationCron(msgcert *types.MsgCert) {
 	cronRunning = true
 	log.Println("🚀 Starting moderation retry cron...")
 
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		<-ticker.C
-		files, err := filepath.Glob("pending_mods/*.json")
+		dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "/*.json")
+		files, err := filepath.Glob(dir)
 		if err != nil {
 			log.Printf("Cron check error: %v", err)
 			continue
@@ -43,11 +44,15 @@ func StartModerationCron(msgcert *types.MsgCert) {
 }
 
 func RetryPendingModerations(msgcert *types.MsgCert) {
-	files, err := filepath.Glob("pending_mods/*.json")
+	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "/*.json")
+	files, err := filepath.Glob(dir)
 	if err != nil {
 		log.Printf("Failed to list pending moderation files: %v", err)
 		return
 	}
+
+	// Get latest mod address book
+	allMods, _ := util.GetOnlineMods() // returns []types.Mod with IP, Port, PublicKey, etc.
 
 	for _, filePath := range files {
 		pending, err := cache.LoadPendingModeration(filePath)
@@ -56,77 +61,68 @@ func RetryPendingModerations(msgcert *types.MsgCert) {
 			continue
 		}
 
-		// Get all online mods
-		totalMods, err := util.GetOnlineMods()
-		if err != nil {
-			log.Printf("Failed to get online mods: %v", err)
-			continue
-		}
-
-		// Filter awaiting mods from total mods
-		awaitingSet := make(map[string]struct{})
-		for _, pk := range pending.AwaitingMods {
-			awaitingSet[pk] = struct{}{}
-		}
-
-		var awaitingMods []types.Mod
-		for _, mod := range totalMods {
-			if _, ok := awaitingSet[mod.PublicKey]; ok {
-				awaitingMods = append(awaitingMods, mod)
+		// Match AwaitingMods to latest IP/Port from OnlineMods
+		var retryMods []types.Mod
+		for _, pubKey := range pending.AwaitingMods {
+			for _, mod := range allMods {
+				if mod.PublicKey == pubKey {
+					retryMods = append(retryMods, mod)
+					break
+				}
 			}
 		}
 
-		// Retry with remaining mods
-		pending.MsgCert.ModCerts = pending.PartialCerts
-		newCerts := ManualSendToMods(pending.MsgCert, awaitingMods, "")
+		if len(retryMods) == 0 {
+			continue
+		}
 
-		// Merge all certs
+		// Retry sending
+		newCerts := ManualSendToMods(pending.MsgCert, retryMods, "")
+
+		// Merge results
 		allCerts := append(pending.PartialCerts, newCerts...)
 
-		// Count approvals and acknowledgements
+		// Remove mods who sent final decision this round
+		respondedSet := make(map[string]struct{})
+		for _, mc := range newCerts {
+			if mc.Status != "acknowledged" {
+				respondedSet[mc.PublicKey] = struct{}{}
+			}
+		}
+
+		var newAwaiting []string
+		for _, pub := range pending.AwaitingMods {
+			if _, ok := respondedSet[pub]; !ok {
+				newAwaiting = append(newAwaiting, pub)
+			}
+		}
+
+		// Update pending
+		pending.PartialCerts = allCerts
+		pending.AwaitingMods = newAwaiting
+
+		// Count votes
 		rejCount := 0
-		ackCount := 0
 		for _, cert := range allCerts {
 			if cert.Status == "0" {
 				rejCount++
 			}
-			ackCount++ // all modcerts are acks by definition
 		}
+		ackCount := len(allCerts)
 
-		// Save updated counts
-		pending.AckCount = ackCount
-
+		// Decide final outcome
 		if rejCount > ackCount/2 {
-			log.Printf("✅ Majority declined (%d/%d) — deleting %s", rejCount, ackCount, pending.MsgSign)
+			log.Printf("Majority rejected — deleting %s", pending.MsgSign)
 			cache.DeletePendingModeration(pending.MsgSign)
-			// Optional: Finalize moderation action here
-		} else if ackCount-rejCount-len(awaitingMods) > ackCount/2 {
-			log.Printf("✅ Majority approved (%d/%d) — deleting %s", ackCount-rejCount-len(awaitingMods), ackCount, pending.MsgSign)
+		} else if ackCount-rejCount-len(newAwaiting) > ackCount/2 {
+			log.Printf("Majority approved — deleting %s", pending.MsgSign)
 			tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
 			key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 			repCert := CreateRepCert(*msgcert, allCerts, "report")
 			SendToDb(key, repCert, "/route=delete")
 			cache.DeletePendingModeration(pending.MsgSign)
-
 		} else {
-
-			log.Printf("⏳ Still waiting — updating %s", pending.MsgSign)
-
-			// Remove newly responded mods from awaiting list
-			respondedSet := map[string]struct{}{}
-			for _, mc := range newCerts {
-				respondedSet[mc.PublicKey] = struct{}{}
-			}
-			var newAwaiting []string
-			for _, modPub := range pending.AwaitingMods {
-				if _, ok := respondedSet[modPub]; !ok {
-					newAwaiting = append(newAwaiting, modPub)
-				}
-			}
-
-			// Update and save
-			pending.PartialCerts = allCerts
-			pending.AwaitingMods = newAwaiting
+			// Still waiting
 			if err := cache.SavePendingModeration(pending); err != nil {
 				log.Printf("Failed to update pending file: %v", err)
 			}

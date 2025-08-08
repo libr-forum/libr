@@ -62,27 +62,29 @@ import (
 // }
 
 func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
+	fmt.Println("Trying to store message result:")
 	insertQuery := `
     INSERT INTO msgresult (sign, content, reason)
     VALUES (?, ?, ?);`
 
 	_, err := config.DB.Exec(insertQuery, cert.Sign, cert.Msg.Content, cert.Reason)
 	if err == nil {
+		fmt.Println("Message result stored successfully")
 		return &models.ModResponse{
 			Sign:      cert.Sign,
 			PublicKey: "",
 			Status:    "acknowledged",
 		}, nil
 	}
-
-	var moderated int
-	var modsign string
+	log.Printf("Insert failed")
+	var moderated sql.NullInt64
+	var modsign sql.NullString
 	var sign string
 
 	row := config.DB.QueryRow(`
-        SELECT sign, moderated, modsign
-        FROM msgresult
-        WHERE sign = ?;`, cert.Sign)
+    SELECT sign, moderated, modsign
+    FROM msgresult
+    WHERE sign = ?;`, cert.Sign)
 
 	err = row.Scan(&sign, &moderated, &modsign)
 	if err != nil {
@@ -92,8 +94,11 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 		return nil, fmt.Errorf("failed to scan existing record: %w", err)
 	}
 
-	if moderated == 1 && modsign != "" {
-		payload := fmt.Sprintf("%d", moderated) + modsign
+	fmt.Println("Fetching existing record:", sign, moderated, modsign)
+
+	// Only proceed if moderated is non-NULL and equals 1
+	if moderated.Valid && moderated.Int64 == 1 && modsign.Valid && modsign.String != "" {
+		payload := fmt.Sprintf("%d", moderated.Int64) + modsign.String
 
 		pub, priv, err := cryptoutils.LoadKeys()
 		if err != nil {

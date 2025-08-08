@@ -353,13 +353,12 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 		unresponsive int
 
 		modcertList []types.ModCert
-		responded   = make(map[string]bool)
-
-		mu sync.Mutex
-		wg sync.WaitGroup
+		ackMods     []string // ✅ for AwaitingMods
+		mu          sync.Mutex
+		wg          sync.WaitGroup
 	)
 
-	// Attach the reason to cert before sending
+	// Attach the reason
 	cert.Reason = reason
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -377,7 +376,7 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 
 			// Send report to mod
 			go func() {
-				resp, err := network.SendTo(mod.IP, mod.Port, "/route=report", cert, "mod")
+				resp, err := network.SendTo(mod.IP, mod.Port, "/route=manual", cert, "mod")
 				if err != nil {
 					log.Printf("Error sending to %s:%s — %v", mod.IP, mod.Port, err)
 					return
@@ -393,32 +392,28 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 				mu.Unlock()
 
 			case res := <-respChan:
-				mu.Lock()
-				responded[mod.PublicKey] = true
-				mu.Unlock()
-
 				modcert, ok := res.(types.ModCert)
 				if !ok {
 					log.Printf("Unknown response type from %s:%s", mod.IP, mod.Port)
 					return
 				}
-				if modcert.PublicKey != mod.PublicKey {
-					log.Printf("Invalid mod cert from %s:%s (wrong pubkey)", mod.IP, mod.Port)
-					return
-				}
-				if modcert.Status == "acknowledgement" && modcert.Sign == cert.Sign {
-					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
+
+				// If they ACK, store for retry
+				if modcert.Status == "acknowledged" && modcert.Sign == cert.Sign {
 					mu.Lock()
+					ackMods = append(ackMods, mod.PublicKey) // ✅ only ACK goes into AwaitingMods
 					ackCount++
 					mu.Unlock()
+					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
 					return
 				}
+
 				// Verify signature for non-acknowledgement
 				msgHash := cert.Sign + modcert.Status
 				if cryptoutils.VerifySignature(modcert.PublicKey, msgHash, modcert.Sign) {
 					log.Printf("Received valid modcert from %s:%s", mod.IP, mod.Port)
 					mu.Lock()
-					modcertList = append(modcertList, modcert)
+					modcertList = append(modcertList, modcert) // ✅ only final votes in PartialCerts
 					if modcert.Status != "1" {
 						rejCount++
 					}
@@ -432,28 +427,20 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 
 	wg.Wait()
 
-	log.Printf("Moderation summary for %s: certs=%d acks=%d unresponsive=%d total=%d",
+	log.Printf("Moderation summary for %s: finalCerts=%d acks=%d unresponsive=%d total=%d",
 		cert.Sign, len(modcertList), ackCount, unresponsive, totalMods)
 
-	// If not enough certs collected, save state and launch cron job
-	if len(modcertList) < 3 && len(modcertList) <= totalMods/2 {
-		log.Printf("🔄 Not enough modcerts — saving and scheduling retry")
-		awaitingMods := []string{}
-		for _, mod := range mods {
-			if !responded[mod.PublicKey] {
-				awaitingMods = append(awaitingMods, mod.PublicKey)
-			}
-		}
+	// Save pending state only if there are ACKs
+	if len(ackMods) > 0 {
+		log.Printf("🔄 Saving %d ACK mods for retry", len(ackMods))
 		pending := types.PendingModeration{
 			MsgSign:      cert.Sign,
 			MsgCert:      cert,
-			PartialCerts: modcertList,
-			AwaitingMods: awaitingMods,
-			AckCount:     ackCount,
+			PartialCerts: modcertList, // ✅ final decisions collected so far
+			AwaitingMods: ackMods,     // ✅ only ACK mods
 			CreatedAt:    time.Now(),
 		}
 
-		// ✅ Persist to disk
 		if err := cache.SavePendingModeration(pending); err != nil {
 			log.Printf("❌ Failed to save pending moderation: %v", err)
 		} else {
@@ -511,7 +498,7 @@ func AutoSendToMods(message string, ts int64) ([]types.ModCert, error) {
 						log.Printf("[PANIC] Recovered in mod response goroutine for %s:%s: %v", mod.IP, mod.Port, r)
 					}
 				}()
-				response, err := network.SendTo(mod.IP, mod.Port, "/route=submit", msg, "mod")
+				response, err := network.SendTo(mod.IP, mod.Port, "/route=auto", msg, "mod")
 				log.Printf("[DEBUG] Sent to mod %s:%s, response: %v, err: %v", mod.IP, mod.Port, response, err)
 				if err != nil {
 					log.Printf("[ERROR] Failed to contact mod at %s:%s: %v", mod.IP, mod.Port, err)

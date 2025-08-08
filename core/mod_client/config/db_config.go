@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
@@ -39,18 +40,23 @@ func InitDB() {
 }
 
 func getDBPath() string {
-	// Check if DB_PATH is set in the environment
-	if envPath := os.Getenv("DB_PATH"); envPath != "" {
-		fmt.Println(envPath)
-		return envPath
+	var baseDir string
+
+	switch runtime.GOOS {
+	case "windows":
+		baseDir = os.Getenv("AppData")
+	case "darwin":
+		baseDir = filepath.Join(os.Getenv("HOME"), "Library", "Application Support")
+	default: // assume Linux/Unix
+		baseDir = filepath.Join(os.Getenv("HOME"), ".config")
 	}
 
-	// Otherwise, fallback to a portable path next to the executable
-	ex, err := os.Executable()
-	if err != nil {
-		return "./core/mod_client/data/libr.db"
+	if baseDir == "" {
+		return ""
 	}
-	return filepath.Join(filepath.Dir(ex), "core", "db", "data", "libr.db")
+
+	dbPath := filepath.Join(baseDir, "libr", "moddb", "mod.db")
+	return dbPath
 }
 
 func createTables() error {
