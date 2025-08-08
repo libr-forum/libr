@@ -112,25 +112,39 @@ const App: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    // Disable horizontal scroll globally
+    document.documentElement.style.overflowX = 'hidden';
+    document.body.style.overflowX = 'hidden';
+    // Optionally, remove scroll if previously set
+    document.documentElement.style.width = '100%';
+    document.body.style.width = '100%';
+    return () => {
+      document.documentElement.style.overflowX = '';
+      document.body.style.overflowX = '';
+      document.documentElement.style.width = '';
+      document.body.style.width = '';
+    };
+  }, []);
+
   return (
     <>
-    <BackgroundEffect />
-    <div className="min-h-screen bg-libr-primary/50 text-foreground relative">
-      <ScrollProgress />
-      <BackToTop />
-      
-      <main>
-        <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
-        <Hero />
-        <WhatIsLIBR/>
-        <TechArch />
-        <HowItWorks />
-        <TechModules />
-        <HowToUse />
-        <Community />
-        <Footer />
-      </main>
-    </div>
+      <BackgroundEffect />
+      <div className="min-h-screen bg-libr-primary/50 text-foreground relative overflow-x-hidden">
+        <ScrollProgress />
+        <BackToTop />
+        <main className="flex flex-col flex-nowrap">
+          <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
+          <Hero />  
+          <WhatIsLIBR/>
+          <HowToUse />
+          <TechArch />
+          <HowItWorks />
+          <TechModules />
+          <Community />
+          <Footer />
+        </main>
+      </div>
     </>
   );
 };

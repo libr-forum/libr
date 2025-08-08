@@ -62,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center space-x-8">
+        <div className="hidden 980:flex items-center space-x-8">
           {navLinks.map(({ href, label, external }) => (
             <a
               key={href}
@@ -77,14 +77,14 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         </div>
 
         {/* Mobile Menu Toggle + Theme Toggle */}
-        <div className="flex items-center gap-4 md:gap-2">
+        <div className="flex items-center gap-4 980:gap-2">
           {/* Hamburger Menu (mobile only) */}
-          <button
+          <motion.button
             onClick={() => setIsMenuOpen(prev => !prev)}
-            className="md:hidden w-10 h-10 rounded-lg border border-border/50 bg-card hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+            className="w-10 h-10 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm hover:border-libr-accent1/30 sm:hidden"
           >
-            {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
-          </button>
+            {isMenuOpen ? <X className="w-5 h-5 text-libr-secondary" /> : <Menu className="w-5 h-5 text-libr-secondary" />}
+          </motion.button>
 
           {/* Theme Toggle */}
           {toggleTheme && (
@@ -104,9 +104,9 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
                   {isDark ? (
-                    <Sun className="w-5 h-5 text-libr-accent1" />
+                    <Sun className="w-5 h-5 text-libr-secondary" />
                   ) : (
-                    <Moon className="w-5 h-5 text-libr-accent2" />
+                    <Moon className="w-5 h-5 text-libr-secondary" />
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -124,7 +124,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            className="md:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
+            className="980:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
           >
             {navLinks.map(({ href, label, external }) => (
               <a
@@ -210,15 +210,51 @@ const JoinBetaDropdown = () => {
 const Hero:React.FC = () => {
   const audioRef = React.useRef<HTMLAudioElement>(null);
 
+  // Store gain node and audio context in a ref to avoid TS errors
+  const audioBoostRef = React.useRef<{ctx?: AudioContext, gainNode?: GainNode}>({});
   const handlePlay = () => {
     const audio = audioRef.current;
     if (audio) {
-      audio.currentTime = 0; // restart on each play
+      audio.currentTime = 0;
+      audio.volume = 1.0;
+      // Try to boost volume using Web Audio API if possible
+      try {
+        if (!audioBoostRef.current.ctx || !audioBoostRef.current.gainNode) {
+          const ctx = new window.AudioContext();
+          const source = ctx.createMediaElementSource(audio);
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = 2.5; // 2.5x boost (max safe for most browsers)
+          source.connect(gainNode).connect(ctx.destination);
+          audioBoostRef.current = { ctx, gainNode };
+        } else {
+          audioBoostRef.current.gainNode.gain.value = 2.5;
+        }
+      } catch (e) {
+        // Fallback: do nothing if Web Audio API fails
+      }
       audio.play().catch((err) => {
         console.error("Playback failed", err);
       });
     }
   };
+  const scaleRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = scaleRef.current;
+    if (!el) return;
+    const resize = () => {
+      if (!el.parentElement) return;
+      const parentWidth = el.parentElement.offsetWidth;
+      const elWidth = el.scrollWidth;
+      let scale = 1;
+      if (elWidth > parentWidth) {
+        scale = parentWidth / elWidth;
+      }
+      el.style.transform = scale < 1 ? `scale(${scale})` : '';
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
   return(
     <section id="welcome" className="min-h-screen flex items-center justify-center section-padding pt-20">
       <div className="h-screen w-screen pb-20 flex items-center justify-center">
@@ -233,8 +269,22 @@ const Hero:React.FC = () => {
           className="w-full h-full flex items-center justify-center"
         >
           <div className='flex flex-col p-0 items-center justify-center w-full h-full'>
-            <div className="pl-6 p-4 w-full flex flex-row items-center justify-center">
-              <div onClick={handlePlay} className="flex rounded-3xl flex-col h-full pl-10 justify-center cursor-pointer">
+            <div className="pl-6 p-4 w-full flex flex-col 980:flex-row items-center justify-center">
+              <div
+                onClick={handlePlay}
+                className="flex rounded-3xl pl-0 980:pl-10 mt-20 380:-mt-10 md:mt-0 flex-col h-full justify-center cursor-pointer w-fit "
+                style={{
+                  minWidth: 0,
+                  width: 'fit-content',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  transition: 'transform 0.2s',
+                  transformOrigin: 'left',
+                }}
+                ref={scaleRef}
+                data-libr-scale-listener
+              >
                 <span className="text-libr-secondary/20 text-3xl translate-y-16">свобода</span>
                 <span className="text-libr-secondary/30 text-4xl translate-y-16 tracking-wider">स्वतंत्रता</span>
                 <span className="text-libr-secondary/40 text-5xl translate-y-14">Liberté</span>
@@ -246,21 +296,27 @@ const Hero:React.FC = () => {
                 <span className="text-libr-secondary/30 text-3xl -translate-y-17">Libertad</span>
                 <span className="text-libr-secondary/20 text-2xl -translate-y-18">స్వేచ్ఛ</span>
               </div>
-              <div className="flex flex-row justify-center p-4 w-full">
-                <p className="text-muted-foreground text-9xl opacity-50 blur-sm">
-                  Your Space.<br />
-                  Your Quorum.<br />
+              <div className="flex flex-row justify-start mb-4 items-center md:justify-end md:p-8 w-full min-w-0">
+                <p
+                  className="text-muted-foreground opacity-50 md:blur-sm whitespace-nowrap text-[clamp(2rem,8vw,8rem)] pr-0 980:pr-10 text-center 980:text-left"
+                  style={{
+                    lineHeight: 1.1,
+                    textAlign: 'left',
+                  }}
+                >
+                  Your Space.<br/>
+                  Your Quorum.<br/>
                   Your Rules.
                 </p>
               </div>
             </div>
-            <div id='join-beta' className='flex flex-row h-full w-full items-center justify-center gap-4'>
+            <div id="join-beta" className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
               {/* <JoinBetaDropdown /> */}
-              <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="flex flex-row items-center libr-button bg-libr-secondary text-libr-primary">
+              <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Download className="w-5 h-5 mr-3" />
                 Join Beta
               </button>
-              <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary">
+              <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>
@@ -273,86 +329,116 @@ const Hero:React.FC = () => {
 };
 
 const WhatIsLIBR: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <section id="what-is-libr" className="flex items-center pt-20 pb-20">
       <div className="container mx-auto">
-        <div className="flex flex-row gap-12 items-center">
+        <div
+          className={`flex ${
+            isMobile ? "flex-col" : "flex-row"
+          } gap-12 items-center`}
+        >
+          {/* Left Column */}
           <motion.div
-            initial={{ x: -100, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
+            initial={
+              isMobile
+                ? { y: 100, opacity: 0 }
+                : { x: -100, opacity: 0 }
+            }
+            whileInView={{ x: 0, y: 0, opacity: 1 }}
             transition={{
               duration: 0.8,
               ease: [0.4, 0, 0.2, 1],
             }}
             viewport={{ once: false }}
           >
-            <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6 w-full">
               Do we have the freedom of speech?
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Tired of platforms that quietly delete your posts?<br/>
-              Or rules that change depending on who’s watching?<br/>
-              libr is a new kind of social platform.<br/>
+              Tired of platforms that quietly delete your posts?
+              <br />
+              Or rules that change depending on who’s watching?
+              <br />
+              libr is a new kind of social platform.
+              <br />
               Built on transparency, community, and proof.
             </p>
-            
-            <p className='text-md mb-8'>
-              libr is a <b>censorship-resilient yet moderated</b> forum protocol where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
+            <p className="text-md mb-8">
+              libr is a <b>censorship-resilient yet moderated</b> forum
+              protocol where communities set their own rules — and every
+              moderation decision is{" "}
+              <b>cryptographically verifiable</b>.
             </p>
-            
-            <div className='flex flex-col gap-4'>
-              <div className='flex flew-row gap-2'>
-                <Shield/> No Shadow Bans
+            <div className="flex flex-col gap-4">
+              <div className="flex flew-row gap-2">
+                <Shield /> No Shadow Bans
               </div>
-              <div className='flex flew-row gap-2'>
-                <Users/> Moderation Per Community Rules
+              <div className="flex flew-row gap-2">
+                <Users /> Moderation Per Community Rules
               </div>
-              <div className='flex flew-row gap-2'>
-                <VenetianMask/> Pseudonomity
+              <div className="flex flew-row gap-2">
+                <VenetianMask /> Pseudonomity
               </div>
             </div>
           </motion.div>
-          
+
+          {/* Right Column - Testimonials */}
           <motion.div
-            initial={{ x: 100, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
+            initial={
+              isMobile
+                ? { y: 100, opacity: 0 }
+                : { x: 100, opacity: 0 }
+            }
+            whileInView={{ x: 0, y: 0, opacity: 1 }}
             transition={{
               duration: 0.8,
               ease: [0.4, 0, 0.2, 1],
             }}
             viewport={{ once: false }}
-            className="space-y-6"
+            className="space-y-6 w-full"
           >
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
-                This research addresses real challenges in decentralized systems."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center text-white font-semibold">
-                  A
-                </div>
-                <div>
-                  <p className="font-semibold">Dr. Alice Research</p>
-                  <p className="text-sm text-muted-foreground">Distributed Systems</p>
+            {[
+              {
+                text: `"The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
+                This research addresses real challenges in decentralized systems."`,
+                initial: "A",
+                name: "Dr. Alice Research",
+                role: "Distributed Systems",
+                color: "bg-libr-accent1",
+              },
+              {
+                text: `"Impressive protocol design. The modular Go implementation makes it easy to understand and extend."`,
+                initial: "S",
+                name: "Sam Developer",
+                role: "Open Source Contributor",
+                color: "bg-libr-accent2",
+              },
+            ].map((t, idx) => (
+              <div className="testimonial-card" key={idx}>
+                <p className="text-muted-foreground mb-4">{t.text}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <div
+                    className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white font-semibold`}
+                  >
+                    {t.initial}
+                  </div>
+                  <div>
+                    <p className="font-semibold">{t.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t.role}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "Impressive protocol design. The modular Go implementation makes it easy to understand and extend."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent2 rounded-full flex items-center justify-center text-white font-semibold">
-                  S
-                </div>
-                <div>
-                  <p className="font-semibold">Sam Developer</p>
-                  <p className="text-sm text-muted-foreground">Open Source Contributor</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </motion.div>
         </div>
       </div>
@@ -361,6 +447,8 @@ const WhatIsLIBR: React.FC = () => {
 };
 
 const TechArch: React.FC = () => {
+  
+
   const features = [
     {
       icon: Shield,
@@ -375,12 +463,12 @@ const TechArch: React.FC = () => {
     {
       icon: Lock,
       title: "Cryptographically Secure",
-      description: "Digital signatures with ED25519 keys used at each stage ensuring end-to-end immutability."
+      description: "Digital signatures with ed25519 keys used at each stage ensuring end-to-end immutability."
     },
     {
       icon: Waypoints,
       title: "Modern Web Net Infra",
-      description: "Go-based implementation with optimized DHT lookup and concurrent message processing for high performance."
+      description: "Websockets based p2p network with fallback mechanisms and support over VPNs."
     },
     {
       icon: DatabaseZap,

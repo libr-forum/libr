@@ -1,9 +1,39 @@
-import React from 'react';
+import React,{useState,useEffect} from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Settings, Play } from 'lucide-react';
 import { FaCogs, FaDownload, FaPlay } from 'react-icons/fa';
 
 const TechModules: React.FC = () => {
+  const [marginTop, setMarginTop] = useState(0);
+  
+  // Realtime resize handling
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 400) {
+        setMarginTop(100);
+      } else if (window.innerWidth < 768) {
+        setMarginTop(-100);
+      } else if (window.innerWidth < 1200) {
+        // Linear interpolation from -200 at 768px to 800 at 1199px
+        const ratio = (window.innerWidth - 768) / (1199 - 768); // 0 → 1
+        const margin = -200 + ratio * (800 - -200); // -200 to 800
+        setMarginTop(margin);
+      } else if (window.innerWidth === 1200) {
+        setMarginTop(-600);
+      } else if (window.innerWidth > 1200 && window.innerWidth < 1750) {
+        // Linear interpolation from -200 at 1201px to -100 at 1750px
+        const ratio = (window.innerWidth - 1201) / (1750 - 1201); // 0 → 1
+        const margin = -200 + ratio * 100; // -200 to -100
+        setMarginTop(margin);
+      } else {
+        setMarginTop(-200);
+      }
+    };
+    handleResize(); // Run once on mount
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const techStack1 = [
     {
       category: "Client",
@@ -35,7 +65,7 @@ const TechModules: React.FC = () => {
     }  ];
 
   return (
-    <section id="technical-modules"className="py-20 section-padding">
+    <section id="technical-modules"className="py-20 section-padding"  style={{ marginTop: `${marginTop}px`}}>
       <div className="container mx-auto">
         <motion.div 
           className="text-center mb-16"
@@ -57,61 +87,127 @@ const TechModules: React.FC = () => {
         </motion.div>
         
         <div className="flex flex-col items-center justify-center w-full space-y-6">
-          <div className='flex flex-row items-center justify-center w-full space-x-6'>
-            {techStack1.map((stack, index) => (
-              <motion.div
-                key={stack.category}
-                className="feature-card p-6 w-[20%] h-full text-center"
-                initial={{ y: 50, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{
-                  duration: 0.8,
-                  ease: [0.4, 0, 0.2, 1],
-                  delay: index * 0.1,
-                }}
-                viewport={{ once: false }}
-              >
-                <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <stack.icon className="w-6 h-6 text-libr-primary" />
-                </div>
-                <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
-                <div className="space-y-2">
-                  {stack.technologies.map((tech) => (
-                    <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-2">
-                      {tech}
+          {/* Responsive layout: <768px = 1 column, 768-1299px = 2 rows (3+2), >=1300px = 1 row of 5 */}
+          <div className="w-full">
+            {/* <1024px: 1 column */}
+            <div className="flex flex-col lg:hidden w-full space-y-6">
+              {[...techStack1, ...techStack2].map((stack, index) => (
+                <motion.div
+                  key={stack.category}
+                  className="feature-card p-6 w-full h-full text-center"
+                  initial={{ y: 50, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{
+                    duration: 0.8,
+                    ease: [0.4, 0, 0.2, 1],
+                    delay: index * 0.1,
+                  }}
+                  viewport={{ once: false }}
+                >
+                  <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <stack.icon className="w-6 h-6 text-libr-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                  <div className="space-y-2">
+                    {stack.technologies.map((tech) => (
+                      <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-2">
+                        {tech}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* 1024px-1299px: 2 rows (3+2) */}
+            <div className="hidden lg:flex 2xl:hidden flex-col w-full space-y-6">
+              <div className="flex flex-row items-center justify-center w-full space-x-6">
+                {techStack1.map((stack, index) => (
+                  <motion.div
+                    key={stack.category}
+                    className="feature-card p-6 w-full md:w-[30%] h-full text-center"
+                    initial={{ y: 50, opacity: 0 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    transition={{
+                      duration: 0.8,
+                      ease: [0.4, 0, 0.2, 1],
+                      delay: index * 0.1,
+                    }}
+                    viewport={{ once: false }}
+                  >
+                    <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <stack.icon className="w-6 h-6 text-libr-primary" />
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className='flex flex-row items-center justify-center w-full space-x-6'>
-            {techStack2.map((stack, index) => (
-              <motion.div
-                key={stack.category}
-                className="feature-card p-6 w-[20%] h-full text-center"
-                initial={{ y: 50, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{
-                  duration: 0.8,
-                  ease: [0.4, 0, 0.2, 1],
-                  delay: (index * 0.1)+ 0.2,
-                }}
-                viewport={{ once: false }}
-              >
-                <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <stack.icon className="w-6 h-6 text-libr-primary" />
-                </div>
-                <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
-                <div className="space-y-2">
-                  {stack.technologies.map((tech) => (
-                    <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-1">
-                      {tech}
+                    <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                    <div className="space-y-2">
+                      {stack.technologies.map((tech) => (
+                        <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-2">
+                          {tech}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                  </motion.div>
+                ))}
+              </div>
+              <div className="flex flex-row items-center justify-center w-full space-x-6">
+                {techStack2.map((stack, index) => (
+                  <motion.div
+                    key={stack.category}
+                    className="feature-card p-6 w-full md:w-[30%] h-full text-center"
+                    initial={{ y: 50, opacity: 0 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    transition={{
+                      duration: 0.8,
+                      ease: [0.4, 0, 0.2, 1],
+                      delay: (index + 3) * 0.1,
+                    }}
+                    viewport={{ once: false }}
+                  >
+                    <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <stack.icon className="w-6 h-6 text-libr-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                    <div className="space-y-2">
+                      {stack.technologies.map((tech) => (
+                        <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-2">
+                          {tech}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* >=1300px: 1 row of 5 */}
+            <div className="hidden 2xl:flex flex-row items-center justify-center w-full space-x-6">
+              {[...techStack1, ...techStack2].map((stack, index) => (
+                <motion.div
+                  key={stack.category}
+                  className="feature-card p-6 w-full lg:w-[20%] h-full text-center"
+                  initial={{ y: 50, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{
+                    duration: 0.8,
+                    ease: [0.4, 0, 0.2, 1],
+                    delay: index * 0.1,
+                  }}
+                  viewport={{ once: false }}
+                >
+                  <div className="w-12 h-12 bg-libr-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <stack.icon className="w-6 h-6 text-libr-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-libr-secondary mb-3">{stack.category}</h3>
+                  <div className="space-y-2">
+                    {stack.technologies.map((tech) => (
+                      <div key={tech} className="text-sm text-muted-foreground bg-muted/30 rounded-full px-3 py-2">
+                        {tech}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -362,16 +458,13 @@ const HowToUse: React.FC = () => {
           </h2>
         </motion.div>
 
-        <div className="flex flex-row items-center justify-center w-full space-x-6">
+        <div className="flex flex-col md:flex-row items-center justify-center w-full space-y-6 md:space-y-0 md:space-x-6">
           {steps.map((step, index) => {
             const isFirst = index === 0;
-
             return (
               <motion.div
                 key={index}
-                className={`feature-card p-6 w-[20%] h-full text-center ${
-                  isFirst ? "cursor-pointer" : ""
-                }`}
+                className={`feature-card p-6 w-full md:w-64 text-center ${isFirst ? "cursor-pointer" : ""} md:aspect-square`}
                 initial={{ y: 50, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 transition={{

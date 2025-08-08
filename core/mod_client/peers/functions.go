@@ -128,7 +128,7 @@ func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
 	}
 	fmt.Println(route, string(bodyBytes))
 	switch route {
-	case "submit":
+	case "auto":
 		return handlers.MsgIN(bodyBytes)
 
 	case "manual":
