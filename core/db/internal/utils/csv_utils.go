@@ -85,7 +85,10 @@ func GetDbAddr() ([]string, error) {
 }
 
 func GetOnlineMods() ([]*models.Mod, error) {
-	collection := MongoClient.Database("Addrs").Collection("mods") // replace with actual DB & collection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	collection := MongoClient.Database("Addrs").Collection("mods")
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
@@ -108,6 +111,7 @@ func GetOnlineMods() ([]*models.Mod, error) {
 			PublicKey: doc.PublicKey,
 		})
 	}
+	fmt.Println("Online mods:", mods)
 	return mods, nil
 }
 

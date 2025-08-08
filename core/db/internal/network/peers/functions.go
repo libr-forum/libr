@@ -69,16 +69,6 @@ func initDHT() {
 
 	// 4. Bootstrap to other nodes
 	bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
-	// for _, node := range bootstrapAddrs {
-	// 	fmt.Println("Bootstrapping with", node.IP, node.Port)
-	// 	bootstrap.Bootstrap(node.IP, node.Port, localNode, rt)
-	// }
-	// 4. Bootstrap to other nodes
-	bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
-	// for _, node := range bootstrapAddrs {
-	// 	fmt.Println("Bootstrapping with", node.IP, node.Port)
-	// 	bootstrap.Bootstrap(node.IP, node.Port, localNode, rt)
-	// }
 
 	data, _ := json.MarshalIndent(rt, "", "  ")
 	fmt.Println(string(data))

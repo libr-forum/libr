@@ -111,9 +111,9 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 	for _, mod := range validMods {
 		validMap[mod.PublicKey] = struct{}{}
 	}
+	fmt.Println("Valid mods map:", validMap)
 	totalMods := len(validMods)
 
-	msg := repCert.Msgcert.Msg
 	msgCertSign := repCert.Msgcert.Sign
 	msgCertPubKey := repCert.Msgcert.PublicKey
 
@@ -137,12 +137,12 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 			return fmt.Errorf("❌ Unauthorized moderator: %s", repmodcert.PublicKey)
 		}
 
-		payload := msg.Content + strconv.FormatInt(msg.Ts, 10) + repmodcert.Status
+		payload := repCert.Msgcert.Sign + repmodcert.Status
 		if !cryptoutils.VerifySignature(repmodcert.PublicKey, payload, repmodcert.Sign) {
 			return fmt.Errorf("❌ Invalid signature from mod: %s", repmodcert.PublicKey)
 		}
 
-		if repmodcert.Status == "approve" {
+		if repmodcert.Status == "1" {
 			approveCount++
 		}
 	}
