@@ -222,19 +222,19 @@ export default function ArchitectureAnimation() {
       // Base SVG size
       const baseWidth = 1536;
       const baseHeight = 1024;
-      const minWidth = 600;
+      const minWidth = 900;
 
       // Get current window or section size
       const w = Math.max(window.innerWidth, minWidth);
       const h = window.innerHeight;
 
       // Decide factor based on width breakpoints
-      let factor = 2;
-      if (w < 1750 && w >= 1400) {
-        factor = 1.5;
-      } else if (w < 1400) {
-        factor = 2.5;
-      }
+      let factor = 1.5;
+      // if (w < 1750 && w >= 1400) {
+      //   factor = 1.5;
+      // } else if (w < 1400) {
+      //   factor = 1.5;
+      // }
 
       // Calculate scale to fit both width and height, keeping aspect ratio
       const scaleW = w / baseWidth;
@@ -263,7 +263,7 @@ export default function ArchitectureAnimation() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-  const isSmall=width<1400;
+  const isSmall=width<1200;
 
   const [yPos, setYPos] = useState(0);
   useEffect(() => {
@@ -273,17 +273,14 @@ export default function ArchitectureAnimation() {
 
       if (!isDesktop) {
         // --- MOBILE/TABLET LOGIC ---
-        if (w < 768) {
+        if (w < 400) {
           setYPos(-200);
+        } else if (w < 768) {
+          setYPos(-300);
         } else if (w < 1400) {
           // Linear interpolation from -400 at 768px to -250 at 1400px
           const ratio = (w - 768) / (1400 - 768);
           const yValue = -400 + ratio * (150); // -400 to -250
-          setYPos(yValue);
-        } else if (w >= 1400 && w < 1750) {
-          // Linear interpolation from -600 at 1400px to 0 at 1750px
-          const ratio = (w - 1400) / (1750 - 1400);
-          const yValue = -600 + ratio * 600; // -600 to 0
           setYPos(yValue);
         } else {
           setYPos(1000);
@@ -303,7 +300,7 @@ export default function ArchitectureAnimation() {
   return (
     <section
       ref={sectionRef}
-      className="relative h-[80vh] w-full flex items-center justify-center"
+      className="relative h-[80vh] w-full flex items-center justify-center [&_*]:box-border [&_*]:break-words [&_*]:whitespace-normal"
     >
       {/* Background */}
       {/* <div
@@ -331,7 +328,7 @@ export default function ArchitectureAnimation() {
           width="1536"
           height="1024"
           viewBox="0 60 1536 1024"
-          className="rounded shadow-xl z-10"
+          className="rounded z-10"
         >
           {/* Paths */}
           <path ref={path1Ref} d="M761 558 Q838 380 903 548" stroke="black" strokeWidth="0.5" fill="none" />

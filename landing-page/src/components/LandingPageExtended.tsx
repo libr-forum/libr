@@ -61,27 +61,27 @@ const Community: React.FC = () => {
   ];
 
   return (
-    <section id="community" className="py-20 section-padding">
-      <div className="container mx-auto">
-        <div className="flex flex-row gap-12 items-center text-center">
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{
-              duration: 0.8,
-              ease: [0.4, 0, 0.2, 1],
-            }}
-            viewport={{ once: false }}
-          >
-            <h2 className="text-4xl lg:text-5xl font-bold text-center text-libr-secondary mb-6">
-              Open Source
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              libr is an academic research project exploring novel approaches to decentralized 
-              forum design. Contribute to the future of censorship-resilient yet moderated communication platforms.
-            </p>
-            
-            <div className="flex flex-row gap-6 mb-8 items-center justify-between">
+    <section id="community" className="py-20 w-screen max-w-none">
+      <div className="w-screen max-w-none flex flex-col items-center justify-center">
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{
+            duration: 0.8,
+            ease: [0.4, 0, 0.2, 1],
+          }}
+          viewport={{ once: false }}
+          className="w-full flex flex-col items-center justify-center text-center"
+        >
+          <h2 className="text-4xl lg:text-5xl font-bold text-center text-libr-secondary mb-6">
+            Open Source
+          </h2>
+          <p className="text-xl text-muted-foreground px-8 mb-8">
+            libr is an academic research project exploring novel approaches to decentralized 
+            forum design. Contribute to the future of censorship-resilient yet moderated communication platforms.
+          </p>
+          <div className="flex flex-col gap-8 w-full items-center justify-center">
+            <div className="flex flex-col gap-6 w-full items-center justify-center mb-4 sm:flex-row sm:gap-6 sm:mb-8 sm:items-center md:justify-between md:p-20 pb-0 pt-0">
               {stats.map((stat, index) => (
                 <motion.div
                   key={stat.label}
@@ -100,58 +100,18 @@ const Community: React.FC = () => {
                 </motion.div>
               ))}
             </div>
-            
-            <div className="flex sm:flex-row gap-4 items-center justify-center">
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')}className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center">
+            <div className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
+              <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')}className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary">
+              <button onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Github className="w-5 h-5 mr-3" />
                 View on GitHub
               </button>
             </div>
-          </motion.div>
-          
-          {/* <motion.div
-            initial={{ x: 100, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="space-y-6"
-          >
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
-                This research addresses real challenges in decentralized systems."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center text-white font-semibold">
-                  A
-                </div>
-                <div>
-                  <p className="font-semibold">Dr. Alice Research</p>
-                  <p className="text-sm text-muted-foreground">Distributed Systems</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "Impressive protocol design. The modular Go implementation makes it easy to understand and extend."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent2 rounded-full flex items-center justify-center text-white font-semibold">
-                  S
-                </div>
-                <div>
-                  <p className="font-semibold">Sam Developer</p>
-                  <p className="text-sm text-muted-foreground">Open Source Contributor</p>
-                </div>
-              </div>
-            </div>
-          </motion.div> */}
-        </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

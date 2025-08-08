@@ -79,12 +79,12 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         {/* Mobile Menu Toggle + Theme Toggle */}
         <div className="flex items-center gap-4 980:gap-2">
           {/* Hamburger Menu (mobile only) */}
-          <button
+          <motion.button
             onClick={() => setIsMenuOpen(prev => !prev)}
-            className="980:hidden w-10 h-10 rounded-lg border border-border/50 bg-card hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+            className="w-10 h-10 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm hover:border-libr-accent1/30 sm:hidden"
           >
-            {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
-          </button>
+            {isMenuOpen ? <X className="w-5 h-5 text-libr-secondary" /> : <Menu className="w-5 h-5 text-libr-secondary" />}
+          </motion.button>
 
           {/* Theme Toggle */}
           {toggleTheme && (
@@ -104,9 +104,9 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
                   {isDark ? (
-                    <Sun className="w-5 h-5 text-libr-accent1" />
+                    <Sun className="w-5 h-5 text-libr-secondary" />
                   ) : (
-                    <Moon className="w-5 h-5 text-libr-accent2" />
+                    <Moon className="w-5 h-5 text-libr-secondary" />
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -210,15 +210,51 @@ const JoinBetaDropdown = () => {
 const Hero:React.FC = () => {
   const audioRef = React.useRef<HTMLAudioElement>(null);
 
+  // Store gain node and audio context in a ref to avoid TS errors
+  const audioBoostRef = React.useRef<{ctx?: AudioContext, gainNode?: GainNode}>({});
   const handlePlay = () => {
     const audio = audioRef.current;
     if (audio) {
-      audio.currentTime = 0; // restart on each play
+      audio.currentTime = 0;
+      audio.volume = 1.0;
+      // Try to boost volume using Web Audio API if possible
+      try {
+        if (!audioBoostRef.current.ctx || !audioBoostRef.current.gainNode) {
+          const ctx = new window.AudioContext();
+          const source = ctx.createMediaElementSource(audio);
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = 2.5; // 2.5x boost (max safe for most browsers)
+          source.connect(gainNode).connect(ctx.destination);
+          audioBoostRef.current = { ctx, gainNode };
+        } else {
+          audioBoostRef.current.gainNode.gain.value = 2.5;
+        }
+      } catch (e) {
+        // Fallback: do nothing if Web Audio API fails
+      }
       audio.play().catch((err) => {
         console.error("Playback failed", err);
       });
     }
   };
+  const scaleRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = scaleRef.current;
+    if (!el) return;
+    const resize = () => {
+      if (!el.parentElement) return;
+      const parentWidth = el.parentElement.offsetWidth;
+      const elWidth = el.scrollWidth;
+      let scale = 1;
+      if (elWidth > parentWidth) {
+        scale = parentWidth / elWidth;
+      }
+      el.style.transform = scale < 1 ? `scale(${scale})` : '';
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
   return(
     <section id="welcome" className="min-h-screen flex items-center justify-center section-padding pt-20">
       <div className="h-screen w-screen pb-20 flex items-center justify-center">
@@ -233,8 +269,22 @@ const Hero:React.FC = () => {
           className="w-full h-full flex items-center justify-center"
         >
           <div className='flex flex-col p-0 items-center justify-center w-full h-full'>
-            <div className="pl-6 p-4 w-full flex flex-row items-center justify-center">
-              <div onClick={handlePlay} className="flex rounded-3xl flex-col h-full pl-10 justify-center cursor-pointer">
+            <div className="pl-6 p-4 w-full flex flex-col 980:flex-row items-center justify-center">
+              <div
+                onClick={handlePlay}
+                className="flex rounded-3xl pl-0 980:pl-10 mt-20 380:-mt-10 md:mt-0 flex-col h-full justify-center cursor-pointer w-fit "
+                style={{
+                  minWidth: 0,
+                  width: 'fit-content',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  transition: 'transform 0.2s',
+                  transformOrigin: 'left',
+                }}
+                ref={scaleRef}
+                data-libr-scale-listener
+              >
                 <span className="text-libr-secondary/20 text-3xl translate-y-16">свобода</span>
                 <span className="text-libr-secondary/30 text-4xl translate-y-16 tracking-wider">स्वतंत्रता</span>
                 <span className="text-libr-secondary/40 text-5xl translate-y-14">Liberté</span>
@@ -246,21 +296,27 @@ const Hero:React.FC = () => {
                 <span className="text-libr-secondary/30 text-3xl -translate-y-17">Libertad</span>
                 <span className="text-libr-secondary/20 text-2xl -translate-y-18">స్వేచ్ఛ</span>
               </div>
-              <div className="flex flex-row justify-center p-4 w-full">
-                <p className="text-muted-foreground text-9xl opacity-50 blur-sm">
-                  Your Space.<br />
-                  Your Quorum.<br />
+              <div className="flex flex-row justify-start mb-4 items-center md:justify-end md:p-8 w-full min-w-0">
+                <p
+                  className="text-muted-foreground opacity-50 md:blur-sm whitespace-nowrap text-[clamp(2rem,8vw,8rem)] pr-0 980:pr-10 text-center 980:text-left"
+                  style={{
+                    lineHeight: 1.1,
+                    textAlign: 'left',
+                  }}
+                >
+                  Your Space.<br/>
+                  Your Quorum.<br/>
                   Your Rules.
                 </p>
               </div>
             </div>
-            <div id='join-beta' className='flex flex-row h-full w-full items-center justify-center gap-4'>
+            <div id="join-beta" className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
               {/* <JoinBetaDropdown /> */}
-              <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="flex flex-row items-center libr-button bg-libr-secondary text-libr-primary">
+              <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Download className="w-5 h-5 mr-3" />
                 Join Beta
               </button>
-              <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary">
+              <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>

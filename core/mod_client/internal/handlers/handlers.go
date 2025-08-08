@@ -72,6 +72,6 @@ func MsgReport(bodyBytes []byte) []byte {
 		log.Printf("JSON marshal error: %v", err)
 		return nil
 	}
-
+	fmt.Println("Returning moderation response:", string(respBytes))
 	return respBytes
 }

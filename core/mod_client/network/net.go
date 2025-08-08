@@ -25,7 +25,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgString))
+			resp, err := Peers.POST(ip, port, route, []byte(msgString))
 			if err != nil {
 				return nil, err
 			}
@@ -38,7 +38,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, "/route=submit", []byte(msgcertJSON))
+			resp, err := Peers.POST(ip, port, route, []byte(msgcertJSON))
 			if err != nil {
 				return nil, err
 			}

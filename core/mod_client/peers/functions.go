@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
 )
 
 var Peer *ChatPeer
@@ -110,8 +112,32 @@ func ServeGetReq([]byte) []byte {
 
 }
 
-func ServePostReq(params []byte, bodybytes []byte) []byte {
-	return nil
+func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
+	fmt.Println("Serving Post Request")
+
+	var params map[string]interface{}
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		fmt.Println("Failed to unmarshal params:", err)
+		return nil
+	}
+
+	route, ok := params["route"].(string)
+	if !ok {
+		fmt.Println("route param missing or not string")
+		return nil
+	}
+	fmt.Println(route, string(bodyBytes))
+	switch route {
+	case "auto":
+		return handlers.MsgIN(bodyBytes)
+
+	case "manual":
+		return handlers.MsgReport(bodyBytes)
+
+	default:
+		fmt.Println("Unknown POST route:", route)
+		return nil
+	}
 }
 
 func XorHexToBigInt(hex1, hex2 string) *big.Int {
