@@ -121,7 +121,7 @@ const App: React.FC = () => {
       
       <main>
         <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
-        <Hero />
+        <Hero />  
         <WhatIsLIBR/>
         <TechArch />
         <HowItWorks />

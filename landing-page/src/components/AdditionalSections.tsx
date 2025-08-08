@@ -1,9 +1,37 @@
-import React from 'react';
+import React,{useState,useEffect} from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Settings, Play } from 'lucide-react';
 import { FaCogs, FaDownload, FaPlay } from 'react-icons/fa';
 
 const TechModules: React.FC = () => {
+  const [marginTop, setMarginTop] = useState(0);
+  
+  // Realtime resize handling
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setMarginTop(-200);
+      } else if (window.innerWidth < 1400) {
+        // Linear interpolation from -200 at 768px to 800 at 1399px
+        const ratio = (window.innerWidth - 768) / (1399 - 768); // 0 → 1
+        const margin = -200 + ratio * (800 - -200); // -200 to 800
+        setMarginTop(margin);
+      } else if (window.innerWidth === 1400) {
+        setMarginTop(-600);
+      } else if (window.innerWidth > 1400 && window.innerWidth < 1750) {
+        // Linear interpolation from -600 at 1401px to 0 at 1750px
+        const ratio = (window.innerWidth - 1401) / (1750 - 1401); // 0 → 1
+        const margin = -600 + ratio * 600; // -600 to 0
+        setMarginTop(margin);
+      } else {
+        setMarginTop(0);
+      }
+    };
+    handleResize(); // Run once on mount
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const techStack1 = [
     {
       category: "Client",
@@ -35,7 +63,7 @@ const TechModules: React.FC = () => {
     }  ];
 
   return (
-    <section id="technical-modules"className="py-20 section-padding">
+    <section id="technical-modules"className="py-20 section-padding"  style={{ marginTop: `${marginTop}px`}}>
       <div className="container mx-auto">
         <motion.div 
           className="text-center mb-16"

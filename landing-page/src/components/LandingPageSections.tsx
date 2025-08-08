@@ -62,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center space-x-8">
+        <div className="hidden 980:flex items-center space-x-8">
           {navLinks.map(({ href, label, external }) => (
             <a
               key={href}
@@ -77,11 +77,11 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
         </div>
 
         {/* Mobile Menu Toggle + Theme Toggle */}
-        <div className="flex items-center gap-4 md:gap-2">
+        <div className="flex items-center gap-4 980:gap-2">
           {/* Hamburger Menu (mobile only) */}
           <button
             onClick={() => setIsMenuOpen(prev => !prev)}
-            className="md:hidden w-10 h-10 rounded-lg border border-border/50 bg-card hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+            className="980:hidden w-10 h-10 rounded-lg border border-border/50 bg-card hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
           >
             {isMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
           </button>
@@ -124,7 +124,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            className="md:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
+            className="980:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
           >
             {navLinks.map(({ href, label, external }) => (
               <a
@@ -273,86 +273,116 @@ const Hero:React.FC = () => {
 };
 
 const WhatIsLIBR: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <section id="what-is-libr" className="flex items-center pt-20 pb-20">
       <div className="container mx-auto">
-        <div className="flex flex-row gap-12 items-center">
+        <div
+          className={`flex ${
+            isMobile ? "flex-col" : "flex-row"
+          } gap-12 items-center`}
+        >
+          {/* Left Column */}
           <motion.div
-            initial={{ x: -100, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
+            initial={
+              isMobile
+                ? { y: 100, opacity: 0 }
+                : { x: -100, opacity: 0 }
+            }
+            whileInView={{ x: 0, y: 0, opacity: 1 }}
             transition={{
               duration: 0.8,
               ease: [0.4, 0, 0.2, 1],
             }}
             viewport={{ once: false }}
           >
-            <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-6 w-full">
               Do we have the freedom of speech?
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Tired of platforms that quietly delete your posts?<br/>
-              Or rules that change depending on who’s watching?<br/>
-              libr is a new kind of social platform.<br/>
+              Tired of platforms that quietly delete your posts?
+              <br />
+              Or rules that change depending on who’s watching?
+              <br />
+              libr is a new kind of social platform.
+              <br />
               Built on transparency, community, and proof.
             </p>
-            
-            <p className='text-md mb-8'>
-              libr is a <b>censorship-resilient yet moderated</b> forum protocol where communities set their own rules — and every moderation decision is <b>cryptographically verifiable</b>.
+            <p className="text-md mb-8">
+              libr is a <b>censorship-resilient yet moderated</b> forum
+              protocol where communities set their own rules — and every
+              moderation decision is{" "}
+              <b>cryptographically verifiable</b>.
             </p>
-            
-            <div className='flex flex-col gap-4'>
-              <div className='flex flew-row gap-2'>
-                <Shield/> No Shadow Bans
+            <div className="flex flex-col gap-4">
+              <div className="flex flew-row gap-2">
+                <Shield /> No Shadow Bans
               </div>
-              <div className='flex flew-row gap-2'>
-                <Users/> Moderation Per Community Rules
+              <div className="flex flew-row gap-2">
+                <Users /> Moderation Per Community Rules
               </div>
-              <div className='flex flew-row gap-2'>
-                <VenetianMask/> Pseudonomity
+              <div className="flex flew-row gap-2">
+                <VenetianMask /> Pseudonomity
               </div>
             </div>
           </motion.div>
-          
+
+          {/* Right Column - Testimonials */}
           <motion.div
-            initial={{ x: 100, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
+            initial={
+              isMobile
+                ? { y: 100, opacity: 0 }
+                : { x: 100, opacity: 0 }
+            }
+            whileInView={{ x: 0, y: 0, opacity: 1 }}
             transition={{
               duration: 0.8,
               ease: [0.4, 0, 0.2, 1],
             }}
             viewport={{ once: false }}
-            className="space-y-6"
+            className="space-y-6 w-full"
           >
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
-                This research addresses real challenges in decentralized systems."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent1 rounded-full flex items-center justify-center text-white font-semibold">
-                  A
-                </div>
-                <div>
-                  <p className="font-semibold">Dr. Alice Research</p>
-                  <p className="text-sm text-muted-foreground">Distributed Systems</p>
+            {[
+              {
+                text: `"The hybrid approach of combining DHTs with Byzantine consensus is innovative. 
+                This research addresses real challenges in decentralized systems."`,
+                initial: "A",
+                name: "Dr. Alice Research",
+                role: "Distributed Systems",
+                color: "bg-libr-accent1",
+              },
+              {
+                text: `"Impressive protocol design. The modular Go implementation makes it easy to understand and extend."`,
+                initial: "S",
+                name: "Sam Developer",
+                role: "Open Source Contributor",
+                color: "bg-libr-accent2",
+              },
+            ].map((t, idx) => (
+              <div className="testimonial-card" key={idx}>
+                <p className="text-muted-foreground mb-4">{t.text}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <div
+                    className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white font-semibold`}
+                  >
+                    {t.initial}
+                  </div>
+                  <div>
+                    <p className="font-semibold">{t.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t.role}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="testimonial-card">
-              <p className="text-muted-foreground mb-4">
-                "Impressive protocol design. The modular Go implementation makes it easy to understand and extend."
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 bg-libr-accent2 rounded-full flex items-center justify-center text-white font-semibold">
-                  S
-                </div>
-                <div>
-                  <p className="font-semibold">Sam Developer</p>
-                  <p className="text-sm text-muted-foreground">Open Source Contributor</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </motion.div>
         </div>
       </div>
@@ -361,6 +391,8 @@ const WhatIsLIBR: React.FC = () => {
 };
 
 const TechArch: React.FC = () => {
+  
+
   const features = [
     {
       icon: Shield,
@@ -375,12 +407,12 @@ const TechArch: React.FC = () => {
     {
       icon: Lock,
       title: "Cryptographically Secure",
-      description: "Digital signatures with ED25519 keys used at each stage ensuring end-to-end immutability."
+      description: "Digital signatures with ed25519 keys used at each stage ensuring end-to-end immutability."
     },
     {
       icon: Waypoints,
       title: "Modern Web Net Infra",
-      description: "Go-based implementation with optimized DHT lookup and concurrent message processing for high performance."
+      description: "Websockets based p2p network with fallback mechanisms and support over VPNs."
     },
     {
       icon: DatabaseZap,

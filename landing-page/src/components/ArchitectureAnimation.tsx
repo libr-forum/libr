@@ -222,14 +222,26 @@ export default function ArchitectureAnimation() {
       // Base SVG size
       const baseWidth = 1536;
       const baseHeight = 1024;
+      const minWidth = 600;
+
       // Get current window or section size
-      const w = window.innerWidth;
+      const w = Math.max(window.innerWidth, minWidth);
       const h = window.innerHeight;
-      // Calculate scale to fit both width and height, but keep aspect ratio
+
+      // Decide factor based on width breakpoints
+      let factor = 2;
+      if (w < 1750 && w >= 1400) {
+        factor = 1.5;
+      } else if (w < 1400) {
+        factor = 2.5;
+      }
+
+      // Calculate scale to fit both width and height, keeping aspect ratio
       const scaleW = w / baseWidth;
       const scaleH = h / baseHeight;
+
       // Use the smaller scale to ensure it fits
-      setScale(Math.min(scaleW*2, scaleH*2, 2));
+      setScale(Math.min(scaleW * factor, scaleH * factor, factor));
     }
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -244,11 +256,54 @@ export default function ArchitectureAnimation() {
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
+  
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  const isSmall=width<1400;
+
+  const [yPos, setYPos] = useState(0);
+  useEffect(() => {
+    function updateY() {
+      const w = window.innerWidth;
+      const isDesktop = w >= 1200;
+
+      if (!isDesktop) {
+        // --- MOBILE/TABLET LOGIC ---
+        if (w < 768) {
+          setYPos(-200);
+        } else if (w < 1400) {
+          // Linear interpolation from -400 at 768px to -250 at 1400px
+          const ratio = (w - 768) / (1400 - 768);
+          const yValue = -400 + ratio * (150); // -400 to -250
+          setYPos(yValue);
+        } else if (w >= 1400 && w < 1750) {
+          // Linear interpolation from -600 at 1400px to 0 at 1750px
+          const ratio = (w - 1400) / (1750 - 1400);
+          const yValue = -600 + ratio * 600; // -600 to 0
+          setYPos(yValue);
+        } else {
+          setYPos(1000);
+        }
+      } else {
+        // --- DESKTOP LOGIC PLACEHOLDER ---
+        // TODO: Implement desktop-specific shifting logic here
+        // Example: setYPos(-100);
+        setYPos(-100); // Placeholder value for desktop
+      }
+    }
+    updateY(); // Initial run
+    window.addEventListener("resize", updateY);
+    return () => window.removeEventListener("resize", updateY);
+  }, []);
 
   return (
     <section
       ref={sectionRef}
-      className="relative h-[80vh] w-full flex items-center justify-center overflow-hidden"
+      className="relative h-[80vh] w-full flex items-center justify-center"
     >
       {/* Background */}
       {/* <div
@@ -260,10 +315,10 @@ export default function ArchitectureAnimation() {
         style={{
           transformOrigin: 'center',
         }}
-        initial={{ opacity: 0, y: 40, scale: scale }}
+        initial={{ opacity: 0, y: 0, scale: scale }}
         animate={{
           opacity: isVisible ? 1 : 0,
-          y: isVisible ? 0 : 40,
+          y: isVisible ? yPos : 40,
           scale,
         }}
         transition={{
@@ -340,12 +395,16 @@ export default function ArchitectureAnimation() {
         <Database style={{ left: 753, top: 395 }} className="absolute w-6 h-6 text-libr-primary -translate-x-1/2 -translate-y-1/2 z-20" />
 
         <motion.div
-          className="absolute libr-card p-4 text-left"
-          style={{ left: 960, top: 320 }}
+          className="absolute libr-card p-4 text-left min-w-[230px]"
+          style={{
+            left: isSmall ? 660 : 960,
+            top: isSmall ? 700 : 320,
+          }}
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6}}
           viewport={{ once: true }}
+          
         >
           <div className='flex flex-row items-center space-x-2 mb-2'>
             <Monitor className="w-6 h-6 text-libr-secondary" />
@@ -355,7 +414,11 @@ export default function ArchitectureAnimation() {
         </motion.div>
         <motion.div
           className="absolute libr-card p-4 text-left"
-          style={{ left: 360, top: 420 }}
+          style={{
+            left: isSmall ? 660 : 360,
+            top: isSmall ? 990 : 420,
+            minWidth: width < 1400 ? 230 : undefined,
+          }}
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6}}
@@ -368,8 +431,11 @@ export default function ArchitectureAnimation() {
           <p className="text-muted-foreground text-xs">Uses timestamp hash to<br/>calculate storage nodes<br/>Verify signatures<br/>Store with replication</p>
         </motion.div>
         <motion.div
-          className="absolute libr-card p-4 text-left"
-          style={{ left: 960, top: 570 }}
+          className="absolute libr-card p-4 text-left min-w-[230px]"
+          style={{
+            left: isSmall ? 660 : 960,
+            top: isSmall ? 850 : 570,
+          }}
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6}}

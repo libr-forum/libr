@@ -11,8 +11,6 @@ import (
 	"math/big"
 	"strings"
 	"time"
-
-	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
 )
 
 var Peer *ChatPeer
@@ -113,7 +111,7 @@ func ServeGetReq([]byte) []byte {
 }
 
 func ServePostReq(params []byte, bodybytes []byte) []byte {
-	return handlers.MsgIN(bodybytes)
+	return nil
 }
 
 func XorHexToBigInt(hex1, hex2 string) *big.Int {

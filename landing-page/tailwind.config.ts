@@ -133,6 +133,10 @@ export default {
         '17': '4.25rem',
         '18': '4.5rem', 
       },
+      screens: {
+        '980': '980px',  
+        '1400': '1400px',
+      },
     },
   },
   plugins: [tailwindcssAnimate],
