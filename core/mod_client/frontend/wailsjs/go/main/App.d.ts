@@ -29,7 +29,7 @@ export function GetRelayStatus():Promise<string>;
 
 export function LogToFile(arg1:string):Promise<void>;
 
-export function ManualModerate(arg1:string,arg2:number):Promise<void>;
+export function ManualModerate(arg1:string,arg2:string,arg3:number):Promise<void>;
 
 export function ModAuthentication(arg1:string):Promise<boolean>;
 

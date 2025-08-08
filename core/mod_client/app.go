@@ -266,8 +266,8 @@ func (a *App) FetchMessageReports() []models.MsgCert {
 	return reports
 }
 
-func (a *App) ManualModerate(sign string, moderated int) {
-	moddb.UpdateModerationStatus(sign, moderated)
+func (a *App) ManualModerate(sign string, modsign string, moderated int) {
+	moddb.UpdateModerationStatus(sign, modsign, moderated)
 }
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {
 	cacheDir := cache.GetCacheDir()

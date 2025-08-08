@@ -1,13 +1,19 @@
 package moddb
 
 import (
+	"crypto/ed25519"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
+	"strconv"
+	"time"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/config"
+	"github.com/devlup-labs/Libr/core/mod_client/keycache"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
@@ -81,6 +87,14 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 	var modsign sql.NullString
 	var sign string
 
+	if rand.Intn(2) == 0 {
+		fmt.Println("Running the Test logic...")
+		TestManModerateMsg(cert)
+		// Put your actual code here
+	} else {
+		fmt.Println("Skipping this time.")
+	}
+
 	row := config.DB.QueryRow(`
     SELECT sign, moderated, modsign
     FROM msgresult
@@ -88,6 +102,7 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 
 	err = row.Scan(&sign, &moderated, &modsign)
 	if err != nil {
+		fmt.Println("Error scanning row:", err)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no record found after insert failed: %w", err)
 		}
@@ -98,23 +113,23 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 
 	// Only proceed if moderated is non-NULL and equals 1
 	if moderated.Valid && moderated.Int64 == 1 && modsign.Valid && modsign.String != "" {
-		payload := fmt.Sprintf("%d", moderated.Int64) + modsign.String
+		// payload := fmt.Sprintf("%d", moderated.Int64) + modsign.String
 
-		pub, priv, err := cryptoutils.LoadKeys()
-		if err != nil {
-			log.Printf("Key load error: %v", err)
-			return nil, fmt.Errorf("failed to load keys: %w", err)
-		}
+		// pub, priv, err := cryptoutils.LoadKeys()
+		// if err != nil {
+		// 	log.Printf("Key load error: %v", err)
+		// 	return nil, fmt.Errorf("failed to load keys: %w", err)
+		// }
 
-		_, signed, err := cryptoutils.SignMessage(priv, payload)
-		if err != nil {
-			return nil, fmt.Errorf("signing sign-moderated: %w", err)
-		}
+		// _, signed, err := cryptoutils.SignMessage(priv, payload)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("signing sign-moderated: %w", err)
+		// }
 
 		return &models.ModResponse{
-			Sign:      sign,
-			PublicKey: string(pub),
-			Status:    signed,
+			Sign:      modsign.String,
+			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+			Status:    strconv.FormatInt(moderated.Int64, 10),
 		}, nil
 	}
 
@@ -126,20 +141,7 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 }
 
 // UpdateModerationStatus updates the moderation status of a message and signs the update
-func UpdateModerationStatus(sign string, moderated int) (*models.ModResponse, error) {
-	// Prepare payload for signing
-	payload := fmt.Sprintf("%d", moderated) + sign
-
-	pub, priv, err := cryptoutils.LoadKeys()
-	if err != nil {
-		log.Printf("Key load error: %v", err)
-		return nil, fmt.Errorf("failed to load keys: %w", err)
-	}
-
-	_, signature, err := cryptoutils.SignMessage(priv, payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign moderation payload: %w", err)
-	}
+func UpdateModerationStatus(sign string, modsign string, moderated int) (*models.ModResponse, error) {
 
 	// Update the database with moderated status and signature
 	updateQuery := `
@@ -147,15 +149,15 @@ func UpdateModerationStatus(sign string, moderated int) (*models.ModResponse, er
         SET moderated = ?, modsign = ?
         WHERE sign = ?;`
 
-	_, err = config.DB.Exec(updateQuery, moderated, signature, sign)
+	_, err := config.DB.Exec(updateQuery, moderated, modsign, sign)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update moderation status: %w", err)
 	}
-
+	fmt.Println("Moderation status updated successfully")
 	return &models.ModResponse{
-		Sign:      sign,
-		PublicKey: string(pub),
-		Status:    signature,
+		Sign:      modsign,
+		PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+		Status:    strconv.Itoa(moderated),
 	}, nil
 }
 
@@ -187,4 +189,24 @@ func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 	return msgs, nil
+}
+
+func TestManModerateMsg(cert types.MsgCert) {
+	fmt.Println("Testing manual moderation for message:", cert.Sign)
+	rand.Seed(time.Now().UnixNano()) // seed with current time
+	status := rand.Intn(2)
+	modsign, _ := TempModSign(&cert, strconv.Itoa(status), keycache.PrivKey, keycache.PubKey)
+	fmt.Println("Mod signature:", modsign)
+	UpdateModerationStatus(cert.Sign, modsign, status)
+}
+
+func TempModSign(cert *types.MsgCert, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (string, error) {
+
+	payload := cert.Sign + status
+	_, sign, err := cryptoutils.SignMessage(privateKey, payload)
+	if err != nil {
+		return "", err
+	}
+
+	return sign, nil
 }

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -407,7 +408,7 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string) []typ
 					log.Printf("Mod %s:%s acknowledged", mod.IP, mod.Port)
 					return
 				}
-
+				fmt.Println("Modcert:", modcert)
 				// Verify signature for non-acknowledgement
 				msgHash := cert.Sign + modcert.Status
 				if cryptoutils.VerifySignature(modcert.PublicKey, msgHash, modcert.Sign) {
