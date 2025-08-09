@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowRight, Github, Twitter, BookOpen, Shield, Instagram, Linkedin, Mail, PencilLine,Users } from 'lucide-react';
+import { CheckCircle, Github, BookOpen, Instagram, Linkedin, Mail, PencilLine,Users } from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
 import ArchitectureAnimation from './ArchitectureAnimation';
 

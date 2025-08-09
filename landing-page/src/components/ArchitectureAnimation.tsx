@@ -3,10 +3,8 @@ import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Mail, Package, ShieldCheck,Monitor,Database } from 'lucide-react';
+import { ShieldCheck, Monitor, Database } from 'lucide-react';
 import {IconMail,IconFileText} from '@tabler/icons-react';
-import WorkingBGDark from '../assets/HowItWorks.png';
-import WorkingBGLight from '../assets/HowItWorksLight.png'
 
 gsap.registerPlugin(MotionPathPlugin, ScrollTrigger);
 

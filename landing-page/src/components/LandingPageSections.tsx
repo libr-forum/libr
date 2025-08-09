@@ -1,8 +1,6 @@
 import React,{useRef,useEffect,useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, Zap, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Volume2, ChevronDown, Download, X, Menu} from 'lucide-react';
-import logo_bg_noname from "../assets/logo_bg_noname.png"
-import logo_transparent_noname from "../assets/logo_transparent_noname-01.png"
+import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, ChevronDown, Download, X, Menu} from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 
@@ -390,8 +388,7 @@ const WhatIsLIBR: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Right Column - Testimonials */}
-          <motion.div
+          {/* <motion.div
             initial={
               isMobile
                 ? { y: 100, opacity: 0 }
@@ -439,7 +436,7 @@ const WhatIsLIBR: React.FC = () => {
                 </div>
               </div>
             ))}
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
     </section>

@@ -1,5 +1,0 @@
-{
-  "forbidden": [
-  ],
-  "thresholds": "Toxic:0.30,Insult:0.90,Profanity:0.60,Derogatory:0.60,Sexual:0.30,Violence:0.40,Drugs:0.60,Death/Harm/Tragedy:0.60,Firearms/Weapons:0.60,Public Safety:0.30,Health:0.50,Religion/Belief:0.30,War/Conflict:0.70,Politics:0.80,Finance:0.40,Legal:0.60"
-}

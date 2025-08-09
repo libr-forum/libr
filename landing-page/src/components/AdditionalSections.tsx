@@ -1,7 +1,6 @@
 import React,{useState,useEffect} from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Zap, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Settings, Play } from 'lucide-react';
-import { FaCogs, FaDownload, FaPlay } from 'react-icons/fa';
+import { Shield, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Play } from 'lucide-react';
 
 const TechModules: React.FC = () => {
   const [marginTop, setMarginTop] = useState(0);
