@@ -2,12 +2,14 @@ package network
 
 import (
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/devlup-labs/Libr/core/db/config"
+	"github.com/devlup-labs/Libr/core/db/internal/keycache"
 	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
@@ -41,7 +43,7 @@ func SendPing(selfID [20]byte, selfPort string, target *models.Node) error {
 		return fmt.Errorf("POST function not registered")
 	}
 
-	jsonStr := fmt.Sprintf(`{"node_id": "%x","port": "%s"}`, selfID[:], selfPort)
+	jsonStr := fmt.Sprintf(`{"node_id": "%x","public_key": "%s","port": "%s"}`, selfID[:], base64.StdEncoding.EncodeToString(keycache.PubKey), selfPort)
 	jsonBytes := []byte(jsonStr)
 
 	resp, err := GlobalPostFunc(target.IP, target.Port, "/route=ping", jsonBytes)

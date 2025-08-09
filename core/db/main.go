@@ -6,11 +6,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/devlup-labs/Libr/core/db/internal/keycache"
 	peer "github.com/devlup-labs/Libr/core/db/internal/network/peers"
 	"github.com/devlup-labs/Libr/core/db/internal/utils"
 )
 
 func main() {
+	keycache.InitKeys()
 	utils.SetupMongo("mongodb+srv://lemongrass8923:lmao1234@cluster0.vswojqe.mongodb.net/")
 	relayAddrs, err := utils.GetRelayAddr()
 

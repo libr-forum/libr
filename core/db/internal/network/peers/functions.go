@@ -33,8 +33,8 @@
 // 	globalLocalNode = n
 // 	globalRT = rt
 
-// 	// ✅ Register POST handler
-// 	network.RegisterPOST(POST)
+// 	// ✅ Register  handler
+// 	network.Register()
 
 // 	// ✅ Register RealPinger
 // 	network.RegisterPinger(&network.RealPinger{})
@@ -124,7 +124,7 @@
 // 	return GetResp, nil //this will be json bytes with resp encoded in form of resp from the server and can be used according to utility
 // }
 
-// func POST(targetIP string, targetPort string, route string, body []byte) ([]byte, error) {
+// func (targetIP string, targetPort string, route string, body []byte) ([]byte, error) {
 
 // 	ctx := context.Background()
 // 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -139,7 +139,7 @@
 
 // 		reqparams[key] = value
 // 	}
-// 	reqparams["Method"] = "POST"
+// 	reqparams["Method"] = ""
 
 // 	jsonReq, err := json.Marshal(reqparams)
 // 	if err != nil {
@@ -239,7 +239,7 @@
 // 		return network.DeleteHandler(&repCert, globalLocalNode, globalRT)
 
 // 	default:
-// 		fmt.Println("Unknown POST route:", route)
+// 		fmt.Println("Unknown  route:", route)
 // 		return nil
 // 	}
 // }
@@ -316,7 +316,7 @@ func initDHT() {
 
 	empty := true
 	for _, b := range rt.Buckets {
-		if b != nil {
+		if b != nil && len(b.Nodes) > 0 {
 			empty = false
 			break
 		}
@@ -452,6 +452,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 
 	pubipStr := string(addr)
 	ip := strings.Split(pubipStr, ":")[0]
+	port := strings.Split(pubipStr, ":")[1]
 
 	var body map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &body); err != nil {
@@ -462,7 +463,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 
 	switch route {
 	case "ping":
-		return network.HandlePing(ip, body, globalLocalNode, globalRT)
+		return network.HandlePing(ip, port, body, globalLocalNode, globalRT)
 
 	case "store":
 		var msgCert models.MsgCert

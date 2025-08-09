@@ -334,7 +334,7 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 				queried[idStr] = true
 				queriedMu.Unlock()
 
-				req := fmt.Sprintf(`{"node_id": "%x"}`, localNode.NodeId[:])
+				req := fmt.Sprintf(`{"node_id": "%x","public_key": "%x"}`, localNode.NodeId[:], localNode.PublicKey[:])
 				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
 				if err != nil {
 					fmt.Println("⚠ FindNode failed:", err)

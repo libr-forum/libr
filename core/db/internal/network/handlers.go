@@ -23,7 +23,7 @@ type StoredResponse struct {
 	Status string `json:"status"`
 }
 
-func HandlePing(ip string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+func HandlePing(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	var pingReq PingRequest
 
 	// Unmarshal into pingReq
@@ -32,20 +32,21 @@ func HandlePing(ip string, body interface{}, localNode *models.Node, rt *routing
 		fmt.Println("Invalid body format in HandlePing")
 		return nil
 	}
-	if nodeIDStr, ok := bodyMap["node_id"].(string); ok {
-		pingReq.NodeID = nodeIDStr
-	}
-
-	dedID, err := node.DecodeNodeID(pingReq.NodeID)
-	if err != nil {
-		fmt.Println("Failed to decode NodeID")
+	var publicKeyStr string
+	if pk, ok := bodyMap["public_key"].(string); ok {
+		publicKeyStr = pk
+	} else {
+		fmt.Println("Missing public_key in ping body")
 		return nil
 	}
+	// Always generate NodeId from public_key
+	dedID := node.GenerateNodeID(publicKeyStr)
 
 	senderNode := &models.Node{
-		NodeId: dedID,
-		IP:     ip,
-		Port:   bodyMap["port"].(string),
+		NodeId:    dedID,
+		IP:        ip,
+		Port:      port,
+		PublicKey: publicKeyStr,
 	}
 
 	if GlobalPinger == nil {
