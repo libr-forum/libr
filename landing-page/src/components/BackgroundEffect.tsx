@@ -50,17 +50,25 @@ export const BackgroundEffect: React.FC = () => {
     function drawNetwork() {
       canvas!.width = window.innerWidth;
       canvas!.height = window.innerHeight;
-      const starColors = isDarkMode ? [
-        'rgba(61, 76, 86, 0.7)',
-        'rgba(61, 76, 86, 0.4)',
-        'rgba(31, 164, 169, 0.7)',
-        'rgba(31, 164, 169, 0.4)'
-      ] : [
-        'rgba(48, 74, 120, 0.7)',
-        'rgba(48, 74, 120, 0.4)',
-        'rgba(100, 116, 139, 0.7)',
-        'rgba(100, 116, 139, 0.4)'
-      ];
+      // Adjust opacities based on theme
+      const nodeOpacities = isDarkMode
+        ? [0.7, 0.4, 0.7, 0.4] // higher opacity for dark
+        : [0.18, 0.14, 0.18, 0.14]; // lower opacity for light
+      const connectionOpacity = isDarkMode ? 0.22 : 0.2;
+
+      const starColors = isDarkMode
+        ? [
+            `rgba(61, 76, 86, ${nodeOpacities[0]})`,
+            `rgba(61, 76, 86, ${nodeOpacities[1]})`,
+            `rgba(31, 164, 169, ${nodeOpacities[2]})`,
+            `rgba(31, 164, 169, ${nodeOpacities[3]})`
+          ]
+        : [
+            `rgba(48, 74, 120, ${nodeOpacities[0]})`,
+            `rgba(48, 74, 120, ${nodeOpacities[1]})`,
+            `rgba(100, 116, 139, ${nodeOpacities[2]})`,
+            `rgba(100, 116, 139, ${nodeOpacities[3]})`
+          ];
       ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
       // Draw nodes
       nodes.forEach((node) => {
@@ -75,7 +83,9 @@ export const BackgroundEffect: React.FC = () => {
         ctx!.fill();
         ctx!.shadowBlur = 0;
         ctx!.lineWidth = 1;
-        ctx!.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx!.strokeStyle = isDarkMode
+          ? 'rgba(255,255,255,0.08)'
+          : 'rgba(48,74,120,0.06)';
         ctx!.stroke();
         ctx!.restore();
       });
@@ -104,7 +114,9 @@ export const BackgroundEffect: React.FC = () => {
             ctx!.beginPath();
             ctx!.moveTo(nodes[i].x, nodes[i].y);
             ctx!.lineTo(nodes[idx].x, nodes[idx].y);
-            ctx!.strokeStyle = 'rgba(180, 200, 220, 0.28)';
+            ctx!.strokeStyle = isDarkMode
+              ? `rgba(180, 200, 220, ${connectionOpacity})`
+              : `rgba(48, 74, 120, ${connectionOpacity})`;
             ctx!.lineWidth = 0.7;
             ctx!.stroke();
           }
