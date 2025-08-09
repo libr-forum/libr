@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/db/internal/models"
+	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -54,7 +55,7 @@ func DisconnectMongo() {
 }
 
 // 🚀 Uses global MongoClient and ctx
-func GetDbAddr() ([]string, error) {
+func GetDbAddr() ([]*models.Node, error) {
 	collection := MongoClient.Database("Addrs").Collection("nodes") // replace with actual DB & collection
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -62,26 +63,26 @@ func GetDbAddr() ([]string, error) {
 	}
 	defer cursor.Close(ctx)
 
-	// var nodeList []*node.Node
-	var addrList []string
+	var nodeList []*models.Node
 	for cursor.Next(ctx) {
 		var doc struct {
-			IP   string `bson:"ip"`
-			Port string `bson:"port"`
+			IP        string `bson:"ip"`
+			Port      string `bson:"port"`
+			PublicKey string `bson:"public_key"`
 		}
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
 
-		addr := fmt.Sprintf("%s:%s", doc.IP, doc.Port)
-		// node := &node.Node{
-		// 	NodeId: node.GenerateNodeID(addr),
-		// 	IP:     doc.IP,
-		// 	Port:   doc.Port,
-		// }
-		addrList = append(addrList, addr)
+		node := &models.Node{
+			NodeId:    node.GenerateNodeID(doc.PublicKey),
+			IP:        doc.IP,
+			Port:      doc.Port,
+			PublicKey: doc.PublicKey,
+		}
+		nodeList = append(nodeList, node)
 	}
-	return addrList, nil
+	return nodeList, nil
 }
 
 func GetOnlineMods() ([]*models.Mod, error) {

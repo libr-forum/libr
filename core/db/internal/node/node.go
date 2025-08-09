@@ -1,15 +1,12 @@
 package node
 
-import "math/big"
+import (
+	"math/big"
 
-type Node struct {
-	NodeId   [20]byte `json:"nodeid"`
-	IP       string   `json:"ip"`
-	Port     string   `json:"port"`
-	LastSeen int64    `json:"lastseen"`
-}
+	"github.com/devlup-labs/Libr/core/db/internal/models"
+)
 
 type DistanceNode struct {
-	Node     *Node
+	Node     *models.Node
 	Distance *big.Int
 }

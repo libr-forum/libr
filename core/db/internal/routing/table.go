@@ -10,18 +10,19 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/db/config"
+	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 )
 
 // Pinger interface allows us to inject ping logic from the network package.
 type Pinger interface {
-	Ping(selfID [20]byte, selfPort string, target node.Node) error
+	Ping(selfID [20]byte, selfPort string, target *models.Node) error
 }
 
 type RoutingTable struct {
-	SelfID   [20]byte      `json:"self_id"`
-	SelfPort string        `json:"self_port"`
-	Buckets  [160]*KBucket `json:"buckets"`
+	SelfID   [20]byte             `json:"self_id"`
+	SelfPort string               `json:"self_port"`
+	Buckets  [160]*models.KBucket `json:"buckets"`
 }
 
 func GetBucketIndex(selfID, targetID [20]byte) int {
@@ -33,7 +34,7 @@ func GetBucketIndex(selfID, targetID [20]byte) int {
 	return index
 }
 
-func (rt *RoutingTable) InsertNode(newNode *node.Node, pinger Pinger) string {
+func (rt *RoutingTable) InsertNode(newNode *models.Node, pinger Pinger) string {
 	if bytes.Equal(rt.SelfID[:], newNode.NodeId[:]) && rt.SelfPort == newNode.Port {
 		return "Can't add self node"
 	}
@@ -41,7 +42,7 @@ func (rt *RoutingTable) InsertNode(newNode *node.Node, pinger Pinger) string {
 	index := GetBucketIndex(rt.SelfID, newNode.NodeId)
 
 	if rt.Buckets[index] == nil {
-		rt.Buckets[index] = &KBucket{}
+		rt.Buckets[index] = &models.KBucket{}
 	}
 	newNode.LastSeen = time.Now().Unix()
 
@@ -51,7 +52,7 @@ func (rt *RoutingTable) InsertNode(newNode *node.Node, pinger Pinger) string {
 	return InsertNodeKBucket(rt.SelfID, rt.SelfPort, newNode, rt.Buckets[index], pinger)
 }
 
-func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *node.Node, bucket *KBucket, pinger Pinger) string {
+func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *models.Node, bucket *models.KBucket, pinger Pinger) string {
 	for i, existing := range bucket.Nodes {
 		if bytes.Equal(existing.NodeId[:], newNode.NodeId[:]) {
 			// ✅ Update existing node info including IP/Port/LastSeen
@@ -74,7 +75,7 @@ func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *node.Node, buc
 	}
 
 	// Ping the oldest node to check if it’s alive
-	if err := pinger.Ping(selfID, selfPort, *bucket.Nodes[0]); err != nil {
+	if err := pinger.Ping(selfID, selfPort, bucket.Nodes[0]); err != nil {
 		fmt.Printf("⚠️ Oldest node unresponsive. Replacing with: %x | Port: %s\n", newNode.NodeId, newNode.Port)
 		bucket.Nodes = append(bucket.Nodes[1:], newNode)
 		return "Replaced unresponsive node with new node"
@@ -84,8 +85,8 @@ func InsertNodeKBucket(selfID [20]byte, selfPort string, newNode *node.Node, buc
 	return "New node rejected (bucket full, oldest still active)"
 }
 
-func (rt *RoutingTable) FindClosest(targetID [20]byte, count int) []*node.Node {
-	var allNodes []*node.Node
+func (rt *RoutingTable) FindClosest(targetID [20]byte, count int) []*models.Node {
+	var allNodes []*models.Node
 	for _, bucket := range rt.Buckets {
 		if bucket == nil {
 			continue
@@ -111,7 +112,7 @@ func NewRoutingTable(selfID [20]byte, selfPort string) *RoutingTable {
 		SelfPort: selfPort,
 	}
 	for i := range rt.Buckets {
-		rt.Buckets[i] = &KBucket{}
+		rt.Buckets[i] = &models.KBucket{}
 	}
 	return rt
 }
@@ -122,7 +123,7 @@ func (rt *RoutingTable) SelfIDHex() string {
 
 var memoryCache *RoutingTable
 
-func GetOrCreateRoutingTable(node *node.Node) *RoutingTable {
+func GetOrCreateRoutingTable(node *models.Node) *RoutingTable {
 	if memoryCache != nil {
 		return memoryCache
 	}

@@ -19,7 +19,7 @@ func CountModCerts(modCerts []models.ModCert) (approved, rejected int) {
 	return approved, rejected
 }
 
-func ShouldDelete(self *node.Node, key *[20]byte, rt *routing.RoutingTable) bool {
+func ShouldDelete(self *models.Node, key *[20]byte, rt *routing.RoutingTable) bool {
 	closest := rt.FindClosest(*key, config.K)
 	if len(closest) == 0 {
 		return false

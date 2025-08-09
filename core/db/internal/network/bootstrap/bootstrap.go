@@ -1,68 +1,255 @@
+// package bootstrap
+
+// import (
+// 	"encoding/hex"
+// 	"encoding/json"
+// 	"fmt"
+// 	"log"
+// 	"math/big"
+// 	"reflect"
+// 	"sort"
+// 	"strings"
+// 	"sync"
+
+// 	"github.com/devlup-labs/Libr/core/db/internal/network"
+// 	"github.com/devlup-labs/Libr/core/db/internal/node"
+// 	"github.com/devlup-labs/Libr/core/db/internal/routing"
+// )
+
+// func BootstrapFromPeers(peers []string, localNode *models.Node, rt *routing.RoutingTable) {
+// 	var wg sync.WaitGroup
+// 	seen := make(map[string]bool)
+// 	var mu sync.Mutex // protect access to `seen` map
+
+// 	for _, addr := range peers {
+// 		// Skip invalid addresses
+// 		parts := strings.Split(addr, ":")
+// 		if len(parts) != 2 {
+// 			log.Printf("⚠️ Skipping invalid bootstrap address: %s", addr)
+// 			continue
+// 		}
+// 		ip := parts[0]
+// 		port := parts[1]
+
+// 		// Deduplication check
+// 		mu.Lock()
+// 		if seen[addr] {
+// 			mu.Unlock()
+// 			continue
+// 		}
+// 		seen[addr] = true
+// 		mu.Unlock()
+
+// 		wg.Add(1)
+// 		go func(ip, port, addr string) {
+// 			defer wg.Done()
+// 			fmt.Printf("🌐 Bootstrapping from %s\n", addr)
+// 			Bootstrap(ip, port, localNode, rt)
+// 		}(ip, port, addr)
+// 	}
+
+// 	wg.Wait()
+// }
+
+// func Bootstrap(targetIP string, targetPort string, localNode *models.Node, rt *routing.RoutingTable) {
+// 	if network.GlobalPostFunc == nil {
+// 		fmt.Println("❌ POST function not registered in network")
+// 		return
+// 	}
+
+// 	// 1. Ping the bootstrap node
+// 	bootstrapNode := models.Node{
+// 		NodeId: node.GenerateNodeID(targetIP + ":" + targetPort),
+// 		IP:     targetIP,
+// 		Port:   targetPort,
+// 	}
+// 	if err := network.SendPing(localmodels.NodeId, localNode.Port, bootstrapNode); err != nil {
+// 		fmt.Println("❌ Ping failed:", err)
+// 		return
+// 	}
+// 	fmt.Println("✅ Ping successful to bootstrap node")
+
+// 	// 2. Prepare to perform recursive FindNode for routing table population
+// 	targetNodeID := localmodels.NodeId
+// 	queried := make(map[string]bool)
+// 	seen := make(map[string]*models.Node)
+
+// 	var queriedMu sync.Mutex
+// 	var seenMu sync.Mutex
+
+// 	// Priority queue sorted by distance to target
+// 	type distNode struct {
+// 		N        *models.Node
+// 		Distance *big.Int
+// 	}
+// 	var pq []distNode
+
+// 	// Helper: Add node to queue
+// 	addNode := func(n *models.Node) {
+// 		idStr := hex.EncodeToString(n.NodeId[:])
+
+// 		seenMu.Lock()
+// 		if _, ok := seen[idStr]; ok {
+// 			seenMu.Unlock()
+// 			return
+// 		}
+// 		seen[idStr] = n
+// 		seenMu.Unlock()
+
+// 		d := node.XORBigInt(targetNodeID, n.NodeId)
+// 		pq = append(pq, distNode{N: n, Distance: d})
+// 	}
+
+// 	// Seed with the bootstrap node
+// 	addNode(&bootstrapNode)
+
+// 	maxRounds := 3
+// 	sameClosestCount := 0
+// 	var lastClosest []string
+
+// 	for round := 0; round < 10; round++ {
+// 		// Sort queue by distance
+// 		sort.Slice(pq, func(i, j int) bool {
+// 			return pq[i].Distance.Cmp(pq[j].Distance) == -1
+// 		})
+
+// 		// Select up to alpha unqueried nodes
+// 		var toQuery []distNode
+// 		count := 0
+// 		for _, dn := range pq {
+// 			idStr := hex.EncodeToString(dn.N.NodeId[:])
+
+// 			queriedMu.Lock()
+// 			alreadyQueried := queried[idStr]
+// 			queriedMu.Unlock()
+
+// 			if !alreadyQueried {
+// 				toQuery = append(toQuery, dn)
+// 				count++
+// 				if count == 3 { // alpha = 3
+// 					break
+// 				}
+// 			}
+// 		}
+// 		if len(toQuery) == 0 {
+// 			break
+// 		}
+
+// 		// Query them in parallel
+// 		var wg sync.WaitGroup
+// 		results := make(chan []*models.Node, len(toQuery))
+// 		for _, dn := range toQuery {
+// 			wg.Add(1)
+// 			go func(n *models.Node) {
+// 				defer wg.Done()
+// 				idStr := hex.EncodeToString(n.NodeId[:])
+
+// 				queriedMu.Lock()
+// 				queried[idStr] = true
+// 				queriedMu.Unlock()
+
+// 				req := fmt.Sprintf(`{"node_id": "%x"}`, targetNodeID[:])
+// 				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
+// 				if err != nil {
+// 					fmt.Println("⚠️ FindNode failed:", err)
+// 					return
+// 				}
+// 				var newNodes []*models.Node
+// 				if err := json.Unmarshal(resp, &newNodes); err != nil {
+// 					fmt.Println("⚠️ Failed to decode FindNode response:", err)
+// 					return
+// 				}
+// 				results <- newNodes
+// 			}(dn.N)
+// 		}
+// 		wg.Wait()
+// 		close(results)
+
+// 		for res := range results {
+// 			for _, n := range res {
+// 				addNode(n)
+// 			}
+// 		}
+
+// 		// Convergence check
+// 		currentClosest := []string{}
+// 		for i := 0; i < len(pq) && i < 20; i++ {
+// 			currentClosest = append(currentClosest, hex.EncodeToString(pq[i].N.NodeId[:]))
+// 		}
+// 		if reflect.DeepEqual(currentClosest, lastClosest) {
+// 			sameClosestCount++
+// 		} else {
+// 			sameClosestCount = 0
+// 		}
+// 		lastClosest = currentClosest
+
+// 		if sameClosestCount >= maxRounds {
+// 			fmt.Println("✅ Converged after", round+1, "rounds.")
+// 			break
+// 		}
+// 	}
+
+// 	// Add all seen nodes to routing table
+// 	pinger := &network.RealPinger{}
+// 	seenMu.Lock()
+// 	for _, n := range seen {
+// 		rt.InsertNode(n, pinger)
+// 	}
+// 	seenMu.Unlock()
+
+// 	fmt.Printf("✅ Bootstrapped with recursive lookup from %s:%s. %d nodes added to routing table.\n",
+// 		targetIP, targetPort, len(seen))
+// }
+
 package bootstrap
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"reflect"
 	"sort"
-	"strings"
 	"sync"
 
+	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/network"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
 )
 
-func BootstrapFromPeers(peers []string, localNode *node.Node, rt *routing.RoutingTable) {
+func BootstrapFromPeers(dbnodes []*models.Node, localNode *models.Node, rt *routing.RoutingTable) {
 	var wg sync.WaitGroup
 	seen := make(map[string]bool)
 	var mu sync.Mutex // protect access to `seen` map
 
-	for _, addr := range peers {
-		// Skip invalid addresses
-		parts := strings.Split(addr, ":")
-		if len(parts) != 2 {
-			log.Printf("⚠️ Skipping invalid bootstrap address: %s", addr)
-			continue
-		}
-		ip := parts[0]
-		port := parts[1]
-
+	for _, dbnode := range dbnodes {
 		// Deduplication check
 		mu.Lock()
-		if seen[addr] {
+		if seen[dbnode.PublicKey] {
 			mu.Unlock()
 			continue
 		}
-		seen[addr] = true
+		seen[dbnode.PublicKey] = true
 		mu.Unlock()
 
 		wg.Add(1)
-		go func(ip, port, addr string) {
+		go func(node *models.Node) {
 			defer wg.Done()
-			fmt.Printf("🌐 Bootstrapping from %s\n", addr)
-			Bootstrap(ip, port, localNode, rt)
-		}(ip, port, addr)
+			fmt.Printf("🌐 Bootstrapping from %s:%s\n", node.IP, node.Port)
+			Bootstrap(node, localNode, rt)
+		}(dbnode)
 	}
 
 	wg.Wait()
 }
 
-func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *routing.RoutingTable) {
+func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.RoutingTable) {
 	if network.GlobalPostFunc == nil {
 		fmt.Println("❌ POST function not registered in network")
 		return
 	}
 
-	// 1. Ping the bootstrap node
-	bootstrapNode := node.Node{
-		NodeId: node.GenerateNodeID(targetIP + ":" + targetPort),
-		IP:     targetIP,
-		Port:   targetPort,
-	}
 	if err := network.SendPing(localNode.NodeId, localNode.Port, bootstrapNode); err != nil {
 		fmt.Println("❌ Ping failed:", err)
 		return
@@ -70,22 +257,21 @@ func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *rou
 	fmt.Println("✅ Ping successful to bootstrap node")
 
 	// 2. Prepare to perform recursive FindNode for routing table population
-	targetNodeID := localNode.NodeId
 	queried := make(map[string]bool)
-	seen := make(map[string]*node.Node)
+	seen := make(map[string]*models.Node)
 
 	var queriedMu sync.Mutex
 	var seenMu sync.Mutex
 
 	// Priority queue sorted by distance to target
 	type distNode struct {
-		N        *node.Node
+		N        *models.Node
 		Distance *big.Int
 	}
 	var pq []distNode
 
 	// Helper: Add node to queue
-	addNode := func(n *node.Node) {
+	addNode := func(n *models.Node) {
 		idStr := hex.EncodeToString(n.NodeId[:])
 
 		seenMu.Lock()
@@ -96,12 +282,12 @@ func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *rou
 		seen[idStr] = n
 		seenMu.Unlock()
 
-		d := node.XORBigInt(targetNodeID, n.NodeId)
+		d := node.XORBigInt(localNode.NodeId, n.NodeId)
 		pq = append(pq, distNode{N: n, Distance: d})
 	}
 
 	// Seed with the bootstrap node
-	addNode(&bootstrapNode)
+	addNode(bootstrapNode)
 
 	maxRounds := 3
 	sameClosestCount := 0
@@ -137,10 +323,10 @@ func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *rou
 
 		// Query them in parallel
 		var wg sync.WaitGroup
-		results := make(chan []*node.Node, len(toQuery))
+		results := make(chan []*models.Node, len(toQuery))
 		for _, dn := range toQuery {
 			wg.Add(1)
-			go func(n *node.Node) {
+			go func(n *models.Node) {
 				defer wg.Done()
 				idStr := hex.EncodeToString(n.NodeId[:])
 
@@ -148,15 +334,15 @@ func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *rou
 				queried[idStr] = true
 				queriedMu.Unlock()
 
-				req := fmt.Sprintf(`{"node_id": "%x"}`, targetNodeID[:])
+				req := fmt.Sprintf(`{"node_id": "%x"}`, localNode.NodeId[:])
 				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
 				if err != nil {
-					fmt.Println("⚠️ FindNode failed:", err)
+					fmt.Println("⚠ FindNode failed:", err)
 					return
 				}
-				var newNodes []*node.Node
+				var newNodes []*models.Node
 				if err := json.Unmarshal(resp, &newNodes); err != nil {
-					fmt.Println("⚠️ Failed to decode FindNode response:", err)
+					fmt.Println("⚠ Failed to decode FindNode response:", err)
 					return
 				}
 				results <- newNodes
@@ -198,5 +384,27 @@ func Bootstrap(targetIP string, targetPort string, localNode *node.Node, rt *rou
 	seenMu.Unlock()
 
 	fmt.Printf("✅ Bootstrapped with recursive lookup from %s:%s. %d nodes added to routing table.\n",
-		targetIP, targetPort, len(seen))
+		bootstrapNode.IP, bootstrapNode.Port, len(seen))
+}
+
+func NodeUpdate(rt *routing.RoutingTable) {
+	for _, bucket := range rt.Buckets {
+		for _, node := range bucket.Nodes {
+			if node.IP == "" || node.Port == "" {
+				continue
+			}
+			if network.GlobalPostFunc == nil {
+				fmt.Println("❌ POST function not registered in network")
+				return
+			}
+
+			req := fmt.Sprintf(`{"node_id": "%x"}`, node.NodeId[:])
+			resp, err := network.GlobalPostFunc(node.IP, node.Port, "/route=ping", []byte(req))
+			if err != nil {
+				fmt.Printf("⚠ Failed to ping node %s:%s: %v\n", node.IP, node.Port, err)
+				continue
+			}
+			fmt.Printf("✅ Node %s:%s responded: %s\n", node.IP, node.Port, string(resp))
+		}
+	}
 }

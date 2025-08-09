@@ -53,3 +53,15 @@ type DeleteCert struct {
 	Msg       Msg    `json:"msg"`
 	Sign      string `json:"sign"`
 }
+
+type Node struct {
+	NodeId    [20]byte `json:"nodeid"`
+	IP        string   `json:"ip"`
+	Port      string   `json:"port"`
+	LastSeen  int64    `json:"lastseen"`
+	PublicKey string   `json:"public_key"`
+}
+
+type KBucket struct {
+	Nodes []*Node
+}

@@ -27,16 +27,16 @@ func RegisterPOST(f func(ip, port, route string, body []byte) ([]byte, error)) {
 }
 
 type Pinger interface {
-	Ping(selfID [20]byte, selfPort string, target node.Node) error
+	Ping(selfID [20]byte, selfPort string, target *models.Node) error
 }
 
 type RealPinger struct{}
 
-func (p *RealPinger) Ping(selfID [20]byte, selfPort string, target node.Node) error {
+func (p *RealPinger) Ping(selfID [20]byte, selfPort string, target *models.Node) error {
 	return SendPing(selfID, selfPort, target)
 }
 
-func SendPing(selfID [20]byte, selfPort string, target node.Node) error {
+func SendPing(selfID [20]byte, selfPort string, target *models.Node) error {
 	if GlobalPostFunc == nil {
 		return fmt.Errorf("POST function not registered")
 	}
@@ -63,12 +63,12 @@ func SendPing(selfID [20]byte, selfPort string, target node.Node) error {
 	return nil
 }
 
-func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*node.Node {
+func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*models.Node {
 	ClosestNodes := rt.FindClosest(targetId, config.K)
 	return ClosestNodes
 }
 
-func StoreValue(key [20]byte, cert *models.MsgCert, self *node.Node, rt *routing.RoutingTable) []*node.Node {
+func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routing.RoutingTable) []*models.Node {
 	closest := rt.FindClosest(key, config.K)
 	fmt.Println(closest)
 
@@ -91,7 +91,7 @@ func StoreValue(key [20]byte, cert *models.MsgCert, self *node.Node, rt *routing
 	return closest
 }
 
-func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]models.RetMsgCert, []*node.Node) {
+func SendFindValue(key string, self *models.Node, rt *routing.RoutingTable) ([]models.RetMsgCert, []*models.Node) {
 	ts, err := (strconv.ParseInt(key, 10, 64))
 	if err != nil {
 		return nil, nil
@@ -107,13 +107,13 @@ func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]mod
 	return nil, rt.FindClosest(keyBytes, config.K)
 }
 
-// func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *node.Node, rt *routing.RoutingTable) ([]*node.Node, error) {
+// func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, error) {
 
 // 	appr, rej := utils.CountModCerts(repCert.Msgcert.ModCerts)
 // 	validMods, _ := utils.GetValidMods()
 // 	modCount := len(repCert.Msgcert.ModCerts)
 // 	shouldContinue := false
-// 	var closest []*node.Node
+// 	var closest []*models.Node
 
 // 	switch repCert.Mode {
 // 	case "delete":
@@ -180,7 +180,7 @@ func SendFindValue(key string, self *node.Node, rt *routing.RoutingTable) ([]mod
 // 	return closest, nil
 // }
 
-func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *node.Node, rt *routing.RoutingTable) ([]*node.Node, error) {
+func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, error) {
 	validMods, _ := utils.GetOnlineMods()
 
 	selfDist := node.XORBigInt(self.NodeId, *key)

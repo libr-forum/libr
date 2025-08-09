@@ -23,7 +23,7 @@ type StoredResponse struct {
 	Status string `json:"status"`
 }
 
-func HandlePing(ip string, body interface{}, localNode *node.Node, rt *routing.RoutingTable) []byte {
+func HandlePing(ip string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	var pingReq PingRequest
 
 	// Unmarshal into pingReq
@@ -42,7 +42,7 @@ func HandlePing(ip string, body interface{}, localNode *node.Node, rt *routing.R
 		return nil
 	}
 
-	senderNode := &node.Node{
+	senderNode := &models.Node{
 		NodeId: dedID,
 		IP:     ip,
 		Port:   bodyMap["port"].(string),
@@ -63,7 +63,7 @@ func HandlePing(ip string, body interface{}, localNode *node.Node, rt *routing.R
 	return data
 }
 
-func FindValueHandler(key string, localNode *node.Node, rt *routing.RoutingTable) []byte {
+func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTable) []byte {
 
 	values, closest := SendFindValue(key, localNode, rt)
 
@@ -85,8 +85,8 @@ func FindValueHandler(key string, localNode *node.Node, rt *routing.RoutingTable
 	} else {
 		fmt.Println("Didn't find the value")
 		type RedirectResponse struct {
-			Type  string       `json:"type"`
-			Nodes []*node.Node `json:"nodes"`
+			Type  string         `json:"type"`
+			Nodes []*models.Node `json:"nodes"`
 		}
 		resp := RedirectResponse{
 			Type:  "redirect",
@@ -100,7 +100,7 @@ func FindValueHandler(key string, localNode *node.Node, rt *routing.RoutingTable
 	}
 }
 
-func FindNodeHandler(key [20]byte, localNode *node.Node, rt *routing.RoutingTable) []byte {
+func FindNodeHandler(key [20]byte, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	closest := SendFindNode(key, rt)
 
 	data, err := json.Marshal(closest)
@@ -111,7 +111,7 @@ func FindNodeHandler(key [20]byte, localNode *node.Node, rt *routing.RoutingTabl
 	return data
 }
 
-func StoreHandler(body models.MsgCert, localNode *node.Node, rt *routing.RoutingTable) []byte {
+func StoreHandler(body models.MsgCert, localNode *models.Node, rt *routing.RoutingTable) []byte {
 
 	msgcert := body
 	fmt.Println(msgcert)
@@ -126,8 +126,8 @@ func StoreHandler(body models.MsgCert, localNode *node.Node, rt *routing.Routing
 	if closest != nil {
 		fmt.Println("Sending list of k closest nodes")
 		type RedirectResponse struct {
-			Type  string       `json:"type"`
-			Nodes []*node.Node `json:"nodes"`
+			Type  string         `json:"type"`
+			Nodes []*models.Node `json:"nodes"`
 		}
 		resp := RedirectResponse{
 			Type:  "redirect",
@@ -152,7 +152,7 @@ func StoreHandler(body models.MsgCert, localNode *node.Node, rt *routing.Routing
 	return data
 }
 
-func DeleteHandler(body *models.ReportCert, localNode *node.Node, rt *routing.RoutingTable) []byte {
+func DeleteHandler(body *models.ReportCert, localNode *models.Node, rt *routing.RoutingTable) []byte {
 
 	repCert := body
 
@@ -183,8 +183,8 @@ func DeleteHandler(body *models.ReportCert, localNode *node.Node, rt *routing.Ro
 	if closest != nil {
 		fmt.Println("Sending list of k closest nodes")
 		type RedirectResponse struct {
-			Type  string       `json:"type"`
-			Nodes []*node.Node `json:"nodes"`
+			Type  string         `json:"type"`
+			Nodes []*models.Node `json:"nodes"`
 		}
 		resp := RedirectResponse{
 			Type:  "redirect",
