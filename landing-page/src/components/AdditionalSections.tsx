@@ -1,7 +1,7 @@
 import React,{useState,useEffect} from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Play } from 'lucide-react';
-
+const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
 const TechModules: React.FC = () => {
   const [marginTop, setMarginTop] = useState(0);
   
@@ -94,10 +94,9 @@ const TechModules: React.FC = () => {
                 <motion.div
                   key={stack.category}
                   className="feature-card p-6 w-full h-full text-center"
-                  initial={{ y: 50, opacity: 0 }}
+                  initial={{ y: 50, opacity: 1 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   transition={{
-                    duration: 0.8,
                     ease: [0.4, 0, 0.2, 1],
                     delay: index * 0.1,
                   }}
@@ -128,7 +127,6 @@ const TechModules: React.FC = () => {
                     initial={{ y: 50, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
                     transition={{
-                      duration: 0.8,
                       ease: [0.4, 0, 0.2, 1],
                       delay: index * 0.1,
                     }}
@@ -156,7 +154,6 @@ const TechModules: React.FC = () => {
                     initial={{ y: 50, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
                     transition={{
-                      duration: 0.8,
                       ease: [0.4, 0, 0.2, 1],
                       delay: (index + 3) * 0.1,
                     }}
@@ -187,7 +184,6 @@ const TechModules: React.FC = () => {
                   initial={{ y: 50, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   transition={{
-                    duration: 0.8,
                     ease: [0.4, 0, 0.2, 1],
                     delay: index * 0.1,
                   }}
@@ -464,10 +460,9 @@ const HowToUse: React.FC = () => {
               <motion.div
                 key={index}
                 className={`feature-card p-6 w-full md:w-64 text-center ${isFirst ? "cursor-pointer" : ""} md:aspect-square`}
-                initial={{ y: 50, opacity: 0 }}
+                initial={isMobile?{ y: 50, opacity: 1 }:{ y: 50, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 transition={{
-                  duration: 0.8,
                   ease: [0.4, 0, 0.2, 1],
                   delay: index * 0.1,
                 }}

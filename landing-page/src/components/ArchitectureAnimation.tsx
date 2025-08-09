@@ -276,9 +276,9 @@ export default function ArchitectureAnimation() {
         } else if (w < 768) {
           setYPos(-300);
         } else if (w < 1400) {
-          // Linear interpolation from -400 at 768px to -250 at 1400px
+          // Linear interpolation from -300 at 768px to -250 at 1400px
           const ratio = (w - 768) / (1400 - 768);
-          const yValue = -400 + ratio * (150); // -400 to -250
+          const yValue = -300 + ratio * (50); // -300 to -250
           setYPos(yValue);
         } else {
           setYPos(1000);

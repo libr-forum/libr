@@ -8,6 +8,7 @@ interface HeaderProps {
   isDark?: boolean;
   toggleTheme?: () => void;
 }
+const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
 
 const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -505,10 +506,9 @@ const TechArch: React.FC = () => {
             <motion.div
               key={feature.title}
               className="feature-card"
-              initial={{ y: 50, opacity: 0 }}
+              initial={isMobile?{ y: 50, opacity: 1 }:{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               transition={{
-                duration: 0.8,
                 ease: [0.4, 0, 0.2, 1],
                 delay: index * 0.1
               }}
