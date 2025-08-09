@@ -1,8 +1,8 @@
 import React,{useRef,useEffect,useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, ChevronDown, Download, X, Menu} from 'lucide-react';
+import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Download, X, Menu} from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
-import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
+// import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 
 interface HeaderProps {
   isDark?: boolean;
@@ -143,67 +143,67 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
   );
 };
 
-const JoinBetaDropdown = () => {
-  const [open, setOpen] = React.useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
+// const JoinBetaDropdown = () => {
+//   const [open, setOpen] = React.useState(false);
+//   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  // Optional: close dropdown when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+//   // Optional: close dropdown when clicking outside
+//   React.useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+//         setOpen(false);
+//       }
+//     };
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
 
-  const handleOptionClick = (option: string) => {
-    console.log(`Selected: ${option}`);
-    setOpen(false);
-  };
+//   const handleOptionClick = (option: string) => {
+//     console.log(`Selected: ${option}`);
+//     setOpen(false);
+//   };
 
-  return (
-    <div id="join-beta" className="relative flex flex-row h-full items-center justify-center" ref={dropdownRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="libr-button bg-libr-secondary flex flex-row items-center justify-center gap-2 text-libr-primary"
-      >
-        <Download className='w-5 h-5 mr-3'/>
-        Join Beta
-        <ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
+//   return (
+//     <div id="join-beta" className="relative flex flex-row h-full items-center justify-center" ref={dropdownRef}>
+//       <button
+//         onClick={() => setOpen(!open)}
+//         className="libr-button bg-libr-secondary flex flex-row items-center justify-center gap-2 text-libr-primary"
+//       >
+//         <Download className='w-5 h-5 mr-3'/>
+//         Join Beta
+//         <ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+//       </button>
 
-      {open && (
-        <div className="absolute top-[60%] mt-2 w-40 bg-libr-secondary rounded shadow-lg z-50">
-          <div className="flex flex-col text-sm text-center text-libr-primary">
-            <div
-              onClick={() => handleOptionClick("Request Access")}
-              className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
-            >
-              <FaWindows/>
-              Windows
-            </div>
-            <div
-              onClick={() => handleOptionClick("View Demo")}
-              className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
-            >
-              <FaLinux/>
-              Linux
-            </div>
-            <div
-              onClick={() => handleOptionClick("Contact Team")}
-              className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
-            >
-              <FaApple/>
-              MacOS
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+//       {open && (
+//         <div className="absolute top-[60%] mt-2 w-40 bg-libr-secondary rounded shadow-lg z-50">
+//           <div className="flex flex-col text-sm text-center text-libr-primary">
+//             <div
+//               onClick={() => handleOptionClick("Request Access")}
+//               className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
+//             >
+//               <FaWindows/>
+//               Windows
+//             </div>
+//             <div
+//               onClick={() => handleOptionClick("View Demo")}
+//               className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
+//             >
+//               <FaLinux/>
+//               Linux
+//             </div>
+//             <div
+//               onClick={() => handleOptionClick("Contact Team")}
+//               className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
+//             >
+//               <FaApple/>
+//               MacOS
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
 
 const Hero:React.FC = () => {
   const audioRef = React.useRef<HTMLAudioElement>(null);
