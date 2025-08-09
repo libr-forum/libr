@@ -14,6 +14,7 @@ Thumbs.db
 *.dll
 *.so
 *.dylib
+*.sh
 
 # Test binary, built with `go test -c`
 *.test
@@ -28,7 +29,6 @@ vendor/
 go.work
 
 # Build directories
-/build/
 /dist/
 
 # Node.js
@@ -81,6 +81,8 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.[0-9]*
+
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -131,7 +133,6 @@ temp/
 .packages
 .pub-cache/
 .pub/
-/build/
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -151,9 +152,6 @@ app.*.map.json
 # Hardhat files
 cache
 artifacts
-
-# Truffle
-build/
 
 # Coverage reports
 coverage
@@ -228,7 +226,6 @@ keystore/
 
 # Build outputs
 bin/
-build/
 dist/
 out/
 
