@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Hero, TechArch,WhatIsLIBR} from './components/LandingPageSections';
 import { HowItWorks, Community, Footer } from './components/LandingPageExtended';
 import { TechModules, HowToUse } from './components/AdditionalSections';
-// import ArchitectureAnimation from './components/ArchitectureAnimation';
-import {BackgroundEffect} from './components/BackgroundEffect'; // Add this import at the top
+import {BackgroundEffect} from './components/BackgroundEffect';
+import {Analytics} from '@vercel/analytics/react';
+
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -130,6 +131,7 @@ const App: React.FC = () => {
   return (
     <>
       <BackgroundEffect />
+      <Analytics />
       <div className="min-h-screen bg-libr-primary/50 text-foreground relative overflow-x-hidden">
         <ScrollProgress />
         <BackToTop />
