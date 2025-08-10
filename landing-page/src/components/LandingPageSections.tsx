@@ -2,6 +2,7 @@ import React,{useRef,useEffect,useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Download, X, Menu} from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
+import { hrtime } from 'process';
 // import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 
 interface HeaderProps {
@@ -40,6 +41,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
     { href: "https://github.com/devlup-labs/Libr/blob/main/README.md", label: "Docs", external: true },
     { href: "https://github.com/devlup-labs/Libr", label: "GitHub", external: true },
     { href: "https://forms.gle/udt5zATFogCGQtUTA", label: "Join Beta", external: true },
+    { href: "https://forms.gle/Uchqc6Z49aoJwjvZ9", label: "Feedback", external: true }
   ];
 
   return (
