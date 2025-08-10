@@ -196,9 +196,9 @@ export const apiService = {
     }
   },
   
-  async manualModerate(sign:string, modsign:string, moderated: number): Promise<void> {
+  async manualModerate(cert:types.MsgCert, moderated: number): Promise<void> {
     try {
-      await ManualModerate(sign, modsign, moderated);
+      await ManualModerate(cert, moderated);
     }catch (err) {
       console.error("Failed to fetch messages:", err);
     }

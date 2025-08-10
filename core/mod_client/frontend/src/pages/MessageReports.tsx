@@ -38,11 +38,18 @@ export const MsgReports: React.FC = () => {
       );
       if (!report) return;
 
-      // Pass sign and moderate as int (1 for approve, 0 for reject)
-      await apiService.manualModerate(
-        report.sign,
-        action === 'approve' ? 1 : 0
-      );
+      const { MsgCert } = require('../../wailsjs/go/models'); // Adjust path as needed
+      const cert = new MsgCert({
+        public_key: report.authorPublicKey,
+        msg: {
+          content: report.content,
+          ts: Number(report.timestamp),
+        },
+        mod_certs: report.moderationNote || [],
+        sign: report.sign,
+      });
+
+      await apiService.manualModerate(cert, action === 'approve' ? 1 : 0);
 
       setReports(reports.map(r =>
         r.authorPublicKey === messageId.split('_')[0] &&

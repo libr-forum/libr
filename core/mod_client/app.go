@@ -266,9 +266,11 @@ func (a *App) FetchMessageReports() []models.MsgCert {
 	return reports
 }
 
-func (a *App) ManualModerate(sign string, modsign string, moderated int) {
-	moddb.UpdateModerationStatus(sign, modsign, moderated)
+func (a *App) ManualModerate(cert types.MsgCert, moderated int) {
+	modsign, _ := moddb.ReportModSign(&cert, strconv.Itoa(moderated), keycache.PrivKey, keycache.PubKey)
+	moddb.UpdateModerationStatus(cert.Sign, modsign, moderated)
 }
+
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {
 	cacheDir := cache.GetCacheDir()
 	filePath := filepath.Join(cacheDir, "modlog.json")

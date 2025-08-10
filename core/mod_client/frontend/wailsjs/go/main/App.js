@@ -54,8 +54,8 @@ export function LogToFile(arg1) {
   return window['go']['main']['App']['LogToFile'](arg1);
 }
 
-export function ManualModerate(arg1, arg2, arg3) {
-  return window['go']['main']['App']['ManualModerate'](arg1, arg2, arg3);
+export function ManualModerate(arg1, arg2) {
+  return window['go']['main']['App']['ManualModerate'](arg1, arg2);
 }
 
 export function ModAuthentication(arg1) {

@@ -195,12 +195,12 @@ func TestManModerateMsg(cert types.MsgCert) {
 	fmt.Println("Testing manual moderation for message:", cert.Sign)
 	rand.Seed(time.Now().UnixNano()) // seed with current time
 	status := rand.Intn(2)
-	modsign, _ := TempModSign(&cert, strconv.Itoa(status), keycache.PrivKey, keycache.PubKey)
+	modsign, _ := ReportModSign(&cert, strconv.Itoa(status), keycache.PrivKey, keycache.PubKey)
 	fmt.Println("Mod signature:", modsign)
 	UpdateModerationStatus(cert.Sign, modsign, status)
 }
 
-func TempModSign(cert *types.MsgCert, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (string, error) {
+func ReportModSign(cert *types.MsgCert, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (string, error) {
 
 	payload := cert.Sign + status
 	_, sign, err := cryptoutils.SignMessage(privateKey, payload)
