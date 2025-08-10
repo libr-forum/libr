@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -158,8 +159,15 @@ func SelectModel(method string) (ModelFunc, error) {
 	return AnalyzeWithGoogleNLP, nil
 }
 
+func removeLinks(input string) string {
+	urlRegex := `https?://[^\s]+|ftp://[^\s]+|www\.[^\s]+`
+	re := regexp.MustCompile(urlRegex)
+	return re.ReplaceAllString(input, "")
+}
+
 func AnalyzeContent(content string, fn ModelFunc) (string, error) {
-	clean, err := fn(content)
+	cleanedContent := removeLinks(content)
+	clean, err := fn(cleanedContent)
 	if err != nil {
 		return "error", err
 	}
