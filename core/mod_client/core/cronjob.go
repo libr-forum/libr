@@ -77,7 +77,7 @@ func RetryPendingModerations(msgcert *types.MsgCert) {
 		}
 
 		// Retry sending
-		newCerts := ManualSendToMods(pending.MsgCert, retryMods, "")
+		newCerts := ManualSendToMods(pending.MsgCert, retryMods, "", false)
 
 		// Merge results
 		allCerts := append(pending.PartialCerts, newCerts...)

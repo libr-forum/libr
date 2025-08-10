@@ -209,7 +209,7 @@ func (a *App) Report(msgcert types.MsgCert, reason *string) string {
 	modChan := make(chan []types.ModCert, 1)
 	mods, _ := util.GetOnlineMods()
 	go func() {
-		modcerts := core.ManualSendToMods(msgcert, mods, *reason)
+		modcerts := core.ManualSendToMods(msgcert, mods, *reason, true)
 		modChan <- modcerts
 	}()
 
