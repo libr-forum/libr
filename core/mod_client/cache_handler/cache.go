@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
@@ -127,12 +128,14 @@ func AddToCache(key string, svg string, alias string) error {
 func SavePendingModeration(pending types.PendingModeration) error {
 	dir := filepath.Join(GetCacheDir(), "pending_mods")
 	if err := os.MkdirAll(dir, 0755); err != nil {
+		logger.LogToFile("[DEBUG]Failed to create pending_mods dir")
 		return fmt.Errorf("failed to create pending_mods dir: %w", err)
 	}
 
 	filePath := filepath.Join(dir, sanitizeFileName(pending.MsgSign)+".json")
 	data, err := json.MarshalIndent(pending, "", "  ")
 	if err != nil {
+		logger.LogToFile("[DEBUG]Failed to marshal pending moderation")
 		return fmt.Errorf("failed to marshal pending moderation: %w", err)
 	}
 

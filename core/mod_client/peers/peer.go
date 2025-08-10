@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -59,6 +60,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	caCertPEM, err := os.ReadFile("C:\\Users\\kushagra\\Downloads\\isrgrootx1.pem")
 	if err != nil {
 		// handle error
+		
 	}
 	caCertPool := x509.NewCertPool()
 	if !caCertPool.AppendCertsFromPEM(caCertPEM) {
@@ -94,6 +96,8 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 
 	relayIDused := distmap[0].relayID
 	fmt.Println("Relay ID used: ", relayIDused)
+	logMsg := fmt.Sprintf("Relay Id Used %s", relayIDused)
+	logger.LogToFile(logMsg)
 	var relayAddr string
 
 	for _, multiaddr := range relayMultiAddrList {
@@ -116,12 +120,14 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	relayMA, err := multiaddr.NewMultiaddr(relayAddr)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to parse relay multiaddr:", err)
+		logger.LogToFile("Failed to parse Relay multiaddr")
 		return nil, err
 	}
 
 	relayInfo, err := peer.AddrInfoFromP2pAddr(relayMA)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to extract relay peer info:", err)
+		logger.LogToFile("Failed to extract relay peer info")
 		return nil, err
 	}
 
@@ -129,6 +135,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	connMgr, err := connmgr.NewConnManager(100, 400)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create connection manager:", err)
+		logger.LogToFile("Failed to create connection manager")
 		return nil, err
 	}
 
@@ -154,6 +161,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create Host:", err)
+		logger.LogToFile("Failed to create host")
 		return nil, err
 	}
 
@@ -161,6 +169,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	idSvc, err := identify.NewIDService(h)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create identify service:", err)
+		logger.LogToFile("Failed To create identify service")
 		h.Close()
 		return nil, err
 	}
@@ -179,6 +188,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	hps, err := holepunch.NewService(h, idSvc, getListenAddrs)
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create hole punching service:", err)
+		
 		h.Close()
 		return nil, err
 	}
@@ -221,11 +231,13 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 	relayInfo, _ := peer.AddrInfoFromP2pAddr(cp.relayAddr)
 	if err := cp.Host.Connect(ctx, *relayInfo); err != nil {
 		fmt.Println("[DEBUG] Failed to connect to relay:", err)
+		logger.LogToFile("Error Connection to relay")
 		return fmt.Errorf("failed to connect to relay: %w", err)
 	}
 
 	// Make reservation with the relay
 	fmt.Println("[DEBUG] Making reservation with relay...")
+	logger.LogToFile("Making reservation with relay")
 	reservation, err := client.Reserve(ctx, cp.Host, *relayInfo)
 	if err != nil {
 		fmt.Printf("[DEBUG] Failed to make reservation: %v\n", err)
@@ -235,6 +247,7 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	fmt.Printf("[DEBUG] Peer started!\n")
 	fmt.Printf("[DEBUG] Peer ID: %s\n", cp.Host.ID())
+	logger.LogToFile(cp.Host.ID().String())
 
 	for _, addr := range cp.Host.Addrs() {
 		fmt.Printf("[DEBUG] Address: %s/p2p/%s\n", addr, cp.Host.ID())
@@ -244,6 +257,7 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", cp.Host.ID())))
 
 	fmt.Printf("[INFO] Circuit Address (share this with other peers): %s\n", circuitAddr)
+	
 
 	// Start a goroutine to periodically refresh reservations
 	go cp.refreshReservations(ctx, *relayInfo)
@@ -256,11 +270,13 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	if err != nil {
 		fmt.Println("[DEBUG]Error Opening stream to relay")
+		logger.LogToFile("Error opening stream to relay")
 	}
-	fmt.Println("[DEBUG]Opened atream to relay successsfully")
+	fmt.Println("[DEBUG]Opened stream to relay successsfully")
 	reqJson, err := json.Marshal(reqSent)
 	if err != nil {
 		fmt.Println("[DEBUG]Error marshalling the req to be sent")
+		logger.LogToFile("Error marshalling the req to be sent")
 	}
 	stream.Write([]byte(reqJson))
 
@@ -299,6 +315,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			fmt.Println("[DEBUG]Error reading the bytes from the stream")
+			logger.LogToFile("Error reading the bytes from the stream")
 		}
 		line = bytes.TrimRight(line, "\n")
 		line = bytes.TrimRight(line, "\x00")
@@ -325,6 +342,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 			_, err = s.Write(resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error writing resp bytes to relay")
+
 				return
 			}
 		}
@@ -353,6 +371,7 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
 	if err != nil {
 		fmt.Println("[DEBUG]Error opneing a fetch ID stream to relay")
+		logger.LogToFile("Error opening a fetch ID stream to relay")
 		return nil, err
 	}
 
@@ -370,7 +389,7 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 	ack, err := reader.ReadString('\n')
 
 	if err != nil {
-		fmt.Println("[DEBUG]Error getting the acknowledgement")
+		//fmt.Println("[DEBUG]Error getting the acknowledgement")
 		//return nil, err
 	}
 	_ = ack //can be used if required
@@ -392,6 +411,7 @@ func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 		}
 	}
 	fmt.Printf("[DEBUG] Connected peers: %v\n", peers)
+	
 	return peers
 }
 

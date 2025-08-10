@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/mod_client/config"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/network"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
@@ -86,6 +87,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 
 			if sameCount >= maxSame {
 				mu.Unlock()
+				logger.LogToFile("Kademlia store converged. Terminating Search")
 				log.Println("Kademlia store converged. Terminating search.")
 				close(done)
 				return
@@ -124,6 +126,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 
 					respBytes, ok := resp.([]byte)
 					if !ok {
+						logger.LogToFile("Unexpected Response format received")
 						log.Printf("Unexpected response format from %s:%s", n.IP, n.Port)
 						log.Println(ok)
 						return
@@ -131,6 +134,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 
 					var base BaseResponse
 					if err := json.Unmarshal(respBytes, &base); err != nil {
+						logger.LogToFile("[DEBUG]Failed to parse base response")
 						log.Printf("Failed to parse base response from %s:%s: %v", n.IP, n.Port, err)
 						return
 					}

@@ -15,6 +15,7 @@ import (
 
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
 	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
@@ -71,16 +72,19 @@ func GetGoogleApiKey() (string, error) {
 	path := GetModKeysPath()
 	content, err := os.ReadFile(path)
 	if err != nil {
+		logger.LogToFile("Error reading modkeys")
 		return "", fmt.Errorf("failed to read modkeys.json: %w", err)
 	}
 
 	var data map[string]string
 	if err := json.Unmarshal(content, &data); err != nil {
+		logger.LogToFile("failed to parse modkeys")
 		return "", fmt.Errorf("failed to parse modkeys.json: %w", err)
 	}
 
 	key, ok := data["GOOGLE_NLP_API_KEY"]
 	if !ok || key == "" {
+		logger.LogToFile("[DEBUG]GOOGLE_NLP_API_KEY not found in modkeys.json")
 		return "", fmt.Errorf("GOOGLE_NLP_API_KEY not found in modkeys.json")
 	}
 
@@ -97,10 +101,12 @@ func ensureModConfigExists() {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			fmt.Println("Failed to create modconfig directory:", err)
+			logger.LogToFile("[DEBUG]Failed to create modconfig directory")
 			return
 		}
 		if err := os.WriteFile(path, []byte(defaultJSON), 0644); err != nil {
 			fmt.Println("Failed to write default config:", err)
+			logger.LogToFile("[DEBUG]Failed to write default config")
 		}
 	}
 }
@@ -109,12 +115,14 @@ func ReadModConfigFile() (models.ModConfig, error) {
 	path := GetModConfigPath()
 	file, err := os.Open(path)
 	if err != nil {
+		logger.LogToFile("failed to open modconfig.json")
 		return models.ModConfig{}, fmt.Errorf("failed to open modconfig.json: %w", err)
 	}
 	defer file.Close()
 
 	var config models.ModConfig
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		logger.LogToFile("[DEBUG]Failed to decode modconfig.json")
 		return models.ModConfig{}, fmt.Errorf("failed to decode modconfig.json: %w", err)
 	}
 
@@ -124,6 +132,7 @@ func ReadModConfigFile() (models.ModConfig, error) {
 func LoadForbiddenWords() []string {
 	config, err := ReadModConfigFile()
 	if err != nil {
+
 		fmt.Println("Error loading forbidden words:", err)
 		return nil
 	}
@@ -187,6 +196,7 @@ func ParseThresholds() map[string]float64 {
 	thresholds := make(map[string]float64)
 
 	if config.Thresholds == "" {
+		logger.LogToFile("[DEBUG]No thresholds found")
 		fmt.Println("No thresholds found in JSON")
 		return thresholds
 	}
@@ -216,6 +226,7 @@ func AnalyzeWithGoogleNLP(content string) (bool, error) {
 	}
 
 	if apiKey == "" {
+		logger.LogToFile("[DEBUG]Missing GOOGLE NLP API KEY")
 		return false, fmt.Errorf("missing GOOGLE_NLP_API_KEY in environment")
 	}
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 )
 
 var Peer *ChatPeer
@@ -25,10 +26,12 @@ type RelayDist struct {
 func StartNode(relayMultiAddrList []string) error {
 
 	fmt.Println("Starting Node...")
+	logger.LogToFile("Starting Node...")
 	var err error
 	Peer, err = NewChatPeer(relayMultiAddrList)
 	if err != nil {
 		fmt.Println("Error creating peer:", err)
+		logger.LogToFile("Error creating the peer")
 		return err
 	}
 
@@ -58,6 +61,7 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"
 	jsonReq, err := json.Marshal(reqparams)
 	if err != nil {
 		fmt.Println("[DEBUG]Failed to get req params json")
+		logger.LogToFile("[DEBUG]Failed to get req params json")
 		return nil, err
 	}
 	_ = jsonReq

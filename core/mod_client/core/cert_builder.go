@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/devlup-labs/Libr/core/mod_client/keycache"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
@@ -34,6 +35,7 @@ func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.
 	fmt.Print("Signature = ", sign)
 	fmt.Print("\n")
 	if err != nil {
+		logger.LogToFile("[DEBUG]Failed to get sign message")
 		log.Fatalf("failed to sign message: %v", err)
 	}
 

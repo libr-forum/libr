@@ -7,6 +7,7 @@ import (
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
@@ -24,6 +25,7 @@ func MsgIN(bodyBytes []byte) []byte {
 	fmt.Println(moderationStatus)
 	if err != nil {
 		log.Printf("Moderation error: %v", err)
+		logger.LogToFile("[DEBUG]Moderation Error1")
 		return nil
 	}
 
@@ -52,6 +54,7 @@ func MsgReport(bodyBytes []byte) []byte {
 	err := json.Unmarshal(bodyBytes, &req)
 	if err != nil {
 		fmt.Println("Invalid JSON")
+		logger.LogToFile("[DEBUG]Invalid JSON")
 		return nil
 	}
 
@@ -60,6 +63,7 @@ func MsgReport(bodyBytes []byte) []byte {
 	fmt.Println(moderationStatus)
 	if err != nil {
 		log.Printf("Moderation error: %v", err)
+		logger.LogToFile("[DEBUG]Moderation Error 2")
 		return nil
 	}
 

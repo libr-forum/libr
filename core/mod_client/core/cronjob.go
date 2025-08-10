@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
 )
@@ -47,6 +48,7 @@ func RetryPendingModerations(msgcert *types.MsgCert) {
 	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "/*.json")
 	files, err := filepath.Glob(dir)
 	if err != nil {
+		logger.LogToFile("[DEBUG]Failed to list pending moderation files")
 		log.Printf("Failed to list pending moderation files: %v", err)
 		return
 	}
@@ -57,6 +59,7 @@ func RetryPendingModerations(msgcert *types.MsgCert) {
 	for _, filePath := range files {
 		pending, err := cache.LoadPendingModeration(filePath)
 		if err != nil {
+			logger.LogToFile("[DEBUG]Could Not load pending file")
 			log.Printf("Could not load pending file %s: %v", filePath, err)
 			continue
 		}

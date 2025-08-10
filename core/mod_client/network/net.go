@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	Peers "github.com/devlup-labs/Libr/core/mod_client/peers"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
@@ -46,6 +47,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 			json.Unmarshal(resp, &response)
 			return response, nil
 		default:
+			logger.LogToFile("[DEBUG]Excpected msg or msgcert")
 			return nil, errors.New("expected Msg or MsgCert struct for mod")
 		}
 

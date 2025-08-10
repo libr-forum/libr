@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/devlup-labs/Libr/core/crypto/config"
+	"github.com/devlup-labs/Libr/core/crypto/logger"
 )
 
 // GenerateKeyPair generates a new Ed25519 key pair,
@@ -45,11 +46,13 @@ func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	// Read private key from file
 	privData, err := os.ReadFile(config.PrivateKeyPath)
 	if err != nil {
+		logger.LogToFile("[DEBUG]Private Ket not found, generating new key pair")
 		log.Println("Private key not found, generating new key pair.")
 		return GenerateKeyPair()
 	}
 
 	if len(privData) != ed25519.PrivateKeySize {
+		logger.LogToFile("[DEBUG]Invalid private key size")
 		return nil, nil, errors.New("invalid private key size")
 	}
 
@@ -60,6 +63,7 @@ func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	// Try to read the existing public key
 	pubData, err := os.ReadFile(config.PublicKeyPath)
 	if err != nil || len(pubData) != ed25519.PublicKeySize {
+		logger.LogToFile("[DEBUG]Public key missing or invalid, reconstructing from private key.")
 		log.Println("Public key missing or invalid, reconstructing from private key.")
 
 		// Ensure the directory exists
@@ -85,6 +89,7 @@ func LoadKeys() (ed25519.PublicKey, ed25519.PrivateKey, error) {
 func SignMessage(privateKey ed25519.PrivateKey, message string) (string, string, error) {
 	// Check private key length
 	if len(privateKey) != ed25519.PrivateKeySize {
+		logger.LogToFile("[DEBUG]Invalid private key size")
 		return "", "", errors.New("invalid private key size")
 	}
 
@@ -119,6 +124,7 @@ func VerifySignature(publicKeyStr string, message string, signStr string) bool {
 		return false
 	}
 	if len(sign) != ed25519.SignatureSize {
+		logger.LogToFile("Invalid signature size")
 		log.Println("Invalid signature size")
 		return false
 	}
