@@ -14,6 +14,7 @@ import { ChatRoom } from './pages/ChatRoom';
 import { ModLogs } from './pages/ModLogs';
 import { ModConfig } from './pages/ModConfig';
 import { Communities } from './pages/Communities';
+import { logger } from './logger/logger'
 
 import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, GetRelayAddr } from '../wailsjs/go/main/App';
 import { EventsOn,Quit } from 'wailsjs/runtime/runtime';
@@ -66,7 +67,7 @@ export function useRelayConnection() {
 
   useEffect(() => {
     const tryConnect = async () => {
-      console.log("🛜 Starting relay connection...");
+      logger.info("🛜 Starting relay connection...");
 
       const relayAddrs = await fetchRelayAddrs();
       let connected = false;
@@ -90,10 +91,10 @@ export function useRelayConnection() {
         await new Promise(res => setTimeout(res, 1000));
       }
 
-      if (!connected) {
-        console.error("❌ Failed to connect to relay after 10 attempts.");
-        setRelayFailed(true);
-      }
+        if (!connected) {
+          logger.error("Could not connect to relay after multiple attempts.");
+          setRelayFailed(true);
+        }
     };
 
     tryConnect();
@@ -107,10 +108,10 @@ async function fetchRelayAddrs(): Promise<string[]> {
     const addrs = await GetRelayAddr();
     // Only keep valid multiaddrs
     const validAddrs = addrs.filter(addr => addr.startsWith('/'));
-    console.log('[RelayAddrs] Valid relay addresses:', validAddrs);
+    logger.debug('[RelayAddrs] Valid relay addresses:', validAddrs);
     return validAddrs;
   } catch (error) {
-    console.error("Error loading relay addresses from MongoDB:", error);
+    logger.error("Error loading relay addresses from MongoDB:", error);
     return [];
   }
 }
@@ -157,7 +158,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log("🔄 Fetching relay addresses...");
+        logger.debug("🔄 Fetching relay addresses...");
         const relayAddrs = await fetchRelayAddrs();
         // const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWCG3Jp3Jm3AeD9WgUVAVeze71X3mPaCz2jfQAAGnCDgku"]
         const status = await GetRelayStatus();
@@ -179,12 +180,12 @@ const App: React.FC = () => {
         }
 
         if (!connected) {
-          console.error("❌ Could not connect to relay.");
+          logger.error("❌ Could not connect to relay.");
           setRelayFailed(true);
           return;
         }
 
-        console.log("✅ Relay connected. Authenticating...");
+        logger.info("✅ Relay connected. Authenticating...");
         
         const publicKey = await FetchPubKey();
         const user = await apiService.authenticate(publicKey);
@@ -198,7 +199,7 @@ const App: React.FC = () => {
           setCurrentCommunity(firstJoined);
         }
       } catch (err) {
-        console.error("🔥 App initialization failed:", err);
+        logger.error("🔥 App initialization failed:", err);
         setRelayFailed(true);
       } finally {
         setLoading(false);

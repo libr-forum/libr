@@ -7,6 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { RegenKeys } from 'wailsjs/go/main/App';
 import logoSVG from '../assets/icon_transparent.svg';
 import { apiService } from '@/services/api';
+import { logger } from '../../logger/logger';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -37,15 +38,18 @@ export const Sidebar: React.FC = () => {
   const [isReloadingCommunities, setIsReloadingCommunities] = React.useState(false);
 
   const handleCommunitySelect = (community: any) => {
+    logger.debug("Selected community", community);
     setCurrentCommunity(community);
     navigate('/chat');
   };
 
   const handleJoinCommunity = (communityId: string) => {
+    logger.debug("Joining community", communityId);
     joinCommunity(communityId);
   };
 
   const reloadCommunities = async () => {
+    logger.debug("Reloading communities...");
     setIsReloadingCommunities(true);
     try {
       // Simulate API call to reload communities
@@ -54,7 +58,7 @@ export const Sidebar: React.FC = () => {
       // const communities = await apiService.getCommunities();
       // setCommunities(communities);
     } catch (error) {
-      console.error('Failed to reload communities:', error);
+      logger.error("Failed to reload communities", { error });
     } finally {
       setIsReloadingCommunities(false);
     }
@@ -399,6 +403,8 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={() => {
                     setShowResetConfirm(true);
+                    logger.debug("Reset identity initiated", { alias: user.alias });
+
                   }}
                   className="libr-button bg-red-500 hover:bg-red-600 text-white"
                 >
@@ -433,6 +439,7 @@ export const Sidebar: React.FC = () => {
             <AlertDialogCancel
               className="libr-button bg-muted hover:bg-muted/70"
               onClick={() => {
+                logger.error("Identity reset failed", { error });
                 setShowResetConfirm(false);
                 setConfirmAlias('');
               }}

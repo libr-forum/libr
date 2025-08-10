@@ -4,6 +4,7 @@ import React, {
   useImperativeHandle,
   useState,
   useMemo,
+  useEffect
 } from 'react';
 import { motion } from 'framer-motion';
 import { Send, X } from 'lucide-react';
@@ -17,6 +18,7 @@ import CodeBlock from '@tiptap/extension-code-block';
 import Placeholder from '@tiptap/extension-placeholder';
 import BulletList from '@tiptap/extension-bullet-list';
 import ListItem from '@tiptap/extension-list-item';
+import { logger } from '../../logger/logger'; 
 
 interface MessageInputProps {
   onClose?: () => void;
@@ -38,7 +40,13 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
 
     const containerRef = useRef<HTMLDivElement>(null);
     const { currentCommunity, addMessage } = useAppStore();
-    
+
+    useEffect(() => {
+      logger.info('[MessageInput] Mounted');
+      return () => {
+        logger.info('[MessageInput] Unmounted');
+      };
+    }, []);
 
     const CustomStrike = Strike.extend({
       addKeyboardShortcuts() {
@@ -56,7 +64,10 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
       },
     });
 
-    useImperativeHandle(ref, () => containerRef.current!);
+    useImperativeHandle(ref, () => {
+      logger.debug('[MessageInput] Imperative handle set');
+      return containerRef.current!;
+    });
 
     const editor = useEditor({
       extensions: [
@@ -74,10 +85,10 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
             'h-full prose-mirror-editor min-h-[27rem] p-3 m-1 w-[99%] bg-muted/30 border border-border/50 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-libr-accent1/50 transition-all duration-200 text-sm',
         },
         handleKeyDown(view, event) {
-          // Ctrl+Enter or Cmd+Enter
           if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            logger.info('[MessageInput] Ctrl/Cmd+Enter detected — sending message');
             event.preventDefault();
-            handleSend(); // your message sending function
+            handleSend();
             return true;
           }
           return false;
@@ -87,6 +98,7 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
         const text = editor.getText();
         const cleanHTML = text.replace(/(<p>\s*<\/p>)+$/g, '');
         setBodyText(text);
+        logger.debug('[MessageInput] Editor updated', { textLength: text.length });
         if (shake) setShake(false);
       },
     });
@@ -95,12 +107,23 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
       const trimmedText = bodyText.trim();
       const trimmedTitle = title.trim();
 
+      logger.info('[MessageInput] Send attempt', {
+        hasText: !!trimmedText,
+        hasTitle: !!trimmedTitle,
+        communityId: currentCommunity?.id,
+        isSending
+      });
+
       if (!trimmedText && trimmedTitle) {
+        logger.warn('[MessageInput] Title provided but body empty — shake triggered');
         setShake(true);
         return;
       }
 
-      if (!trimmedText || !currentCommunity || isSending) return;
+      if (!trimmedText || !currentCommunity || isSending) {
+        logger.warn('[MessageInput] Send aborted — missing text/community or already sending');
+        return;
+      }
 
       setIsSending(true);
       try {
@@ -108,25 +131,29 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
           ? `<HEAD>${trimmedTitle}</HEAD><BODY>${editor?.getHTML()}</BODY>`
           : `<BODY>${editor?.getHTML()}</BODY>`;
 
+        logger.debug('[MessageInput] Sending formatted message', { formatted });
+
         const newMsg = await apiService.sendMessage(currentCommunity.id, formatted);
         addMessage(newMsg);
+
+        logger.info('[MessageInput] Message sent successfully', { messageId: newMsg?.id });
 
         setTitle('');
         setBodyText('');
         editor?.commands.setContent('');
 
-        // ✅ Only auto-close if message is not approved
         onClose?.();
-
       } catch (err) {
-        console.error('Send failed:', err);
+        logger.error('[MessageInput] Send failed', err);
       } finally {
         setIsSending(false);
       }
     };
 
     const randomTitle = useMemo(() => {
-      return titles[Math.floor(Math.random() * titles.length)];
+      const chosen = titles[Math.floor(Math.random() * titles.length)];
+      logger.debug('[MessageInput] Random title chosen', chosen);
+      return chosen;
     }, []);
 
     return (
@@ -140,7 +167,6 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
       >
         <style>
           {`
-            /* Show bullets for lists in the editor */
             .prose-mirror-editor ul {
               list-style-type: disc;
               margin-left: 1.5em;
@@ -172,12 +198,14 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
           <textarea
             placeholder="Title (optional)"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              logger.debug('[MessageInput] Title changed', e.target.value);
+              setTitle(e.target.value);
+            }}
             className="w-full mb-3 p-3 text-sm h-[20%] max-h-20 border border-border/50 rounded-2xl bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-libr-accent1/50 resize-none leading-tight"
           />
 
           {/* Body Editor */}
-          {/* <div className={cn('w-full h-full bg-muted/30 border border-border/50 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-libr-accent1/50 transition-all duration-200', shake && 'border-red-500 ring-red-500 animate-shake')}> */}
           <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto">
               {editor && <EditorContent editor={editor} />}

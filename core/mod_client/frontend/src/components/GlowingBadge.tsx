@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
+import { logger } from '../logger/logger';
 
 interface GlowingBadgeProps {
   role: 'moderator' | 'member' | 'admin';
@@ -8,9 +8,13 @@ interface GlowingBadgeProps {
 }
 
 export const GlowingBadge: React.FC<GlowingBadgeProps> = ({ role, className = '' }) => {
+  logger.debug("Rendering GlowingBadge", { role, className });
+
   const getBadgeConfig = () => {
+    logger.debug("Determining badge config for role", { role });
     switch (role) {
       case 'moderator':
+        logger.debug("Badge config selected: moderator");
         return {
           icon: '🛡',
           text: 'Moderator',
@@ -18,6 +22,7 @@ export const GlowingBadge: React.FC<GlowingBadgeProps> = ({ role, className = ''
           shadow: 'shadow-libr-accent2/50',
         };
       case 'admin':
+        logger.debug("Badge config selected: admin");
         return {
           icon: '👑',
           text: 'Admin',
@@ -25,6 +30,7 @@ export const GlowingBadge: React.FC<GlowingBadgeProps> = ({ role, className = ''
           shadow: 'shadow-yellow-500/50',
         };
       default:
+        logger.debug("Badge config selected: member");
         return {
           icon: '🗣',
           text: 'Member',
@@ -35,6 +41,7 @@ export const GlowingBadge: React.FC<GlowingBadgeProps> = ({ role, className = ''
   };
 
   const config = getBadgeConfig();
+  logger.debug("Final badge config", config);
 
   return (
     <motion.div

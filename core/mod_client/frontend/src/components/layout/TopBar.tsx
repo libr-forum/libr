@@ -3,10 +3,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { Hash, Users, Pin,Send,PencilLine,MessageCircle,MessageSquare,Sun,Moon } from 'lucide-react';
+import { logger } from '../../logger/logger';
 
 export const TopBar: React.FC = () => {
+  
   const { currentCommunity, user,isDarkMode,toggleTheme } = useAppStore();
-
+  logger.debug("TopBar: No current community, skipping render");
   if (!currentCommunity) return null;
 
   return (
@@ -37,7 +39,10 @@ export const TopBar: React.FC = () => {
           <span className='mt-0.5'>Feedback</span>
         </button> */}
         <button
-          onClick={toggleTheme}
+          onClick={() => {
+            logger.debug("Toggling theme", { from: isDarkMode ? "Dark" : "Light" });
+            toggleTheme();
+          }}
           className="libr-button rounded-3xl hover:bg-muted/80 flex items-center space-x-2 translate-x-2"
           title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >

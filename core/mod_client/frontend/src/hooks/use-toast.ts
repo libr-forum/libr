@@ -1,4 +1,5 @@
 import * as React from "react"
+import { logger } from '../logger/logger'
 
 import type {
   ToastActionElement,
@@ -57,11 +58,15 @@ const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
+    logger.debug("[Toast] Already scheduled for removal", { toastId })
     return
   }
 
+  
+  logger.debug("[Toast] Scheduling removal", { toastId, delay: TOAST_REMOVE_DELAY })
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
+    logger.debug("[Toast] Removing from queue", { toastId })
     dispatch({
       type: "REMOVE_TOAST",
       toastId: toastId,
@@ -131,7 +136,9 @@ const listeners: Array<(state: State) => void> = []
 let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
+  logger.debug("[Toast Dispatch]", { action, prevState: memoryState })
   memoryState = reducer(memoryState, action)
+  logger.debug("[Toast New State]", { newState: memoryState })
   listeners.forEach((listener) => {
     listener(memoryState)
   })
