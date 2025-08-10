@@ -15,6 +15,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Strike from '@tiptap/extension-strike';
 import CodeBlock from '@tiptap/extension-code-block';
 import Placeholder from '@tiptap/extension-placeholder';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
 
 interface MessageInputProps {
   onClose?: () => void;
@@ -57,7 +59,14 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
     useImperativeHandle(ref, () => containerRef.current!);
 
     const editor = useEditor({
-      extensions: [StarterKit.configure({strike:false,codeBlock:false}),CustomStrike,CustomCodeBlock,Placeholder.configure({placeholder:'Message'}),],
+      extensions: [
+        StarterKit.configure({ strike: false, codeBlock: false, bulletList: false, listItem: false }),
+        CustomStrike,
+        CustomCodeBlock,
+        BulletList,
+        ListItem,
+        Placeholder.configure({ placeholder: 'Message' }),
+      ],
       content: '',
       editorProps: {
         attributes: {
@@ -74,7 +83,6 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
           return false;
         },
       },
-      
       onUpdate: ({ editor }) => {
         const text = editor.getText();
         const cleanHTML = text.replace(/(<p>\s*<\/p>)+$/g, '');
@@ -130,6 +138,24 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
         transition={{ duration: 0.2 }}
         className="absolute w-[50%] h-[75%] z-50 bg-card border border-border rounded-3xl p-4 shadow-2xl"
       >
+        <style>
+          {`
+            /* Show bullets for lists in the editor */
+            .prose-mirror-editor ul {
+              list-style-type: disc;
+              margin-left: 1.5em;
+              padding-left: 1.5em;
+            }
+            .prose-mirror-editor ol {
+              list-style-type: decimal;
+              margin-left: 1.5em;
+              padding-left: 1.5em;
+            }
+            .prose-mirror-editor li {
+              margin-bottom: 0.25em;
+            }
+          `}
+        </style>
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex flex-row items-center justify-between mb-4">

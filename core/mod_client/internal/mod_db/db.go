@@ -172,6 +172,7 @@ func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query unmoderated messages: %w", err)
 	}
+
 	defer rows.Close()
 
 	var msgs []models.MsgCert
@@ -183,6 +184,7 @@ func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 		}
 		cert.Msg.Content = content
 		cert.Reason = reason
+		fmt.Println("cert", cert)
 		msgs = append(msgs, cert)
 	}
 	if err := rows.Err(); err != nil {

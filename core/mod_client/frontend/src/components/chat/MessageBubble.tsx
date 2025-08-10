@@ -199,13 +199,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 <p className="text-lg font-semibold text-foreground mt-1">{title}</p>
               )}
 
-              <p
-                className="text-sm leading-relaxed text-foreground mt-1 break-words max-w-[55vw] whitespace-pre-wrap"
+              <div
+                className="text-sm leading-relaxed text-foreground mt-1 break-words max-w-[55vw] whitespace-pre-wrap message-bubble-content"
                 dangerouslySetInnerHTML={{ __html: safeHtml }}
               />
             </div>
           </div>
         </div>
+        {/* Add bullet styling for message content */}
+        <style>
+          {`
+            .message-bubble-content ul {
+              list-style-type: disc;
+              margin-left: 1.5em;
+              padding-left: 1.5em;
+            }
+            .message-bubble-content ol {
+              list-style-type: decimal;
+              margin-left: 1.5em;
+              padding-left: 1.5em;
+            }
+            .message-bubble-content li {
+              margin-bottom: 0.25em;
+            }
+          `}
+        </style>
       </div>
     </motion.div>
   );

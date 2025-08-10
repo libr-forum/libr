@@ -35,13 +35,7 @@ export interface Message {
 
 export interface ReportedMessage {
   content: string;
-  authorPublicKey: string;
-  authorAlias: string;
-  timestamp: bigint;
   communityId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  moderationNote?: types.ModCert[];
-  avatarSvg?:string;
   sign:string;
   note:string;
 }
