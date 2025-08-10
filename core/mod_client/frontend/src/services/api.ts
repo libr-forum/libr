@@ -119,8 +119,6 @@ const mockCommunities: Community[] = [
   },
 ];
 
-// const messageCache: { [sign: string]: Message } = {};
-
 export const apiService = {
   // Auth
   async authenticate(publicKey: string): Promise<User> {
@@ -152,25 +150,6 @@ export const apiService = {
   async getMessages(_communityId: string): Promise<Message[]> {
     try {
       const fetched = await FetchAll();
-      // Commented out caching for now
-      // for (const message of fetched) {
-      //   const alias = await GenerateAlias(message.public_key);
-      //   const svg = await GenerateAvatar(message.public_key);
-      //   const msg: Message = {
-      //     content: message.msg.content,
-      //     authorAlias: alias,
-      //     authorPublicKey: message.public_key,
-      //     timestamp: BigInt(message.msg.ts),
-      //     communityId: "1",
-      //     status: "approved",
-      //     moderationNote: message.mod_certs,
-      //     avatarSvg: svg,
-      //     sign: message.sign,
-      //   };
-      //   messageCache[msg.sign] = msg;
-      // }
-      // return Object.values(messageCache).sort((a, b) => Number(b.timestamp - a.timestamp));
-      // Instead, just return the fetched messages mapped as before:
       return await Promise.all(
         fetched.map(async (message: any) => {
           const alias = await GenerateAlias(message.public_key);
@@ -190,7 +169,6 @@ export const apiService = {
       );
     } catch (err) {
       console.error("Failed to fetch messages:", err);
-      // return Object.values(messageCache).sort((a, b) => Number(b.timestamp - a.timestamp));
       return [];
     }
   },
