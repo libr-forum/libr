@@ -122,15 +122,15 @@ const mockCommunities: Community[] = [
 export const apiService = {
   // Auth
   async authenticate(publicKey: string): Promise<User> {
-    const avatar= await GenerateAvatar(publicKey)
-    const alias=await GenerateAlias(publicKey)
-    const isMod=await ModAuthentication(publicKey)
+    const avatar = await GenerateAvatar(publicKey)
+    const alias = await GenerateAlias(publicKey)
+    const isMod = await ModAuthentication(publicKey)
     const role: 'member' | 'moderator' | 'admin' = isMod ? 'moderator' : 'member';
     return {
       publicKey,
       alias,
-      role, 
-      avatarSvg:avatar,
+      role,
+      avatarSvg: avatar,
     };
   },
 
@@ -150,6 +150,7 @@ export const apiService = {
   async getMessages(_communityId: string): Promise<Message[]> {
     try {
       const fetched = await FetchAll();
+      // No caching: always return fresh mapped messages
       return await Promise.all(
         fetched.map(async (message: any) => {
           const alias = await GenerateAlias(message.public_key);
@@ -187,11 +188,11 @@ export const apiService = {
       return [];
     }
   },
-  
-  async manualModerate(cert:types.MsgCert, moderated: number): Promise<void> {
+
+  async manualModerate(cert: types.MsgCert, moderated: number): Promise<void> {
     try {
       await ManualModerate(cert, moderated);
-    }catch (err) {
+    } catch (err) {
       console.error("Failed to fetch messages:", err);
     }
   },
@@ -216,6 +217,7 @@ export const apiService = {
     const signMatch = response.match(/Sign:\s*(\S+)/);
     const tsMatch = response.match(/Time:\s*(\d+)/);
 
+    // No caching: just return the new message object
     const newMessage: Message = {
       content,
       authorPublicKey: user.publicKey,
@@ -232,7 +234,7 @@ export const apiService = {
   },
 
   // Moderation
-  async getModerationLogs():Promise<ModLogEntry[]> {
+  async getModerationLogs(): Promise<ModLogEntry[]> {
     const logs = await GetModerationLogs();
     return logs;
   },
@@ -242,15 +244,15 @@ export const apiService = {
     console.log(`Message ${action}ed with note: ${note}`);
   },
 
-  async GetModConfig():Promise<{ forbidden: string[]; thresholds: string }>{
+  async GetModConfig(): Promise<{ forbidden: string[]; thresholds: string }> {
     return await GetModConfig();
   },
 
-  async SaveModConfig(data: { forbidden: string[]; thresholds: string }):Promise<void>{
+  async SaveModConfig(data: { forbidden: string[]; thresholds: string }): Promise<void> {
     await SaveModConfig(data)
   },
 
-  async SaveGoogleApiKey(key: string){
+  async SaveGoogleApiKey(key: string) {
     await SaveGoogleApiKey(key)
   }
 };
