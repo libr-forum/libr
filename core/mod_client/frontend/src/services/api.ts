@@ -119,6 +119,8 @@ const mockCommunities: Community[] = [
   },
 ];
 
+const messageCache: { [sign: string]: Message } = {};
+
 export const apiService = {
   // Auth
   async authenticate(publicKey: string): Promise<User> {
@@ -150,27 +152,26 @@ export const apiService = {
   async getMessages(_communityId: string): Promise<Message[]> {
     try {
       const fetched = await FetchAll();
-      const response:Message[]=[];
-      for (const message of fetched){
-        const alias=await GenerateAlias(message.public_key);
-        const svg=await GenerateAvatar(message.public_key);
-        const msg:Message={
-          content:message.msg.content,
-          authorAlias:alias,
-          authorPublicKey:message.public_key,
-          timestamp:BigInt(message.msg.ts),
-          communityId:"1",
-          status:"approved",
-          moderationNote:message.mod_certs,
-          avatarSvg:svg,
-          sign:message.sign,
-        }
-        response.push(msg);
+      for (const message of fetched) {
+        const alias = await GenerateAlias(message.public_key);
+        const svg = await GenerateAvatar(message.public_key);
+        const msg: Message = {
+          content: message.msg.content,
+          authorAlias: alias,
+          authorPublicKey: message.public_key,
+          timestamp: BigInt(message.msg.ts),
+          communityId: "1",
+          status: "approved",
+          moderationNote: message.mod_certs,
+          avatarSvg: svg,
+          sign: message.sign,
+        };
+        messageCache[msg.sign] = msg;
       }
-      return response;
+      return Object.values(messageCache).sort((a, b) => Number(b.timestamp - a.timestamp));
     } catch (err) {
       console.error("Failed to fetch messages:", err);
-      return [];
+      return Object.values(messageCache).sort((a, b) => Number(b.timestamp - a.timestamp));
     }
   },
 
@@ -195,9 +196,9 @@ export const apiService = {
     }
   },
   
-  async manualModerate(sign:string, moderated: number): Promise<void> {
+  async manualModerate(sign:string, modsign:string, moderated: number): Promise<void> {
     try {
-      await ManualModerate(sign, moderated);
+      await ManualModerate(sign, modsign, moderated);
     }catch (err) {
       console.error("Failed to fetch messages:", err);
     }

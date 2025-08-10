@@ -69,7 +69,7 @@ export const Sidebar: React.FC = () => {
   <div className='flex p-4 h-full w-full'>  
     <div className="flex flex-col shadow-md rounded-3xl z-50 w-full bg-card">
       {/* Header */}
-      <div className="flex-col pt-5 pl-2 align-center items-center h-32">
+      <div className="flex-col pt-5 pl-2 align-center items-center">
         <div className="flex items-center">
           <div className="w-16 h-16 rounded-lg flex items-center justify-center libr-glow">
             <img src={logoSVG} alt="Libr Logo" className="rounded-lg" />
@@ -78,8 +78,8 @@ export const Sidebar: React.FC = () => {
             <h1 className="text-6xl text-libr-secondary">libr</h1>
           </div>
         </div>
-        <div className='flex items-center mt-2 pl-4 h-6'>
-            <p className="text-sm text-muted-foreground">Censorship-resilient</p>
+        <div className='flex items-center pl-4 mt-2 h-14'>
+            <span className="text-sm text-muted-foreground">Your Space.<br/>Your Quorum.<br/>Your Rules.</span>
         </div>
       </div>
 

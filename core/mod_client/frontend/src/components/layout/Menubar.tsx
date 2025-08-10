@@ -13,9 +13,31 @@ type ModDisplay = {
   avatarSvg: string;
 };
 
+const ComingSoonDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-card border border-border/50 rounded-2xl shadow-xl text-foreground p-6 w-[90%] max-w-md flex flex-col ">
+        <span className="text-lg font-semibold mb-4 text-libr-secondary">Feature Coming Soon</span>
+        <p className="text-muted-foreground mb-6 text-left">
+          This feature is not available yet. Stay tuned for updates!
+        </p>
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={onClose}
+            className="libr-button bg-muted hover:bg-muted/70 text-foreground px-6 py-2"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Menubar: React.FC = () => {
   const [mods, setMods] = React.useState<ModDisplay[]>([]);
-
+  const [dialogOpen, setDialogOpen] = React.useState(false);
   React.useEffect(() => {
     async function fetchMods() {
       try {
@@ -38,6 +60,7 @@ export const Menubar: React.FC = () => {
 
   return (
     <div className="w-full p-2 bg-card shadow-md items-center rounded-3xl h-full flex flex-col z-50">
+      <ComingSoonDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto flex flex-col w-full items-center">
         <div className="text-left w-full mt-4 mb-4 pl-2 flex items-center">
@@ -78,7 +101,7 @@ export const Menubar: React.FC = () => {
       </div>
       <div className="rounded-3xl m-2 bg-card w-[92%]">
         <button
-          onClick={() => BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9")}
+          onClick={() => BrowserOpenURL("https://libr-ashen.vercel.app/")}
           className="flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2"
         >
           <Globe className="aspect-square h-[40%]" />
@@ -87,7 +110,7 @@ export const Menubar: React.FC = () => {
       </div>
       <div className="rounded-3xl m-2 bg-card w-[92%]">
         <button
-          onClick={() => BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9")}
+          onClick={() => setDialogOpen(true)}
           className="flex justify-start libr-button hover:bg-muted/50 w-[100%] items-center space-x-2"
         >
           <Database className="aspect-square h-[40%]" />
