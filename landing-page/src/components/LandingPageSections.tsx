@@ -318,7 +318,7 @@ const Hero:React.FC = () => {
               </button>
               <button onClick={() => window.open("https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
-                View Documentation
+                View Docs
               </button>
             </div>
           </div>

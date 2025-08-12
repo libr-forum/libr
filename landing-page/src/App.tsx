@@ -5,6 +5,7 @@ import { HowItWorks, Community, Footer } from './components/LandingPageExtended'
 import { TechModules, HowToUse } from './components/AdditionalSections';
 import {BackgroundEffect} from './components/BackgroundEffect';
 import {Analytics} from '@vercel/analytics/react';
+import { MoveUp } from 'lucide-react';
 
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -60,11 +61,11 @@ const BackToTop: React.FC = () => {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0 }}
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-libr-secondary text-libr-primary rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+          className="fixed bottom-8 right-8 w-12 h-12 bg-libr-secondary text-libr-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
         >
-          ↑
+          <MoveUp className='w-5'/>
         </motion.button>
       )}
     </AnimatePresence>
