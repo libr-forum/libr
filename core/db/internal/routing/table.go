@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -34,7 +35,7 @@ func GetBucketIndex(selfID, targetID [20]byte) int {
 }
 
 func (rt *RoutingTable) InsertNode(newNode *models.Node, pinger Pinger) string {
-	if bytes.Equal(rt.SelfID[:], newNode.NodeId[:]) {
+	if bytes.Equal(rt.SelfID[:], newNode.NodeId[:]) && rt.SelfPort == newNode.Port {
 		return "Can't add self node"
 	}
 
@@ -140,64 +141,35 @@ func GetOrCreateRoutingTable(node *models.Node) *RoutingTable {
 
 func (rt *RoutingTable) SaveToDBAsync() {
 	go func() {
-		// Remove all existing rows (for this node) before saving new state
-		_, err := config.DB.ExecContext(context.Background(),
-			`DELETE FROM RoutingTable`)
+		jsonBytes, err := json.Marshal(rt)
 		if err != nil {
-			fmt.Println("❌ Error clearing RoutingTable:", err)
+			fmt.Println("❌ Error marshaling routing table:", err)
 			return
 		}
-		for bucketIdx, bucket := range rt.Buckets {
-			if bucket == nil {
-				continue
-			}
-			for _, n := range bucket.Nodes {
-				_, err := config.DB.ExecContext(context.Background(),
-					`INSERT INTO RoutingTable (bucket_index, node_id, ip, port, public_key, last_seen) VALUES (?, ?, ?, ?, ?, ?)`,
-					bucketIdx, n.NodeId[:], n.IP, n.Port, n.PublicKey, n.LastSeen)
-				if err != nil {
-					fmt.Println("❌ Error saving node to RoutingTable:", err)
-				}
-			}
+
+		_, err = config.DB.ExecContext(context.Background(),
+			`INSERT INTO RoutingTable (rt) VALUES (?)`, jsonBytes)
+		if err != nil {
+			fmt.Println("❌ Error saving routing table to SQLite:", err)
 		}
 	}()
 }
 
 func LoadRoutingTableFromDB() (*RoutingTable, error) {
-	rows, err := config.DB.QueryContext(context.Background(),
-		`SELECT bucket_index, node_id, ip, port, public_key, last_seen FROM RoutingTable`)
+	var jsonBytes []byte
+	row := config.DB.QueryRowContext(context.Background(),
+		`SELECT rt FROM RoutingTable ORDER BY id DESC LIMIT 1`)
+	err := row.Scan(&jsonBytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no routing table in DB")
 		}
 		return nil, err
 	}
-	defer rows.Close()
 
-	rt := &RoutingTable{}
-	for i := range rt.Buckets {
-		rt.Buckets[i] = &models.KBucket{}
+	var rt RoutingTable
+	if err := json.Unmarshal(jsonBytes, &rt); err != nil {
+		return nil, fmt.Errorf("error unmarshaling routing table: %v", err)
 	}
-
-	for rows.Next() {
-		var bucketIdx int
-		var nodeIdBytes []byte
-		var ip, port, publicKey string
-		var lastSeen int64
-		if err := rows.Scan(&bucketIdx, &nodeIdBytes, &ip, &port, &publicKey, &lastSeen); err != nil {
-			fmt.Println("❌ Error scanning RoutingTable row:", err)
-			continue
-		}
-		var nodeId [20]byte
-		copy(nodeId[:], nodeIdBytes)
-		n := &models.Node{
-			NodeId:    nodeId,
-			IP:        ip,
-			Port:      port,
-			PublicKey: publicKey,
-			LastSeen:  lastSeen,
-		}
-		rt.Buckets[bucketIdx].Nodes = append(rt.Buckets[bucketIdx].Nodes, n)
-	}
-	return rt, nil
+	return &rt, nil
 }

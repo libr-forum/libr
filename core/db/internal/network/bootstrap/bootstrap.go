@@ -219,6 +219,10 @@ import (
 )
 
 func BootstrapFromPeers(dbnodes []*models.Node, localNode *models.Node, rt *routing.RoutingTable) {
+	fmt.Println("dbnodes:")
+	for _, n := range dbnodes {
+		fmt.Printf(n.IP, n.Port, n.NodeId, n.PublicKey)
+	}
 	var wg sync.WaitGroup
 	seen := make(map[string]bool)
 	var mu sync.Mutex // protect access to `seen` map
@@ -279,25 +283,19 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 	}
 	var pq []distNode
 
-	// Helper: Add node to queue (deduplicated)
+	// Helper: Add node to queue (deduplicated and mark as queried immediately)
 	addNode := func(n *models.Node) {
 		idStr := hex.EncodeToString(n.NodeId[:])
 		seenMu.Lock()
+		defer seenMu.Unlock()
 		if _, ok := seen[idStr]; ok {
-			seenMu.Unlock()
 			return
 		}
+		// Do NOT mark as queried here!
+		// Only add to seen
 		seen[idStr] = n
-		// Also check if already in pq (shouldn't be, but for safety)
-		for _, dn := range pq {
-			if hex.EncodeToString(dn.N.NodeId[:]) == idStr {
-				seenMu.Unlock()
-				return
-			}
-		}
 		d := node.XORBigInt(localNode.NodeId, n.NodeId)
 		pq = append(pq, distNode{N: n, Distance: d})
-		seenMu.Unlock()
 	}
 
 	// Seed with the bootstrap node
@@ -319,16 +317,17 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 		for _, dn := range pq {
 			idStr := hex.EncodeToString(dn.N.NodeId[:])
 			queriedMu.Lock()
-			if !queried[idStr] {
-				queried[idStr] = true // Mark as queried immediately
-				toQuery = append(toQuery, dn)
-				count++
-				if count == 3 { // alpha = 3
-					queriedMu.Unlock()
-					break
-				}
+			if queried[idStr] {
+				queriedMu.Unlock()
+				continue
 			}
+			queried[idStr] = true
+			toQuery = append(toQuery, dn)
+			count++
 			queriedMu.Unlock()
+			if count == 3 { // alpha = 3
+				break
+			}
 		}
 		if len(toQuery) == 0 {
 			break
