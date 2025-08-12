@@ -104,7 +104,9 @@ export const Menubar: React.FC = () => {
           onClick={() => {
             logger.info('[Menubar] Feedback button clicked.');
             BrowserOpenURL("https://forms.gle/Uchqc6Z49aoJwjvZ9");
+          
           }}
+          className='flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2'
         >
           <PencilLine className="aspect-square h-[40%]" />
           <span className="mt-0.5">Feedback</span>
