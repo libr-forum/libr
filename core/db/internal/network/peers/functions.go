@@ -22,7 +22,7 @@
 
 // var Peer *ChatPeer
 // var globalLocalNode *models.Node
-// var globalRT *routing.RoutingTable
+// var GlobalRT *routing.RoutingTable
 
 // type RelayDist struct {
 // 	relayID string
@@ -31,7 +31,7 @@
 
 // func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
 // 	globalLocalNode = n
-// 	globalRT = rt
+// 	GlobalRT = rt
 
 // 	// ✅ Register  handler
 // 	network.Register()
@@ -170,7 +170,7 @@
 // 			fmt.Println("ts is not a string")
 // 		}
 // 		fmt.Printf("Timestamp to retrieve: %s", keyStr)
-// 		return network.FindValueHandler(keyStr, globalLocalNode, globalRT)
+// 		return network.FindValueHandler(keyStr, globalLocalNode, GlobalRT)
 // 	}
 
 // 	var resp []byte
@@ -205,7 +205,7 @@
 
 // 	switch route {
 // 	case "ping":
-// 		return network.HandlePing(ip, body, globalLocalNode, globalRT)
+// 		return network.HandlePing(ip, body, globalLocalNode, GlobalRT)
 
 // 	case "store":
 // 		var msgCert models.MsgCert
@@ -214,7 +214,7 @@
 // 			fmt.Println("Error unmarshaling into MsgCert:", err)
 // 			return nil
 // 		}
-// 		return network.StoreHandler(msgCert, globalLocalNode, globalRT)
+// 		return network.StoreHandler(msgCert, globalLocalNode, GlobalRT)
 
 // 	case "find_node":
 // 		keyStr, ok := body["node_id"].(string)
@@ -227,7 +227,7 @@
 // 			fmt.Println("failed to decode node ID:", err)
 // 			return nil
 // 		}
-// 		return network.FindNodeHandler(decodedKey, globalLocalNode, globalRT)
+// 		return network.FindNodeHandler(decodedKey, globalLocalNode, GlobalRT)
 
 // 	case "delete":
 // 		var repCert models.ReportCert
@@ -236,7 +236,7 @@
 // 			fmt.Println("Error unmarshaling into ReportCert:", err)
 // 			return nil
 // 		}
-// 		return network.DeleteHandler(&repCert, globalLocalNode, globalRT)
+// 		return network.DeleteHandler(&repCert, globalLocalNode, GlobalRT)
 
 // 	default:
 // 		fmt.Println("Unknown  route:", route)
@@ -270,7 +270,7 @@ import (
 
 var Peer *ChatPeer
 var globalLocalNode *models.Node
-var globalRT *routing.RoutingTable
+var GlobalRT *routing.RoutingTable
 
 type RelayDist struct {
 	relayID string
@@ -279,7 +279,7 @@ type RelayDist struct {
 
 func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
 	globalLocalNode = n
-	globalRT = rt
+	GlobalRT = rt
 
 	// ✅ Register POST handler
 	network.RegisterPOST(POST)
@@ -428,7 +428,7 @@ func ServeGetReq(paramsBytes []byte) []byte {
 			fmt.Println("ts is not a string")
 		}
 		fmt.Printf("Timestamp to retrieve: %s", keyStr)
-		return network.FindValueHandler(keyStr, globalLocalNode, globalRT)
+		return network.FindValueHandler(keyStr, globalLocalNode, GlobalRT)
 	}
 
 	var resp []byte
@@ -464,7 +464,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 
 	switch route {
 	case "ping":
-		return network.HandlePing(ip, port, body, globalLocalNode, globalRT)
+		return network.HandlePing(ip, port, body, globalLocalNode, GlobalRT)
 
 	case "store":
 		var msgCert models.MsgCert
@@ -473,7 +473,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Error unmarshaling into MsgCert:", err)
 			return nil
 		}
-		return network.StoreHandler(msgCert, globalLocalNode, globalRT)
+		return network.StoreHandler(msgCert, globalLocalNode, GlobalRT)
 
 	case "find_node":
 		keyStr, ok := body["node_id"].(string)
@@ -495,7 +495,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 			"node_id":    keyStr,
 			"public_key": keyPubKeyStr,
 		}
-		return network.FindNodeHandler(ip, port, findNodeBody, globalLocalNode, globalRT)
+		return network.FindNodeHandler(ip, port, findNodeBody, globalLocalNode, GlobalRT)
 
 	case "delete":
 		var repCert models.ReportCert
@@ -504,7 +504,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Error unmarshaling into ReportCert:", err)
 			return nil
 		}
-		return network.DeleteHandler(&repCert, globalLocalNode, globalRT)
+		return network.DeleteHandler(&repCert, globalLocalNode, GlobalRT)
 
 	default:
 		fmt.Println("Unknown POST route:", route)

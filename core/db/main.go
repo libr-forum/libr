@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/devlup-labs/Libr/core/db/internal/keycache"
 	peer "github.com/devlup-labs/Libr/core/db/internal/network/peers"
@@ -28,4 +29,8 @@ func main() {
 
 	<-sigChan
 	fmt.Println("Interrupt received. Exiting gracefully.")
+	if peer.GlobalRT != nil {
+		peer.GlobalRT.SaveToDBAsync()
+		time.Sleep(1 * time.Second)
+	}
 }
