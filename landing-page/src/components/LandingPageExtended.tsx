@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Github, BookOpen, Instagram, Linkedin, Mail, PencilLine,Users } from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
@@ -52,11 +52,31 @@ const HowItWorks: React.FC = () => {
 };
 
 const Community: React.FC = () => {
+  const [stars, setStars] = useState<number | null>(null);
+
+  // Fetch GitHub stars on mount and on reload
+  const fetchStars = async () => {
+    try {
+      const res = await fetch('https://api.github.com/repos/devlup-labs/Libr');
+      const data = await res.json();
+      if (typeof data.stargazers_count === 'number') {
+        setStars(data.stargazers_count);
+      } else {
+        setStars(null);
+      }
+    } catch {
+      setStars(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchStars();
+  }, []);
+
   const stats = [
-    { number: "Open Source", label: "MIT Licensed" },
+    { number: "MIT Licensed", label: "Open Source" },
     { number: "Go + libp2p", label: "Technology Stack" },
-    // { number: "Research", label: "Academic Project" },
-    { number: "2025", label: "Development Year" },
+    { number: stars !== null ? `${stars} stars` : "—", label: "github.com/libr-forum/libr" },
     { number: "Beta", label: "v0.0.1" },
   ];
 
@@ -83,21 +103,43 @@ const Community: React.FC = () => {
           <div className="flex flex-col gap-8 w-full items-center justify-center">
             <div className="flex flex-col gap-6 w-full items-center justify-center mb-4 sm:flex-row sm:gap-6 sm:mb-8 sm:items-center md:justify-between md:p-20 pb-0 pt-0">
               {stats.map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  className="text-center"
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  transition={{
-                    duration: 0.8,
-                    ease: [0.4, 0, 0.2, 1],
-                    delay: index * 0.1
-                  }}
-                  viewport={{ once: false }}
-                >
-                  <div className="text-3xl font-bold text-libr-secondary mb-2">{stat.number}</div>
-                  <div className="text-muted-foreground">{stat.label}</div>
-                </motion.div>
+                stat.label === "github.com/libr-forum/libr" ? (
+                  <motion.div
+                    key={stat.label}
+                    className="text-center cursor-pointer"
+                    initial={{ scale: 0, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.8,
+                      ease: [0.4, 0, 0.2, 1],
+                      delay: index * 0.1
+                    }}
+                    viewport={{ once: false }}
+                    onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')}
+                    tabIndex={0}
+                    role="button"
+                    aria-label="View on GitHub"
+                  >
+                    <div className="text-3xl font-bold text-libr-secondary mb-2">{stat.number}</div>
+                    <div className="text-muted-foreground">{stat.label}</div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={stat.label}
+                    className="text-center"
+                    initial={{ scale: 0, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.8,
+                      ease: [0.4, 0, 0.2, 1],
+                      delay: index * 0.1
+                    }}
+                    viewport={{ once: false }}
+                  >
+                    <div className="text-3xl font-bold text-libr-secondary mb-2">{stat.number}</div>
+                    <div className="text-muted-foreground">{stat.label}</div>
+                  </motion.div>
+                )
               ))}
             </div>
             <div className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
@@ -105,7 +147,13 @@ const Community: React.FC = () => {
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
+              <button
+                onClick={() => {
+                  fetchStars();
+                  window.open('https://github.com/devlup-labs/Libr', '_blank');
+                }}
+                className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0"
+              >
                 <Github className="w-5 h-5 mr-3" />
                 View on GitHub
               </button>
