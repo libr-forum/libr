@@ -44,6 +44,7 @@ func SendPing(selfID [20]byte, selfPort string, target *models.Node) error {
 	}
 
 	pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
+	fmt.Println("public_key in sendping:", pubKeyB64)
 	jsonMap := map[string]string{
 		"public_key": pubKeyB64,
 	}

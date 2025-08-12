@@ -312,7 +312,6 @@ func initDHT() {
 	RegisterLocalState(localNode, rt)
 
 	fmt.Println("🌐 Starting Kademlia node at")
-	bootstrap.NodeUpdate(rt)
 
 	empty := true
 	for _, b := range rt.Buckets {
@@ -325,6 +324,8 @@ func initDHT() {
 		// All buckets are nil
 		fmt.Println("❗ No buckets found in routing table, bootstrapping from peers...")
 		bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
+	} else {
+		bootstrap.NodeUpdate(rt)
 	}
 
 	data, _ := json.MarshalIndent(rt, "", "  ")
@@ -475,13 +476,6 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 		return network.StoreHandler(msgCert, globalLocalNode, globalRT)
 
 	case "find_node":
-		keyStr, ok := body["node_id"].(string)
-		if !ok || keyStr == "" {
-			fmt.Println("find_node error: node_id is missing or not a string")
-			errResp := map[string]interface{}{"error": "node_id is missing or not a string"}
-			resp, _ := json.Marshal(errResp)
-			return resp
-		}
 		keyPubKeyStr, ok := body["public_key"].(string)
 		if !ok || keyPubKeyStr == "" {
 			fmt.Println("find_node error: public_key is missing or not a string")
@@ -489,12 +483,7 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 			resp, _ := json.Marshal(errResp)
 			return resp
 		}
-		// Compose a body map as expected by FindNodeHandler
-		findNodeBody := map[string]interface{}{
-			"node_id":    keyStr,
-			"public_key": keyPubKeyStr,
-		}
-		return network.FindNodeHandler(ip, port, findNodeBody, globalLocalNode, globalRT)
+		return network.FindNodeHandler(ip, port, keyPubKeyStr, globalLocalNode, globalRT)
 
 	case "delete":
 		var repCert models.ReportCert

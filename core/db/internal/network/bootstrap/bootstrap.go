@@ -341,7 +341,8 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 			wg.Add(1)
 			go func(n *models.Node) {
 				defer wg.Done()
-				req := fmt.Sprintf(`{"node_id": "%x","public_key": "%x"}`, localNode.NodeId[:], localNode.PublicKey[:])
+				req := fmt.Sprintf(`{"public_key": "%x"}`, localNode.PublicKey[:])
+				fmt.Println("public_key in find_node:", localNode.PublicKey[:])
 				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
 				if err != nil {
 					fmt.Println("⚠ FindNode failed:", err)
@@ -395,6 +396,7 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 }
 
 func NodeUpdate(rt *routing.RoutingTable) {
+	fmt.Println("Node Update heheheh")
 	for _, bucket := range rt.Buckets {
 		for _, node := range bucket.Nodes {
 			if node.IP == "" || node.Port == "" {

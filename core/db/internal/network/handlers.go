@@ -30,6 +30,7 @@ func HandlePing(ip string, port string, body interface{}, localNode *models.Node
 		return nil
 	}
 	pubKeyStr, ok := bodyMap["public_key"].(string)
+	fmt.Println("public_key in handle ping:", pubKeyStr)
 	if !ok || pubKeyStr == "" {
 		fmt.Println("Missing or invalid public_key in HandlePing")
 		return nil
@@ -94,17 +95,8 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 	}
 }
 
-func FindNodeHandler(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
-	bodyMap, ok := body.(map[string]interface{})
-	if !ok {
-		fmt.Println("Invalid body format in FindNodeHandler")
-		return nil
-	}
-	pubKeyStr, ok := bodyMap["public_key"].(string)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in FindNodeHandler")
-		return nil
-	}
+func FindNodeHandler(ip string, port string, pubKeyStr string, localNode *models.Node, rt *routing.RoutingTable) []byte {
+
 	nodeID := node.GenerateNodeID(pubKeyStr)
 
 	senderNode := &models.Node{
