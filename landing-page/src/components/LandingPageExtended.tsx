@@ -143,7 +143,7 @@ const Community: React.FC = () => {
               ))}
             </div>
             <div className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
-              <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
+              <button onClick={() => window.open('https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae', '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>
@@ -312,7 +312,7 @@ const Footer: React.FC = () => {
               <li><a href="#features" className="hover:text-libr-accent1 transition-colors">Architecture</a></li>
               <li><a href="#how-it-works" className="hover:text-libr-accent1 transition-colors">Protocol</a></li>
               <li><a href="#technical-modules" className="hover:text-libr-accent1 transition-colors">Modules</a></li>
-              <li><a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target='_blank' className="hover:text-libr-accent1 transition-colors">Documentation</a></li>
+              <li><a href="https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae" target='_blank' className="hover:text-libr-accent1 transition-colors">Documentation</a></li>
             </ul>
           </div>
           

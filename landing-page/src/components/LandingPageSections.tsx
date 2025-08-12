@@ -2,7 +2,6 @@ import React,{useRef,useEffect,useState} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Download, X, Menu} from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
-import { hrtime } from 'process';
 // import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 
 interface HeaderProps {
@@ -38,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
     { href: "#how-it-works", label: "Protocol" },
     { href: "#technical-modules", label: "Modules" },
     { href: "#how-to-use", label: "How To" },
-    { href: "https://github.com/devlup-labs/Libr/blob/main/README.md", label: "Docs", external: true },
+    { href: "https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", label: "Docs", external: true },
     { href: "https://github.com/devlup-labs/Libr", label: "GitHub", external: true },
     { href: "https://forms.gle/udt5zATFogCGQtUTA", label: "Join Beta", external: true },
     { href: "https://forms.gle/Uchqc6Z49aoJwjvZ9", label: "Feedback", external: true }
@@ -317,7 +316,7 @@ const Hero:React.FC = () => {
                 <Download className="w-5 h-5 mr-3" />
                 Join Beta
               </button>
-              <button onClick={() => window.open("https://github.com/devlup-labs/Libr/blob/main/README.md", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
+              <button onClick={() => window.open("https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Documentation
               </button>
