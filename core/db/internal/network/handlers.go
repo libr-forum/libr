@@ -110,6 +110,7 @@ func FindNodeHandler(ip string, port string, pubKeyStr string, localNode *models
 		fmt.Println("❌ Pinger not registered")
 		return nil
 	}
+	fmt.Println("senderNode:", senderNode)
 	rt.InsertNode(senderNode, GlobalPinger)
 
 	closest := SendFindNode(nodeID, rt)

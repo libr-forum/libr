@@ -353,6 +353,7 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 					fmt.Println("⚠ Failed to decode FindNode response:", err)
 					return
 				}
+				fmt.Println("newNodes:", newNodes)
 				results <- newNodes
 			}(dn.N)
 		}
