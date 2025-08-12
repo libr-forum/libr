@@ -95,8 +95,22 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 	}
 }
 
-func FindNodeHandler(ip string, port string, pubKeyStr string, localNode *models.Node, rt *routing.RoutingTable) []byte {
-
+func FindNodeHandler(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+	bodyMap, ok := body.(map[string]interface{})
+	if !ok {
+		fmt.Println("Invalid body format in FindNodeHandler")
+		return nil
+	}
+	pubKeyStr, ok := bodyMap["public_key"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in FindNodeHandler")
+		return nil
+	}
+	keyStr, ok := bodyMap["node_id"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in FindNodeHandler")
+		return nil
+	}
 	nodeID := node.GenerateNodeID(pubKeyStr)
 
 	senderNode := &models.Node{
@@ -105,15 +119,19 @@ func FindNodeHandler(ip string, port string, pubKeyStr string, localNode *models
 		Port:      port,
 		PublicKey: pubKeyStr,
 	}
+	decKey, err := node.DecodeNodeID(keyStr)
+	if err != nil {
+		fmt.Println("Error decoding node ID:", err)
+		return nil
+	}
 
 	if GlobalPinger == nil {
 		fmt.Println("❌ Pinger not registered")
 		return nil
 	}
-	fmt.Println("senderNode:", senderNode)
 	rt.InsertNode(senderNode, GlobalPinger)
 
-	closest := SendFindNode(nodeID, rt)
+	closest := SendFindNode(decKey, rt)
 	for _, n := range closest {
 		if n.PublicKey != "" {
 			n.NodeId = node.GenerateNodeID(n.PublicKey)
