@@ -1,38 +1,112 @@
-package Peers
+package peer
 
 import (
+	// ...
 	"bytes"
 	"context"
+	//"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"strings"
 	"time"
+
+	// "github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	// "github.com/devlup-labs/Libr/core/db/config"
+	// "github.com/devlup-labs/Libr/core/db/internal/models"
+	// "github.com/devlup-labs/Libr/core/db/internal/network"
+	// "github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
+	// "github.com/devlup-labs/Libr/core/db/internal/node"
+	// "github.com/devlup-labs/Libr/core/db/internal/routing"
+	// "github.com/devlup-labs/Libr/core/db/internal/utils"
 )
 
 var Peer *ChatPeer
+// var globalLocalNode *models.Node
+// var GlobalRT *routing.RoutingTable
 
-func StartNode(relayAdd string) {
+type RelayDist struct {
+	relayID string
+	dist    *big.Int
+}
+
+// func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
+// 	globalLocalNode = n
+// 	GlobalRT = rt
+
+// 	// ✅ Register POST handler
+// 	network.RegisterPOST(POST)
+
+// 	// ✅ Register RealPinger
+// 	network.RegisterPinger(&network.RealPinger{})
+// }
+
+// func initDHT() {
+// 	parts := strings.Split(OwnPubIP, ":")
+// 	pubKey, _, _ := cryptoutils.LoadKeys()
+// 	if len(parts) != 2 {
+// 		log.Fatalf("Invalid public address format: %s", OwnPubIP)
+// 	}
+// 	ip := parts[0]
+// 	port := parts[1]
+
+// 	bootstrapAddrs, _ := utils.GetDbAddr()
+
+// 	// 3. Init DB and routing
+// 	config.InitDB()
+// 	address := ip + ":" + port
+// 	localNode := &models.Node{
+// 		NodeId:    node.GenerateNodeID(base64.StdEncoding.EncodeToString(pubKey)),
+// 		IP:        ip,
+// 		Port:      port,
+// 		PublicKey: base64.StdEncoding.EncodeToString(pubKey),
+// 	}
+// 	rt := routing.GetOrCreateRoutingTable(localNode)
+// 	RegisterLocalState(localNode, rt)
+
+// 	fmt.Println("🌐 Starting Kademlia node at")
+
+// 	empty := true
+// 	for _, b := range rt.Buckets {
+// 		if b != nil && len(b.Nodes) > 0 {
+// 			empty = false
+// 			break
+// 		}
+// 	}
+// 	if empty {
+// 		// All buckets are nil
+// 		fmt.Println("❗ No buckets found in routing table, bootstrapping from peers...")
+// 		bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
+// 	} else {
+// 		bootstrap.NodeUpdate(rt)
+// 	}
+
+// 	data, _ := json.MarshalIndent(rt, "", "  ")
+// 	fmt.Println(string(data))
+// 	fmt.Println("✅ Kademlia node running at", address)
+// }
+
+func StartNode(relayMultiAddrList []string) {
 
 	fmt.Println("Starting Node...")
-
-	relayAddr := relayAdd // have to build logic about getting Multiple Relays
-
 	var err error
-	Peer, err = NewChatPeer(relayAddr)
+	Peer, err = NewChatPeer(relayMultiAddrList)
 	if err != nil {
 		fmt.Println("Error creating peer:", err)
 		return
 	}
+
 	ctx := context.Background()
 
 	if err := Peer.Start(ctx); err != nil {
 		log.Fatal(err)
 	}
 
+	// initDHT()
 }
 
-func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"/ts=123&&id=123"
+func GET(targetPeerID string ,route string) ([]byte, error) { //"/ts=123&&id=123"
 
 	reqparams := make(map[string]string)
 	parts := strings.Split(route, "/")
@@ -54,15 +128,15 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"
 	_ = jsonReq
 	ctx := context.Background()
 
-	GetResp, err := Peer.Send(ctx, targetIP, targetPort, jsonReq, nil)
+	GetResp, err := Peer.Send(ctx,targetPeerID, jsonReq, nil)
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
 	}
-	GetResp= bytes.TrimRight(GetResp, "\x00")
+	GetResp = bytes.TrimRight(GetResp, "\x00")
 	return GetResp, nil //this will be json bytes with resp encoded in form of resp from the server and can be used according to utility
 }
 
-func POST(targetIP string, targetPort string, route string, body []byte) ([]byte, error) {
+func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
 
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -84,28 +158,124 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 		fmt.Println("[DEBUG]Failed to get req params json")
 		return nil, err
 	}
-	
-	
-	GetResp, err := Peer.Send(timeoutCtx, targetIP, targetPort, jsonReq, body)
+
+	GetResp, err := Peer.Send(timeoutCtx, targetPeerID , jsonReq, body)
 
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
 	}
-	GetResp= bytes.TrimRight(GetResp, "\x00")
+	GetResp = bytes.TrimRight(GetResp, "\x00")
 	return GetResp, nil
 }
 
+func ServeGetReq(paramsBytes []byte) []byte {
+	var params map[string]interface{}
+	err := json.Unmarshal(paramsBytes, &params)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-func ServeGetReq([]byte) []byte {
+	switch params["route"] {
+	case "find_value":
+		keyStr, ok := params["ts"].(string)
+		if !ok {
+			fmt.Println("ts is not a string")
+		}
+		fmt.Printf("Timestamp to retrieve: %s", keyStr)
 
-	//add logic to serve get requests here
+
+
+
+
+	//	return network.FindValueHandler(keyStr, globalLocalNode, GlobalRT)
+
+
+//uncomment this acc to use
+
+
+
+
+
+	}
 
 	var resp []byte
 	return resp
 
 }
 
-func ServePostReq([]byte, []byte) []byte {
-	var PostResp []byte
-	return PostResp
-}
+// func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
+// 	fmt.Println("Serving Post Request")
+
+// 	var params map[string]interface{}
+// 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+// 		fmt.Println("Failed to unmarshal params:", err)
+// 		return nil
+// 	}
+
+// 	route, ok := params["route"].(string)
+// 	if !ok {
+// 		fmt.Println("route param missing or not string")
+// 		return nil
+// 	}
+
+// 	pubipStr := string(addr)
+// 	ip := strings.Split(pubipStr, ":")[0]
+// 	port := strings.Split(pubipStr, ":")[1]
+// 	fmt.Println("IP:", ip, "Port:", port)
+
+// 	var body map[string]interface{}
+// 	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+// 		fmt.Println("Failed to unmarshal body:", err)
+// 		return nil
+// 	}
+// 	fmt.Println("Body:", body)
+
+// 	switch route {
+// 	case "ping":
+// 		return network.HandlePing(ip, port, body, globalLocalNode, GlobalRT)
+
+// 	case "store":
+// 		var msgCert models.MsgCert
+// 		jsonBytes, _ := json.Marshal(body)
+// 		if err := json.Unmarshal(jsonBytes, &msgCert); err != nil {
+// 			fmt.Println("Error unmarshaling into MsgCert:", err)
+// 			return nil
+// 		}
+// 		return network.StoreHandler(msgCert, globalLocalNode, GlobalRT)
+
+// 	case "find_node":
+// 		keyStr, ok := body["node_id"].(string)
+// 		if !ok || keyStr == "" {
+// 			fmt.Println("find_node error: node_id is missing or not a string")
+// 			errResp := map[string]interface{}{"error": "node_id is missing or not a string"}
+// 			resp, _ := json.Marshal(errResp)
+// 			return resp
+// 		}
+// 		keyPubKeyStr, ok := body["public_key"].(string)
+// 		if !ok || keyPubKeyStr == "" {
+// 			fmt.Println("find_node error: public_key is missing or not a string")
+// 			errResp := map[string]interface{}{"error": "public_key is missing or not a string"}
+// 			resp, _ := json.Marshal(errResp)
+// 			return resp
+// 		}
+// 		// Compose a body map as expected by FindNodeHandler
+// 		findNodeBody := map[string]interface{}{
+// 			"node_id":    keyStr,
+// 			"public_key": keyPubKeyStr,
+// 		}
+// 		return network.FindNodeHandler(ip, port, findNodeBody, globalLocalNode, GlobalRT)
+
+// 	case "delete":
+// 		var repCert models.ReportCert
+// 		jsonBytes, _ := json.Marshal(body)
+// 		if err := json.Unmarshal(jsonBytes, &repCert); err != nil {
+// 			fmt.Println("Error unmarshaling into ReportCert:", err)
+// 			return nil
+// 		}
+// 		return network.DeleteHandler(&repCert, globalLocalNode, GlobalRT)
+
+// 	default:
+// 		fmt.Println("Unknown POST route:", route)
+// 		return nil
+// 	}
+// }

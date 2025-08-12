@@ -1,14 +1,22 @@
-package Peers
+package peer
 
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"log"
+	"math/big"
+	"sort"
 
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	//"io"
-	"strconv"
+
 	"strings"
 	"time"
 
@@ -22,10 +30,17 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/pion/stun"
+
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
+
+	//webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
 const ChatProtocol = protocol.ID("/chat/1.0.0")
+
+var OwnPubIP string
 
 type ChatPeer struct {
 	Host      host.Host
@@ -35,25 +50,26 @@ type ChatPeer struct {
 }
 
 type reqFormat struct {
-	Type  string `json:"type,omitempty"`
-	PubIP string `json:"pubip,omitempty"`
+	Type      string          `json:"type,omitempty"`
+	PeerID     string          `json:"peerid,omitempty"`
 	ReqParams json.RawMessage `json:"reqparams,omitempty"`
-	Body json.RawMessage `json:"body,omitempty"`
+	Body      json.RawMessage `json:"body,omitempty"`
 }
 
-func NewChatPeer(relayAddr string) (*ChatPeer, error) {
-	fmt.Println("[DEBUG] Parsing relay address:", relayAddr)
-	relayMA, err := multiaddr.NewMultiaddr(relayAddr)
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to parse relay multiaddr:", err)
-		return nil, err
+// type RelayDist struct {
+// 	relayID string
+// 	dist    *big.Int
+// }
+
+func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
+
+	var relayList []string
+	for _, multiaddr := range relayMultiAddrList {
+		parts := strings.Split(multiaddr, "/")
+		relayList = append(relayList, parts[len(parts)-1])
 	}
 
-	relayInfo, err := peer.AddrInfoFromP2pAddr(relayMA)
-	if err != nil {
-		fmt.Println("[DEBUG] Failed to extract relay peer info:", err)
-		return nil, err
-	}
+	caCertPool := x509.NewCertPool()	
 
 	fmt.Println("[DEBUG] Creating connection manager")
 	connMgr, err := connmgr.NewConnManager(100, 400)
@@ -62,14 +78,25 @@ func NewChatPeer(relayAddr string) (*ChatPeer, error) {
 		return nil, err
 	}
 
+	tlsConfig := &tls.Config{
+		 RootCAs:            caCertPool,
+		InsecureSkipVerify: true,
+		// Other TLS configurations like ClientAuth, InsecureSkipVerify, etc.
+	}
+
 	fmt.Println("[DEBUG] Creating libp2p Host")
 	h, err := libp2p.New(
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"), // WebSocket
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.ConnectionManager(connMgr),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelay(),
-		//libp2p.EnableHolePunching(),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(websocket.New, websocket.WithTLSConfig(tlsConfig)),
+		// libp2p.Transport(websocket.NewWithTLSConfig(tlsConfig)),
+		// libp2p.Transport(websocket.New),
 	)
+
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create Host:", err)
 		return nil, err
@@ -102,6 +129,52 @@ func NewChatPeer(relayAddr string) (*ChatPeer, error) {
 	}
 	_ = hps
 
+
+	var distmap []RelayDist
+	//OwnPubIP = GetPublicIP()
+	h1 := sha256.New()
+	h1.Write([]byte(h.ID().String()))
+	peerIDhash := hex.EncodeToString(h1.Sum(nil))
+
+	for _, relay := range relayList {
+
+		h_R := sha256.New()
+		h_R.Write([]byte(relay))
+		RelayIDhash := hex.EncodeToString(h_R.Sum(nil))
+
+		dist := XorHexToBigInt(peerIDhash, RelayIDhash)
+
+		distmap = append(distmap, RelayDist{dist: dist, relayID: relay})
+	}
+
+	sort.Slice(distmap, func(i, j int) bool {
+		return distmap[i].dist.Cmp(distmap[j].dist) < 0
+	})
+
+	relayIDused := distmap[0].relayID
+	fmt.Println(relayIDused)
+	var relayAddr string
+
+	for _, multiaddr := range relayMultiAddrList {
+		parts := strings.Split(multiaddr, "/")
+		if parts[len(parts)-1] == relayIDused {
+			relayAddr = multiaddr
+			break
+		}
+	}
+
+	fmt.Println("[DEBUG] Parsing relay address:", relayAddr)
+	relayMA, err := multiaddr.NewMultiaddr(relayAddr)
+	if err != nil {
+		fmt.Println("[DEBUG] Failed to parse relay multiaddr:", err)
+		return nil, err
+	}
+
+	relayInfo, err := peer.AddrInfoFromP2pAddr(relayMA)
+	if err != nil {
+		fmt.Println("[DEBUG] Failed to extract relay peer info:", err)
+		return nil, err
+	}
 	// Create circuit relay client
 	fmt.Println("[DEBUG] Creating circuit relay client")
 	// _ = client // Import for reservation function
@@ -112,6 +185,8 @@ func NewChatPeer(relayAddr string) (*ChatPeer, error) {
 		relayID:   relayInfo.ID,
 		peers:     make(map[peer.ID]string),
 	}
+
+	fmt.Println(h.ID().String())
 
 	fmt.Println("[DEBUG] Setting stream handler for chat protocol")
 	h.SetStreamHandler(ChatProtocol, cp.handleChatStream)
@@ -133,7 +208,10 @@ func isPrivateAddr(addr multiaddr.Multiaddr) bool {
 		strings.Contains(addrStr, "172.31.")
 }
 
+
 // why????
+
+
 func (cp *ChatPeer) Start(ctx context.Context) error {
 	fmt.Println("[DEBUG] Connecting to relay:", cp.relayAddr)
 	relayInfo, _ := peer.AddrInfoFromP2pAddr(cp.relayAddr)
@@ -168,8 +246,9 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	var reqSent reqFormat
 	reqSent.Type = "register"
-	reqSent.PubIP = GetPublicIP() // have too use a stun server to get public ip first and then send register command
-	fmt.Println(reqSent.PubIP)
+	reqSent.PeerID = cp.Host.ID().String() // now sending the the peerID in the req to registeer in the relay
+	//reqSent.PubIP = OwnPubIP // have too use a stun server to get public ip first and then send register command
+	fmt.Println(reqSent.PeerID)
 	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
 
 	if err != nil {
@@ -213,7 +292,6 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 
 	reader := bufio.NewReader(s)
 	for {
-		
 
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
@@ -223,51 +301,53 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 		line = bytes.TrimRight(line, "\x00")
 		var reqStruct reqFormat
 		err = json.Unmarshal(line, &reqStruct)
-		
+
 		fmt.Println("[DEBUG] Raw input:", string(line))
 
-		if err!=nil{
+		if err != nil {
 			fmt.Println("[DEBUG]Error unmarshalling to reqStruc")
 		}
+
 		var reqData map[string]interface{}
 		reqStruct.ReqParams = bytes.TrimRight(reqStruct.ReqParams, "\x00")
+
 		if err := json.Unmarshal(reqStruct.ReqParams, &reqData); err != nil {
 			fmt.Printf("[ERROR] Failed to unmarshal incoming request: %v\n", err)
 			return
 		}
-		
-		fmt.Printf("[DEBUG]ReqData is : %+v \n", reqData)
 
+		fmt.Printf("[DEBUG]ReqData is : %+v \n", reqData)
 
 		if reqData["Method"] == "GET" {
 			resp := ServeGetReq(reqStruct.ReqParams)
 			resp = bytes.TrimRight(resp, "\x00")
 			_, err = s.Write(resp)
-			if err!=nil {
+			if err != nil {
 				fmt.Println("[DEBUG]Error writing resp bytes to relay")
-				return 
+				return
 			}
 		}
 
-		if reqData["Method"] == "POST" {
-			resp := ServePostReq(reqStruct.ReqParams, reqStruct.Body)
-			resp = bytes.TrimRight(resp, "\x00")
-			_, err = s.Write(resp)
-			if err!=nil {
-				fmt.Println("[DEBUG]Error writing resp bytes to relay")
-				return 
-			}
-		}
+		// if reqData["Method"] == "POST" {
+		// 	resp := ServePostReq([]byte(reqStruct.PeerID), reqStruct.ReqParams, reqStruct.Body) // have to set the new logic in serve post req now 
+		// 	resp = bytes.TrimRight(resp, "\x00")
+		// 	_, err = s.Write(resp)
+		// 	if err != nil {
+		// 		fmt.Println("[DEBUG]Error writing resp bytes to relay")
+		// 		return
+		// 	}
+		// }
 
 	}
 }
 
-func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string, jsonReq []byte, body []byte ) ([]byte,error) {
-	completeIP := TargetIP + ":" + targetPort
+func (cp *ChatPeer) Send(ctx context.Context,targetPeerID string,jsonReq []byte, body []byte) ([]byte, error) {
+	//completeIP := TargetIP + ":" + targetPort
 
 	var req reqFormat
 	req.Type = "SendMsg"
-	req.PubIP = completeIP
+	//req.PeerID = completeIP
+	req.PeerID = targetPeerID
 	req.ReqParams = jsonReq
 	req.Body = body
 	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
@@ -277,7 +357,8 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 	}
 
 	jsonReqRelay, err := json.Marshal(req)
-	if err!=nil{
+
+	if err != nil {
 		fmt.Println("[DEBUG]Error marshalling get req to be sent to relay")
 		return nil, err
 	}
@@ -287,22 +368,21 @@ func (cp *ChatPeer) Send(ctx context.Context, TargetIP string, targetPort string
 	fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
 
 	reader := bufio.NewReader(stream)
-	ack , err := reader.ReadString('\n')
+	// ack, err := reader.ReadString('\n')
 
-	if err!=nil{
-		fmt.Println("[DEBUG]Error getting the acknowledgement")
-		return nil, err
-	}
-	_=ack //can be used if required
+	// if err != nil {
+	// 	fmt.Println("[DEBUG]Error getting the acknowledgement")
+	// 	return nil, err
+	// }
+	// _ = ack //can be used if required
 
 	var resp = make([]byte, 1024*4)
 	reader.Read(resp)
 	resp = bytes.TrimRight(resp, "\x00")
 	defer stream.Close()
-	
+
 	return resp, err
 }
-
 
 func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	var peers []peer.ID
@@ -321,31 +401,52 @@ func (cp *ChatPeer) Close() error {
 	return cp.Host.Close()
 }
 
-func GetPublicIP() string {
-	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
-	if err != nil {
-		panic(err)
-	}
-	defer c.Close()
+// func GetPublicIP() string {
+// 	c, err := stun.Dial("udp4", "stun.l.google.com:19302")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	defer c.Close()
 
-	var xorAddr stun.XORMappedAddress
-	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	if err := c.Do(message, func(res stun.Event) {
-		if res.Error != nil {
-			panic(res.Error)
-		}
-		if err := xorAddr.GetFrom(res.Message); err != nil {
-			panic(err)
-		}
-	}); err != nil {
-		panic(err)
+// 	var xorAddr stun.XORMappedAddress
+// 	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+// 	if err := c.Do(message, func(res stun.Event) {
+// 		if res.Error != nil {
+// 			panic(res.Error)
+// 		}
+// 		if err := xorAddr.GetFrom(res.Message); err != nil {
+// 			panic(err)
+// 		}
+// 	}); err != nil {
+// 		panic(err)
+// 	}
+
+// 	if xorAddr.IP.To4() == nil {
+// 		panic("STUN returned an IPv6 address; IPv4 not available")
+// 	}
+
+// 	peerAd := xorAddr.IP.String() + ":" + strconv.Itoa(xorAddr.Port)
+// 	return peerAd
+// }
+
+func XorHexToBigInt(hex1, hex2 string) *big.Int {
+
+	bytes1, err1 := hex.DecodeString(hex1)
+	bytes2, err2 := hex.DecodeString(hex2)
+
+	if err1 != nil || err2 != nil {
+		log.Fatalf("Error decoding hex: %v %v", err1, err2)
 	}
 
-	if xorAddr.IP.To4() == nil {
-		panic("STUN returned an IPv6 address; IPv4 not available")
+	if len(bytes1) != len(bytes2) {
+		log.Fatalf("Hex strings must be the same length")
 	}
 
-	peerAd := xorAddr.IP.String() + ":" + strconv.Itoa(xorAddr.Port)
-	return peerAd
+	xorBytes := make([]byte, len(bytes1))
+	for i := 0; i < len(bytes1); i++ {
+		xorBytes[i] = bytes1[i] ^ bytes2[i]
+	}
+
+	result := new(big.Int).SetBytes(xorBytes)
+	return result
 }
-
