@@ -204,6 +204,7 @@
 package bootstrap
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -341,7 +342,7 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 			go func(n *models.Node) {
 				defer wg.Done()
 				jsonMap := map[string]string{
-					"node_id":    hex.EncodeToString(localNode.NodeId[:]),
+					"node_id":    base64.StdEncoding.EncodeToString(localNode.NodeId[:]),
 					"public_key": localNode.PublicKey[:],
 				}
 				jsonBytes, _ := json.Marshal(jsonMap)

@@ -78,9 +78,17 @@ func createTables() error {
 	CREATE INDEX IF NOT EXISTS indx_ts_sender ON msgcert(ts, sender);`
 
 	createRoutingTable := `
-	CREATE TABLE IF NOT EXISTS RoutingTable (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		rt TEXT NOT NULL
+	CREATE TABLE RoutingTable (
+		bucket_idx INTEGER NOT NULL,
+		NodeID     BLOB    NOT NULL,
+		PeerID     TEXT    NOT NULL,
+		LastSeen   DATETIME NOT NULL,
+
+		PRIMARY KEY (bucket_idx, NodeID)
+	);
+
+	CREATE INDEX node_idx
+    	ON RoutingTable(bucket_idx, LastSeen);
 	);`
 
 	_, err := DB.Exec(createMsgCertTable)
