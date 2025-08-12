@@ -439,7 +439,7 @@ export const Sidebar: React.FC = () => {
             <AlertDialogCancel
               className="libr-button bg-muted hover:bg-muted/70"
               onClick={() => {
-                logger.error("Identity reset failed", { error });
+                logger.error("Identity reset cancelled");
                 setShowResetConfirm(false);
                 setConfirmAlias('');
               }}
