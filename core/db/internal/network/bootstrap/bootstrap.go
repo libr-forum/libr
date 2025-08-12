@@ -341,9 +341,13 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 			wg.Add(1)
 			go func(n *models.Node) {
 				defer wg.Done()
-				req := fmt.Sprintf(`{"node_id": "%x","public_key": "%x"}`, localNode.NodeId[:], localNode.PublicKey[:])
+				jsonMap := map[string]string{
+					"node_id":    hex.EncodeToString(localNode.NodeId[:]),
+					"public_key": localNode.PublicKey[:],
+				}
+				jsonBytes, _ := json.Marshal(jsonMap)
 				fmt.Println("public_key in find_node:", localNode.PublicKey[:])
-				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
+				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", jsonBytes)
 				if err != nil {
 					fmt.Println("⚠ FindNode failed:", err)
 					return

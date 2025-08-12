@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
@@ -101,16 +102,20 @@ func FindNodeHandler(ip string, port string, body interface{}, localNode *models
 		fmt.Println("Invalid body format in FindNodeHandler")
 		return nil
 	}
+
 	pubKeyStr, ok := bodyMap["public_key"].(string)
 	if !ok || pubKeyStr == "" {
 		fmt.Println("Missing or invalid public_key in FindNodeHandler")
 		return nil
 	}
+
 	keyStr, ok := bodyMap["node_id"].(string)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in FindNodeHandler")
+	if !ok || keyStr == "" {
+		fmt.Println("Missing or invalid node_id in FindNodeHandler") // fixed message
 		return nil
 	}
+
+	// Generate sender node ID from public key
 	nodeID := node.GenerateNodeID(pubKeyStr)
 
 	senderNode := &models.Node{
@@ -119,6 +124,9 @@ func FindNodeHandler(ip string, port string, body interface{}, localNode *models
 		Port:      port,
 		PublicKey: pubKeyStr,
 	}
+
+	// Decode the target node ID from hex
+	keyStr = strings.TrimSpace(keyStr) // prevent decode errors from stray spaces
 	decKey, err := node.DecodeNodeID(keyStr)
 	if err != nil {
 		fmt.Println("Error decoding node ID:", err)
@@ -129,18 +137,24 @@ func FindNodeHandler(ip string, port string, body interface{}, localNode *models
 		fmt.Println("❌ Pinger not registered")
 		return nil
 	}
+
+	// Insert sender node into routing table
 	rt.InsertNode(senderNode, GlobalPinger)
 
+	// Lookup closest nodes to the target ID
 	closest := SendFindNode(decKey, rt)
 	for _, n := range closest {
 		if n.PublicKey != "" {
 			n.NodeId = node.GenerateNodeID(n.PublicKey)
 		}
 	}
+
 	data, err := json.Marshal(closest)
 	if err != nil {
-		fmt.Println("Error while marshiling the PingResponse: ", err)
+		fmt.Println("Error while marshaling the PingResponse:", err)
+		return nil
 	}
+
 	return data
 }
 
