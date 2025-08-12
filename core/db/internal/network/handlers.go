@@ -24,29 +24,23 @@ type StoredResponse struct {
 }
 
 func HandlePing(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
-	var pingReq PingRequest
-
-	// Unmarshal into pingReq
 	bodyMap, ok := body.(map[string]interface{})
 	if !ok {
 		fmt.Println("Invalid body format in HandlePing")
 		return nil
 	}
-	var publicKeyStr string
-	if pk, ok := bodyMap["public_key"].(string); ok {
-		publicKeyStr = pk
-	} else {
-		fmt.Println("Missing public_key in ping body")
+	pubKeyStr, ok := bodyMap["public_key"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in HandlePing")
 		return nil
 	}
-	// Always generate NodeId from public_key
-	dedID := node.GenerateNodeID(publicKeyStr)
+	nodeID := node.GenerateNodeID(pubKeyStr)
 
 	senderNode := &models.Node{
-		NodeId:    dedID,
+		NodeId:    nodeID,
 		IP:        ip,
 		Port:      port,
-		PublicKey: publicKeyStr,
+		PublicKey: pubKeyStr,
 	}
 
 	if GlobalPinger == nil {
@@ -55,12 +49,11 @@ func HandlePing(ip string, port string, body interface{}, localNode *models.Node
 	}
 	rt.InsertNode(senderNode, GlobalPinger)
 
-	fmt.Printf("Ping from node ID: %x, IP: %s Port:%s\n", dedID, senderNode.IP, senderNode.Port)
+	fmt.Printf("Ping from node ID: %x, IP: %s Port:%s\n", nodeID, senderNode.IP, senderNode.Port)
 	data, err := json.Marshal(PingResponse{Status: "ok"})
 	if err != nil {
 		fmt.Println("Error while marshaling the PingResponse: ", err)
 	}
-
 	return data
 }
 
@@ -101,21 +94,64 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 	}
 }
 
-func FindNodeHandler(key [20]byte, localNode *models.Node, rt *routing.RoutingTable) []byte {
-	closest := SendFindNode(key, rt)
+func FindNodeHandler(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+	bodyMap, ok := body.(map[string]interface{})
+	if !ok {
+		fmt.Println("Invalid body format in FindNodeHandler")
+		return nil
+	}
+	pubKeyStr, ok := bodyMap["public_key"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in FindNodeHandler")
+		return nil
+	}
+	nodeID := node.GenerateNodeID(pubKeyStr)
 
+	senderNode := &models.Node{
+		NodeId:    nodeID,
+		IP:        ip,
+		Port:      port,
+		PublicKey: pubKeyStr,
+	}
+
+	if GlobalPinger == nil {
+		fmt.Println("❌ Pinger not registered")
+		return nil
+	}
+	rt.InsertNode(senderNode, GlobalPinger)
+
+	closest := SendFindNode(nodeID, rt)
+	for _, n := range closest {
+		if n.PublicKey != "" {
+			n.NodeId = node.GenerateNodeID(n.PublicKey)
+		}
+	}
 	data, err := json.Marshal(closest)
 	if err != nil {
 		fmt.Println("Error while marshiling the PingResponse: ", err)
 	}
-
 	return data
 }
 
-func StoreHandler(body models.MsgCert, localNode *models.Node, rt *routing.RoutingTable) []byte {
+func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+	bodyMap, ok := body.(map[string]interface{})
+	if !ok {
+		fmt.Println("Invalid body format in StoreHandler")
+		return nil
+	}
+	pubKeyStr, ok := bodyMap["public_key"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in StoreHandler")
+		return nil
+	}
+	// Optionally, validate and use public_key for senderNode if needed
 
-	msgcert := body
-	fmt.Println(msgcert)
+	var msgcert models.MsgCert
+	jsonBytes, _ := json.Marshal(bodyMap)
+	if err := json.Unmarshal(jsonBytes, &msgcert); err != nil {
+		fmt.Println("Error unmarshaling into MsgCert:", err)
+		return nil
+	}
 
 	tsmin := msgcert.Msg.Ts
 	tsmin = tsmin - (tsmin % 60)
@@ -153,16 +189,32 @@ func StoreHandler(body models.MsgCert, localNode *models.Node, rt *routing.Routi
 	return data
 }
 
-func DeleteHandler(body *models.ReportCert, localNode *models.Node, rt *routing.RoutingTable) []byte {
+func DeleteHandler(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+	bodyMap, ok := body.(map[string]interface{})
+	if !ok {
+		fmt.Println("Invalid body format in DeleteHandler")
+		return nil
+	}
+	pubKeyStr, ok := bodyMap["public_key"].(string)
+	if !ok || pubKeyStr == "" {
+		fmt.Println("Missing or invalid public_key in DeleteHandler")
+		return nil
+	}
+	// Optionally, validate and use public_key for senderNode if needed
 
-	repCert := body
+	var repCert models.ReportCert
+	jsonBytes, _ := json.Marshal(bodyMap)
+	if err := json.Unmarshal(jsonBytes, &repCert); err != nil {
+		fmt.Println("Error unmarshaling into ReportCert:", err)
+		return nil
+	}
 
 	tsmin := repCert.Msgcert.Msg.Ts
 	tsmin = tsmin - (tsmin % 60)
 	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	fmt.Println(tsmin, keyBytes)
 
-	closest, err := DeleteValue(&keyBytes, repCert, localNode, rt) //for now err is ignored
+	closest, err := DeleteValue(&keyBytes, &repCert, localNode, rt)
 
 	if err != nil {
 		fmt.Println("Error", err)

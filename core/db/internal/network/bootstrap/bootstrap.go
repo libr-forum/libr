@@ -224,14 +224,23 @@ func BootstrapFromPeers(dbnodes []*models.Node, localNode *models.Node, rt *rout
 	var mu sync.Mutex // protect access to `seen` map
 
 	for _, dbnode := range dbnodes {
-		// Deduplication check
+		// Always generate NodeId from public_key for deduplication
+		if dbnode.PublicKey == "" {
+			continue
+		}
+		nodeID := node.GenerateNodeID(dbnode.PublicKey)
+		idStr := fmt.Sprintf("%x", nodeID[:])
+
 		mu.Lock()
-		if seen[dbnode.PublicKey] {
+		if seen[idStr] {
 			mu.Unlock()
 			continue
 		}
-		seen[dbnode.PublicKey] = true
+		seen[idStr] = true
 		mu.Unlock()
+
+		// Ensure NodeId is set correctly
+		dbnode.NodeId = nodeID
 
 		wg.Add(1)
 		go func(node *models.Node) {
@@ -270,20 +279,25 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 	}
 	var pq []distNode
 
-	// Helper: Add node to queue
+	// Helper: Add node to queue (deduplicated)
 	addNode := func(n *models.Node) {
 		idStr := hex.EncodeToString(n.NodeId[:])
-
 		seenMu.Lock()
 		if _, ok := seen[idStr]; ok {
 			seenMu.Unlock()
 			return
 		}
 		seen[idStr] = n
-		seenMu.Unlock()
-
+		// Also check if already in pq (shouldn't be, but for safety)
+		for _, dn := range pq {
+			if hex.EncodeToString(dn.N.NodeId[:]) == idStr {
+				seenMu.Unlock()
+				return
+			}
+		}
 		d := node.XORBigInt(localNode.NodeId, n.NodeId)
 		pq = append(pq, distNode{N: n, Distance: d})
+		seenMu.Unlock()
 	}
 
 	// Seed with the bootstrap node
@@ -299,23 +313,22 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 			return pq[i].Distance.Cmp(pq[j].Distance) == -1
 		})
 
-		// Select up to alpha unqueried nodes
+		// Select up to alpha unqueried nodes, and mark as queried immediately
 		var toQuery []distNode
 		count := 0
 		for _, dn := range pq {
 			idStr := hex.EncodeToString(dn.N.NodeId[:])
-
 			queriedMu.Lock()
-			alreadyQueried := queried[idStr]
-			queriedMu.Unlock()
-
-			if !alreadyQueried {
+			if !queried[idStr] {
+				queried[idStr] = true // Mark as queried immediately
 				toQuery = append(toQuery, dn)
 				count++
 				if count == 3 { // alpha = 3
+					queriedMu.Unlock()
 					break
 				}
 			}
+			queriedMu.Unlock()
 		}
 		if len(toQuery) == 0 {
 			break
@@ -328,12 +341,6 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 			wg.Add(1)
 			go func(n *models.Node) {
 				defer wg.Done()
-				idStr := hex.EncodeToString(n.NodeId[:])
-
-				queriedMu.Lock()
-				queried[idStr] = true
-				queriedMu.Unlock()
-
 				req := fmt.Sprintf(`{"node_id": "%x","public_key": "%x"}`, localNode.NodeId[:], localNode.PublicKey[:])
 				resp, err := network.GlobalPostFunc(n.IP, n.Port, "/route=find_node", []byte(req))
 				if err != nil {
@@ -398,7 +405,7 @@ func NodeUpdate(rt *routing.RoutingTable) {
 				return
 			}
 
-			req := fmt.Sprintf(`{"node_id": "%x"}`, node.NodeId[:])
+			req := fmt.Sprintf(`{"node_id": "%x","public_key": "%x"}`, node.NodeId[:], node.PublicKey[:])
 			resp, err := network.GlobalPostFunc(node.IP, node.Port, "/route=ping", []byte(req))
 			if err != nil {
 				fmt.Printf("⚠ Failed to ping node %s:%s: %v\n", node.IP, node.Port, err)

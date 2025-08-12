@@ -476,16 +476,25 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 
 	case "find_node":
 		keyStr, ok := body["node_id"].(string)
-		if !ok {
-			fmt.Println("node_id is not a string")
-			return nil
+		if !ok || keyStr == "" {
+			fmt.Println("find_node error: node_id is missing or not a string")
+			errResp := map[string]interface{}{"error": "node_id is missing or not a string"}
+			resp, _ := json.Marshal(errResp)
+			return resp
 		}
-		decodedKey, err := node.DecodeNodeID(keyStr)
-		if err != nil {
-			fmt.Println("failed to decode node ID:", err)
-			return nil
+		keyPubKeyStr, ok := body["public_key"].(string)
+		if !ok || keyPubKeyStr == "" {
+			fmt.Println("find_node error: public_key is missing or not a string")
+			errResp := map[string]interface{}{"error": "public_key is missing or not a string"}
+			resp, _ := json.Marshal(errResp)
+			return resp
 		}
-		return network.FindNodeHandler(decodedKey, globalLocalNode, globalRT)
+		// Compose a body map as expected by FindNodeHandler
+		findNodeBody := map[string]interface{}{
+			"node_id":    keyStr,
+			"public_key": keyPubKeyStr,
+		}
+		return network.FindNodeHandler(ip, port, findNodeBody, globalLocalNode, globalRT)
 
 	case "delete":
 		var repCert models.ReportCert

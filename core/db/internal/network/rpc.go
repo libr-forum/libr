@@ -43,8 +43,11 @@ func SendPing(selfID [20]byte, selfPort string, target *models.Node) error {
 		return fmt.Errorf("POST function not registered")
 	}
 
-	jsonStr := fmt.Sprintf(`{"node_id": "%x","public_key": "%s","port": "%s"}`, selfID[:], base64.StdEncoding.EncodeToString(keycache.PubKey), selfPort)
-	jsonBytes := []byte(jsonStr)
+	pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
+	jsonMap := map[string]string{
+		"public_key": pubKeyB64,
+	}
+	jsonBytes, _ := json.Marshal(jsonMap)
 
 	resp, err := GlobalPostFunc(target.IP, target.Port, "/route=ping", jsonBytes)
 	if err != nil {
