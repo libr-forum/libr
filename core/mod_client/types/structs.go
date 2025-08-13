@@ -28,8 +28,7 @@ type DataToSign struct {
 }
 
 type Mod struct {
-	IP        string `json:"ip"`
-	Port      string `json:"port"`
+	PeerId    string `json:"peer_id"`
 	PublicKey string `json:"public_key"`
 }
 
@@ -41,8 +40,7 @@ type Mod struct {
 
 type Node struct {
 	NodeId [20]byte `json:"nodeid"`
-	IP     string   `json:"ip"`
-	Port   string   `json:"port"`
+	PeerId string   `json:"peer_id"`
 }
 
 type ReportMsg struct {

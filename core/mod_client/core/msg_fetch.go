@@ -49,7 +49,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 
 		toQuery := []*types.Node{}
 		for _, n := range currentClosest {
-			key := fmt.Sprintf("%s:%s", n.IP, n.Port)
+			key := fmt.Sprintf("%s", n.PeerId)
 			if !queried[key] {
 				toQuery = append(toQuery, n)
 				queried[key] = true
@@ -70,7 +70,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 			wg.Add(1)
 			go func(n *types.Node) {
 				defer wg.Done()
-				rawResp, err := network.GetFrom(n.IP, n.Port, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+				rawResp, err := network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
 				if err != nil {
 					return
 				}

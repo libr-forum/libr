@@ -1,10 +1,8 @@
-package Peers
+package peer
 
 import (
 	"bytes"
 	"context"
-
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,7 +11,6 @@ import (
 	"time"
 
 	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
 )
 
 var Peer *ChatPeer
@@ -26,25 +23,24 @@ type RelayDist struct {
 func StartNode(relayMultiAddrList []string) error {
 
 	fmt.Println("Starting Node...")
-	logger.LogToFile("Starting Node...")
 	var err error
 	Peer, err = NewChatPeer(relayMultiAddrList)
 	if err != nil {
 		fmt.Println("Error creating peer:", err)
-		logger.LogToFile("Error creating the peer")
 		return err
 	}
 
 	ctx := context.Background()
 
 	if err := Peer.Start(ctx); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		return err
 	}
 	return nil
+	// initDHT()
 }
 
-func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"/ts=123&&id=123"
+func GET(targetPeerID string, route string) ([]byte, error) { //"/ts=123&&id=123"
 
 	reqparams := make(map[string]string)
 	parts := strings.Split(route, "/")
@@ -61,13 +57,12 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"
 	jsonReq, err := json.Marshal(reqparams)
 	if err != nil {
 		fmt.Println("[DEBUG]Failed to get req params json")
-		logger.LogToFile("[DEBUG]Failed to get req params json")
 		return nil, err
 	}
 	_ = jsonReq
 	ctx := context.Background()
 
-	GetResp, err := Peer.Send(ctx, targetIP, targetPort, jsonReq, nil)
+	GetResp, err := Peer.Send(ctx, targetPeerID, jsonReq, nil)
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
 	}
@@ -75,7 +70,7 @@ func GET(targetIP string, targetPort string, route string) ([]byte, error) { //"
 	return GetResp, nil //this will be json bytes with resp encoded in form of resp from the server and can be used according to utility
 }
 
-func POST(targetIP string, targetPort string, route string, body []byte) ([]byte, error) {
+func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
 
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -98,7 +93,7 @@ func POST(targetIP string, targetPort string, route string, body []byte) ([]byte
 		return nil, err
 	}
 
-	GetResp, err := Peer.Send(timeoutCtx, targetIP, targetPort, jsonReq, body)
+	GetResp, err := Peer.Send(timeoutCtx, targetPeerID, jsonReq, body)
 
 	if err != nil {
 		fmt.Println("Error Sending trial get message")
@@ -116,7 +111,7 @@ func ServeGetReq([]byte) []byte {
 
 }
 
-func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
+func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 	fmt.Println("Serving Post Request")
 
 	var params map[string]interface{}
@@ -130,7 +125,18 @@ func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
 		fmt.Println("route param missing or not string")
 		return nil
 	}
-	fmt.Println(route, string(bodyBytes))
+
+	pubipStr := string(addr)
+	ip := strings.Split(pubipStr, ":")[0]
+	port := strings.Split(pubipStr, ":")[1]
+	fmt.Println("IP:", ip, "Port:", port)
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		fmt.Println("Failed to unmarshal body:", err)
+		return nil
+	}
+	fmt.Println("Body:", body)
 	switch route {
 	case "auto":
 		return handlers.MsgIN(bodyBytes)
@@ -143,29 +149,3 @@ func ServePostReq(paramsBytes []byte, bodyBytes []byte) []byte {
 		return nil
 	}
 }
-
-func XorHexToBigInt(hex1, hex2 string) *big.Int {
-
-	bytes1, err1 := hex.DecodeString(hex1)
-	bytes2, err2 := hex.DecodeString(hex2)
-
-	if err1 != nil || err2 != nil {
-		log.Fatalf("Error decoding hex: %v %v", err1, err2)
-	}
-
-	if len(bytes1) != len(bytes2) {
-		log.Fatalf("Hex strings must be the same length")
-	}
-
-	xorBytes := make([]byte, len(bytes1))
-	for i := 0; i < len(bytes1); i++ {
-		xorBytes[i] = bytes1[i] ^ bytes2[i]
-	}
-
-	result := new(big.Int).SetBytes(xorBytes)
-	return result
-}
-
-// func ServePostReq(params []byte, bodybytes []byte) []byte {
-// 	return handlers.MsgIN(bodybytes)
-// }

@@ -96,7 +96,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 			prevClosest = currentClosest
 			toQuery := []*types.Node{}
 			for _, n := range currentClosest {
-				key := fmt.Sprintf("%s:%s", n.IP, n.Port)
+				key := fmt.Sprintf("%s", n.PeerId)
 				if !queried[key] {
 					toQuery = append(toQuery, n)
 					queried[key] = true
@@ -117,17 +117,17 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 				wg.Add(1)
 				go func(n *types.Node) {
 					defer wg.Done()
-					resp, err := network.SendTo(n.IP, n.Port, route, msgcert, "db")
+					resp, err := network.SendTo(n.PeerId, route, msgcert, "db")
 					fmt.Println(err)
 					if err != nil {
-						log.Printf("Failed to store to %s:%s: %v", n.IP, n.Port, err)
+						log.Printf("Failed to store to %s: %v", n.PeerId, err)
 						return
 					}
 
 					respBytes, ok := resp.([]byte)
 					if !ok {
 						logger.LogToFile("Unexpected Response format received")
-						log.Printf("Unexpected response format from %s:%s", n.IP, n.Port)
+						log.Printf("Unexpected response format from %s", n.PeerId)
 						log.Println(ok)
 						return
 					}
@@ -135,7 +135,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 					var base BaseResponse
 					if err := json.Unmarshal(respBytes, &base); err != nil {
 						logger.LogToFile("[DEBUG]Failed to parse base response")
-						log.Printf("Failed to parse base response from %s:%s: %v", n.IP, n.Port, err)
+						log.Printf("Failed to parse base response from %s: %v", n.PeerId, err)
 						return
 					}
 
@@ -147,7 +147,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 							return
 						}
 						mu.Lock()
-						stored[fmt.Sprintf("%s:%s", n.IP, n.Port)] = true
+						stored[fmt.Sprintf("%s", n.PeerId)] = true
 						madeProgress = true
 						if len(stored) >= config.K {
 							mu.Unlock()
@@ -168,7 +168,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 						}
 
 					default:
-						log.Printf("Unknown response type '%s' from %s:%s", base.Type, n.IP, n.Port)
+						log.Printf("Unknown response type '%s' from %s", base.Type, n.PeerId)
 					}
 				}(n)
 			}
