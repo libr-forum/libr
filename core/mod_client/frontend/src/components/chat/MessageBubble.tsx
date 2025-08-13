@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Message,User,useAppStore } from '../../store/useAppStore';
-import { Clock, Check, AlertCircle, MoreVertical } from 'lucide-react';
+import { Clock, Check, AlertCircle, MoreVertical, Cross } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import {
   DropdownMenu,
@@ -10,9 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {emojify} from 'node-emoji';
-import { Delete, Report } from 'wailsjs/go/main/App';
+import { Delete, Report,GenerateAlias } from 'wailsjs/go/main/App';
 import { types } from 'wailsjs/go/models';
 import { parseFormatting,apiService } from '@/services/api';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { TooltipContent } from '@radix-ui/react-tooltip';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,8 +22,8 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const formatTime = (unixTimestamp: bigint) => {
-    const timestampNumber = Number(unixTimestamp); // convert bigint to number
-    const date = new Date(timestampNumber);
+    const timestampNumber = Number(unixTimestamp);
+    const date = new Date(timestampNumber * 1000);
 
     return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
@@ -32,7 +34,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       day: '2-digit',
     }).format(date);
   };
-
   
   const{setMessages}=useAppStore();
 
@@ -117,10 +118,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 {message.moderationNote && (
                   <div className="px-2 py-1 mt-2 bg-muted/20 text-foreground text-xs rounded">
                     {message.moderationNote.map((cert, index) => (
-                      <div key={index}>
-                        <p>{cert.public_key}</p>
-                        <p>{cert.status}</p>
-                        <p>{cert.sign}</p>
+                      <div key={index} className='flex flex-row gap-4 items-center justify-between'>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="cursor-pointer text-muted-foreground">
+                              <CertAlias publicKey={cert.public_key} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <span className="break-all">{cert.public_key}</span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <p>
+                          {cert.status === "1"
+                            ? <Check className="w-3 h-3 text-green-500"/>
+                            : <Cross className="w-3 h-3 text-red-500"/>}
+                        </p>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="cursor-pointer text-muted-foreground">
+                              sign
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <span className="break-all">{cert.sign}</span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     ))}
                   </div>
@@ -227,4 +250,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       </div>
     </motion.div>
   );
+};
+
+// Helper component to fetch and display alias asynchronously
+const CertAlias: React.FC<{ publicKey: string }> = ({ publicKey }) => {
+  const [alias, setAlias] = useState<string>(publicKey);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const result = await GenerateAlias(publicKey);
+        if (mounted && result) setAlias(result);
+      } catch {
+        // fallback to publicKey
+      }
+    })();
+    return () => { mounted = false; };
+  }, [publicKey]);
+
+  return <span className="font-semibold">{alias}</span>;
 };

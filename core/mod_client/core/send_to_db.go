@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -44,11 +45,19 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 	var prevClosest []*types.Node
 	madeProgress := false
 
+	// Add context with 3 second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
 	// Worker goroutine
 	go func() {
 		for {
 			select {
 			case <-done:
+				return
+			case <-ctx.Done():
+				log.Println("SendToDb worker timed out after 3 seconds.")
+				close(done)
 				return
 			default:
 			}
@@ -96,7 +105,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 			prevClosest = currentClosest
 			toQuery := []*types.Node{}
 			for _, n := range currentClosest {
-				key := fmt.Sprintf("%s", n.PeerId)
+				key := n.PeerId
 				if !queried[key] {
 					toQuery = append(toQuery, n)
 					queried[key] = true
@@ -147,7 +156,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 							return
 						}
 						mu.Lock()
-						stored[fmt.Sprintf("%s", n.PeerId)] = true
+						stored[n.PeerId] = true
 						madeProgress = true
 						if len(stored) >= config.K {
 							mu.Unlock()

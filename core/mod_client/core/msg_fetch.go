@@ -49,7 +49,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 
 		toQuery := []*types.Node{}
 		for _, n := range currentClosest {
-			key := fmt.Sprintf("%s", n.PeerId)
+			key := n.PeerId
 			if !queried[key] {
 				toQuery = append(toQuery, n)
 				queried[key] = true

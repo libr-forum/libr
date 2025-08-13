@@ -111,7 +111,7 @@ func ServeGetReq([]byte) []byte {
 
 }
 
-func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
+func ServePostReq(addr string, paramsBytes []byte, bodyBytes []byte) []byte {
 	fmt.Println("Serving Post Request")
 
 	var params map[string]interface{}
@@ -125,11 +125,6 @@ func ServePostReq(addr []byte, paramsBytes []byte, bodyBytes []byte) []byte {
 		fmt.Println("route param missing or not string")
 		return nil
 	}
-
-	pubipStr := string(addr)
-	ip := strings.Split(pubipStr, ":")[0]
-	port := strings.Split(pubipStr, ":")[1]
-	fmt.Println("IP:", ip, "Port:", port)
 
 	var body map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &body); err != nil {

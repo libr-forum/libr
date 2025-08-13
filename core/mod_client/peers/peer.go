@@ -325,15 +325,15 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 			}
 		}
 
-		// if reqData["Method"] == "POST" {
-		// 	resp := ServePostReq([]byte(reqStruct.PeerID), reqStruct.ReqParams, reqStruct.Body) // have to set the new logic in serve post req now
-		// 	resp = bytes.TrimRight(resp, "\x00")
-		// 	_, err = s.Write(resp)
-		// 	if err != nil {
-		// 		fmt.Println("[DEBUG]Error writing resp bytes to relay")
-		// 		return
-		// 	}
-		// }
+		if reqData["Method"] == "POST" {
+			resp := ServePostReq(reqStruct.PeerID, reqStruct.ReqParams, reqStruct.Body) // have to set the new logic in serve post req now
+			resp = bytes.TrimRight(resp, "\x00")
+			_, err = s.Write(resp)
+			if err != nil {
+				fmt.Println("[DEBUG]Error writing resp bytes to relay")
+				return
+			}
+		}
 
 	}
 }

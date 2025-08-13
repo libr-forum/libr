@@ -202,21 +202,25 @@ func AutoSendToMods(message string, ts int64) ([]types.ModCert, error) {
 
 			select {
 			case res := <-responseChan:
-				log.Printf("[INFO] Received modcert from %s, status: %s", mod.PeerId, res.Status)
-				if res.Status == "1" {
+				if res.Status == "1" || res.Status == "0" {
 					mu.Lock()
 					modcertList = append(modcertList, res)
-					accpCount++
-					curAccp := accpCount
 					curTotal := totalMods
 					mu.Unlock()
+					log.Printf("[INFO] Received modcert from %s, status: %s", mod.PeerId, res.Status)
+					if res.Status == "1" {
+						mu.Lock()
+						accpCount++
+						curAccp := accpCount
+						mu.Unlock()
 
-					log.Printf("[WARN] Mod %s Accepted. AccCount: %d, TotalMods: %d", mod.PeerId, curAccp, curTotal)
-					if curAccp > (noOfMods / 2) {
-						once.Do(func() {
-							log.Println("Majority accepted.")
-							cancel()
-						})
+						log.Printf("[WARN] Mod %s Accepted. AccCount: %d, TotalMods: %d", mod.PeerId, curAccp, curTotal)
+						if curAccp > (noOfMods / 2) {
+							once.Do(func() {
+								log.Println("Majority accepted.")
+								cancel()
+							})
+						}
 					}
 				}
 
