@@ -6,7 +6,7 @@ require (
 	github.com/devlup-labs/Libr/core/crypto v1.0.1
 	github.com/libp2p/go-libp2p v0.42.0
 	github.com/multiformats/go-multiaddr v0.16.0
-	github.com/pion/stun v0.6.1
+	github.com/pion/stun v0.6.1 // indirect
 )
 
 require (

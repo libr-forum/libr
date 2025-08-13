@@ -2,9 +2,11 @@ package node
 
 import (
 	"crypto/sha1"
-	"encoding/hex"
+	"encoding/base64"
 	"errors"
 	"math/big"
+
+	"github.com/devlup-labs/Libr/core/db/internal/keycache"
 )
 
 func GenerateNodeID(input string) [20]byte {
@@ -13,6 +15,13 @@ func GenerateNodeID(input string) [20]byte {
 	var id [20]byte
 	copy(id[:], h.Sum(nil))
 	return id
+}
+
+func GenerateNodeIDFromPublicKey() string {
+	pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
+	nodeID := GenerateNodeID(pubKeyB64)
+	nodeIDStr := base64.StdEncoding.EncodeToString(nodeID[:])
+	return nodeIDStr
 }
 
 func XOR(a, b [20]byte) [20]byte {
@@ -28,10 +37,10 @@ func XORBigInt(a, b [20]byte) *big.Int {
 	return new(big.Int).SetBytes(xor[:])
 }
 
-func DecodeNodeID(hexStr string) ([20]byte, error) {
+func DecodeNodeID(base64Str string) ([20]byte, error) {
 	var id [20]byte
 
-	bytes, err := hex.DecodeString(hexStr)
+	bytes, err := base64.StdEncoding.DecodeString(base64Str)
 	if err != nil {
 		return id, err
 	}

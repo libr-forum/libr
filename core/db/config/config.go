@@ -38,7 +38,7 @@ func InitDB() {
 
 	err = createTables()
 	if err != nil {
-		log.Fatalf("Failed to create tables: %v", err)
+		log.Printf("Failed to create tables: %v", err)
 	}
 
 	log.Println("SQLite database initialized successfully.")
@@ -78,26 +78,23 @@ func createTables() error {
 	CREATE INDEX IF NOT EXISTS indx_ts_sender ON msgcert(ts, sender);`
 
 	createRoutingTable := `
-	CREATE TABLE RoutingTable (
+	CREATE TABLE IF NOT EXISTS RoutingTable (
 		bucket_idx INTEGER NOT NULL,
 		NodeID     BLOB    NOT NULL,
 		PeerID     TEXT    NOT NULL,
-		LastSeen   DATETIME NOT NULL,
-
+		LastSeen   INTEGER NOT NULL,
 		PRIMARY KEY (bucket_idx, NodeID)
 	);
+	CREATE INDEX IF NOT EXISTS node_idx
+		ON RoutingTable(bucket_idx, LastSeen);`
 
-	CREATE INDEX node_idx
-    	ON RoutingTable(bucket_idx, LastSeen);
-	);`
-
-	_, err := DB.Exec(createMsgCertTable)
-	if err != nil {
+	// Create msgcert table + indexes
+	if _, err := DB.Exec(createMsgCertTable); err != nil {
 		return fmt.Errorf("creating msgcert table: %w", err)
 	}
 
-	_, err = DB.Exec(createRoutingTable)
-	if err != nil {
+	// Create routing table + indexes
+	if _, err := DB.Exec(createRoutingTable); err != nil {
 		return fmt.Errorf("creating RoutingTable: %w", err)
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
@@ -24,34 +25,43 @@ type StoredResponse struct {
 	Status string `json:"status"`
 }
 
-func HandlePing(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+func HandlePing(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	bodyMap, ok := body.(map[string]interface{})
 	if !ok {
 		fmt.Println("Invalid body format in HandlePing")
 		return nil
 	}
-	pubKeyStr, ok := bodyMap["public_key"].(string)
-	fmt.Println("public_key in handle ping:", pubKeyStr)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in HandlePing")
+	nodeIDStr, ok := bodyMap["node_id"].(string)
+	fmt.Println("node_id in handle ping:", nodeIDStr)
+	if !ok || nodeIDStr == "" {
+		fmt.Println("Missing or invalid node_id in HandlePing")
 		return nil
 	}
-	nodeID := node.GenerateNodeID(pubKeyStr)
+	peerId, ok := bodyMap["peer_id"].(string)
+	fmt.Println("peer_id in handle ping:", peerId)
+	if !ok || peerId == "" {
+		fmt.Println("Missing or invalid peer_id in HandlePing")
+		return nil
+	}
+	nodeID, err := node.DecodeNodeID(nodeIDStr)
+	if err != nil {
+		fmt.Println("Error decoding node ID:", err)
+		return nil
+	}
 
 	senderNode := &models.Node{
-		NodeId:    nodeID,
-		IP:        ip,
-		Port:      port,
-		PublicKey: pubKeyStr,
+		NodeId:   nodeID,
+		PeerId:   peerId,
+		LastSeen: time.Now().Unix(),
 	}
 
 	if GlobalPinger == nil {
 		fmt.Println("❌ Pinger not registered")
 		return nil
 	}
-	rt.InsertNode(senderNode, GlobalPinger)
+	rt.InsertNode(localNode, senderNode, GlobalPinger)
 
-	fmt.Printf("Ping from node ID: %x, IP: %s Port:%s\n", nodeID, senderNode.IP, senderNode.Port)
+	fmt.Printf("Ping from node ID: %x, Peer ID: %s\n", nodeID, senderNode.PeerId)
 	data, err := json.Marshal(PingResponse{Status: "ok"})
 	if err != nil {
 		fmt.Println("Error while marshaling the PingResponse: ", err)
@@ -96,40 +106,53 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 	}
 }
 
-func FindNodeHandler(ip string, port string, body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
+func FindNodeHandler(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	bodyMap, ok := body.(map[string]interface{})
+	fmt.Printf("[DEBUG] find_node_id type: %T, value: %#v\n", bodyMap["find_node_id"], bodyMap["find_node_id"])
+
 	if !ok {
 		fmt.Println("Invalid body format in FindNodeHandler")
 		return nil
 	}
 
-	pubKeyStr, ok := bodyMap["public_key"].(string)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in FindNodeHandler")
+	findNodeStr, ok := bodyMap["find_node_id"].(string)
+	if !ok || findNodeStr == "" {
+		fmt.Println("Missing or invalid find_node_id in FindNodeHandler")
 		return nil
 	}
 
-	keyStr, ok := bodyMap["node_id"].(string)
-	if !ok || keyStr == "" {
+	nodeIDStr, ok := bodyMap["node_id"].(string)
+	if !ok || nodeIDStr == "" {
 		fmt.Println("Missing or invalid node_id in FindNodeHandler") // fixed message
 		return nil
 	}
 
+	peerId, ok := bodyMap["peer_id"].(string)
+	if !ok || peerId == "" {
+		fmt.Println("Missing or invalid peer_id in FindNodeHandler") // fixed message
+		return nil
+	}
+
+	nodeIDStr = strings.TrimSpace(nodeIDStr) // prevent decode errors from stray spaces
+	nodeId, err := node.DecodeNodeID(nodeIDStr)
+	if err != nil {
+		fmt.Println("Error decoding node ID:", err)
+		return nil
+	}
 	// Generate sender node ID from public key
-	nodeID := node.GenerateNodeID(pubKeyStr)
 
 	senderNode := &models.Node{
-		NodeId:    nodeID,
-		IP:        ip,
-		Port:      port,
-		PublicKey: pubKeyStr,
+		NodeId:   nodeId,
+		PeerId:   peerId,
+		LastSeen: time.Now().Unix(),
 	}
 
 	// Decode the target node ID from hex
-	keyStr = strings.TrimSpace(keyStr) // prevent decode errors from stray spaces
-	decKey, err := node.DecodeNodeID(keyStr)
+	findNodeStr = strings.TrimSpace(findNodeStr)
+	decKey, err := node.DecodeNodeID(findNodeStr)
+
 	if err != nil {
-		fmt.Println("Error decoding node ID:", err)
+		fmt.Println("Error decoding find node ID:", err)
 		return nil
 	}
 
@@ -138,16 +161,11 @@ func FindNodeHandler(ip string, port string, body interface{}, localNode *models
 		return nil
 	}
 
-	// Insert sender node into routing table
-	rt.InsertNode(senderNode, GlobalPinger)
-
 	// Lookup closest nodes to the target ID
 	closest := SendFindNode(decKey, rt)
-	for _, n := range closest {
-		if n.PublicKey != "" {
-			n.NodeId = node.GenerateNodeID(n.PublicKey)
-		}
-	}
+
+	// Insert sender node into routing table
+	rt.InsertNode(localNode, senderNode, GlobalPinger)
 
 	data, err := json.Marshal(closest)
 	if err != nil {
@@ -159,20 +177,10 @@ func FindNodeHandler(ip string, port string, body interface{}, localNode *models
 }
 
 func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
-	bodyMap, ok := body.(map[string]interface{})
-	if !ok {
-		fmt.Println("Invalid body format in StoreHandler")
-		return nil
-	}
-	pubKeyStr, ok := bodyMap["public_key"].(string)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in StoreHandler")
-		return nil
-	}
 	// Optionally, validate and use public_key for senderNode if needed
 
 	var msgcert models.MsgCert
-	jsonBytes, _ := json.Marshal(bodyMap)
+	jsonBytes, _ := json.Marshal(body)
 	if err := json.Unmarshal(jsonBytes, &msgcert); err != nil {
 		fmt.Println("Error unmarshaling into MsgCert:", err)
 		return nil

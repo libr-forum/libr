@@ -66,19 +66,17 @@ func GetDbAddr() ([]*models.Node, error) {
 	var nodeList []*models.Node
 	for cursor.Next(ctx) {
 		var doc struct {
-			IP        string `bson:"ip"`
-			Port      string `bson:"port"`
-			PublicKey string `bson:"public_key"`
+			NodeId string `bson:"node_id"`
+			PeerId string `bson:"peer_id"`
 		}
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
 
+		nodeId, _ := node.DecodeNodeID(doc.NodeId)
 		node := &models.Node{
-			NodeId:    node.GenerateNodeID(doc.PublicKey),
-			IP:        doc.IP,
-			Port:      doc.Port,
-			PublicKey: doc.PublicKey,
+			NodeId: nodeId,
+			PeerId: doc.PeerId,
 		}
 		nodeList = append(nodeList, node)
 	}

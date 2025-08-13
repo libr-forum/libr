@@ -56,10 +56,9 @@ type DeleteCert struct {
 
 type Node struct {
 	NodeId    [20]byte `json:"nodeid"`
-	IP        string   `json:"ip"`
-	Port      string   `json:"port"`
+	PeerId    string   `json:"peerid"`
+	BucketIdx int      `json:"-"`
 	LastSeen  int64    `json:"lastseen"`
-	PublicKey string   `json:"public_key"`
 }
 
 type KBucket struct {

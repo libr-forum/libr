@@ -2,14 +2,12 @@ package network
 
 import (
 	"crypto/sha1"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/keycache"
 	"github.com/devlup-labs/Libr/core/db/internal/models"
 	"github.com/devlup-labs/Libr/core/db/internal/node"
 	"github.com/devlup-labs/Libr/core/db/internal/routing"
@@ -18,39 +16,40 @@ import (
 )
 
 var GlobalPinger Pinger
-var GlobalPostFunc func(ip, port, route string, body []byte) ([]byte, error)
+var GlobalPostFunc func(peerId, route string, body []byte) ([]byte, error)
 
 func RegisterPinger(p Pinger) {
 	GlobalPinger = p
 }
 
-func RegisterPOST(f func(ip, port, route string, body []byte) ([]byte, error)) {
+func RegisterPOST(f func(peerId string, route string, body []byte) ([]byte, error)) {
 	GlobalPostFunc = f
 }
 
 type Pinger interface {
-	Ping(selfID [20]byte, selfPort string, target *models.Node) error
+	Ping(peerId string, target *models.Node) error
 }
 
 type RealPinger struct{}
 
-func (p *RealPinger) Ping(selfID [20]byte, selfPort string, target *models.Node) error {
-	return SendPing(selfID, selfPort, target)
+func (p *RealPinger) Ping(peerId string, target *models.Node) error {
+	return SendPing(peerId, target)
 }
 
-func SendPing(selfID [20]byte, selfPort string, target *models.Node) error {
+func SendPing(peerId string, target *models.Node) error {
 	if GlobalPostFunc == nil {
 		return fmt.Errorf("POST function not registered")
 	}
 
-	pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
-	fmt.Println("public_key in sendping:", pubKeyB64)
+	nodeIDStr := node.GenerateNodeIDFromPublicKey()
+	fmt.Println("node_id in sendping:", nodeIDStr)
 	jsonMap := map[string]string{
-		"public_key": pubKeyB64,
+		"node_id": nodeIDStr,
+		"peer_id": peerId,
 	}
 	jsonBytes, _ := json.Marshal(jsonMap)
 
-	resp, err := GlobalPostFunc(target.IP, target.Port, "/route=ping", jsonBytes)
+	resp, err := GlobalPostFunc(target.PeerId, "/route=ping", jsonBytes)
 	if err != nil {
 		fmt.Println("Ping failed:", err)
 		return err
@@ -86,7 +85,6 @@ func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routi
 		return nil
 	}
 
-	// Check if self is closer than any of the closest nodes
 	for _, n := range closest {
 		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
 			storage.StoreMsgCert(cert)
