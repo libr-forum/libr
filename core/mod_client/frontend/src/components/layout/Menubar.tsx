@@ -42,7 +42,6 @@ export const Menubar: React.FC = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   React.useEffect(() => {
     logger.debug('[Menubar] Component mounted.');
-    return () => logger.debug('[Menubar] Component unmounted.');
     async function fetchMods() {
       try {
         const keys = await GetOnlineMods();
@@ -63,6 +62,9 @@ export const Menubar: React.FC = () => {
     }
 
     fetchMods();
+
+    // Only return cleanup function, not async code
+    return () => logger.debug('[Menubar] Component unmounted.');
   }, []);
 
   return (
@@ -74,7 +76,7 @@ export const Menubar: React.FC = () => {
       <div className="flex-1 overflow-y-auto flex flex-col w-full items-center">
         <div className="text-left w-full mt-4 mb-4 pl-2 flex items-center">
           <h3 className="text-sm font-semibold text-muted-foreground">
-            Active Moderators
+            Moderators
           </h3>
         </div>
 

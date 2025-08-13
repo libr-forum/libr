@@ -104,11 +104,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   <DropdownMenuItem
                     onClick={async () => {
                       const retried = await apiService.sendMessage(message.communityId, message.content);
-                      const currentMessages = useAppStore.getState().messages;
-                      const updatedMessages = currentMessages.map((msg) =>
-                        msg.timestamp === message.timestamp ? retried : msg
-                      );
-                      setMessages(updatedMessages);
+                      // Replace all messages with only the retried message
+                      setMessages([retried]);
                     }}
                     className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
                   >

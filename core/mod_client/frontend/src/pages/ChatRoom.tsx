@@ -38,6 +38,7 @@ export const ChatRoom: React.FC = () => {
     
     setLoading(true);
     try {
+      setMessages([]);
       const fetchedMessages = await apiService.getMessages(currentCommunity.id);
       setMessages(fetchedMessages);
     } catch (error) {
