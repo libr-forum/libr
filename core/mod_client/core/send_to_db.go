@@ -269,7 +269,6 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 							log.Printf("Minimum replication achieved: %d/%d nodes (target: %d)", storedCount, networkCfg.MinStorageNodes, config.K)
 						}
 						mu.Unlock()
-
 					case "redirect":
 						var redirectResp RedirectResponse
 						if err := json.Unmarshal(respBytes, &redirectResp); err != nil {
