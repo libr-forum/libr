@@ -39,7 +39,7 @@ type Mod struct {
 // }
 
 type Node struct {
-	NodeId [20]byte `json:"nodeid"`
+	NodeId [20]byte `json:"node_id"`
 	PeerId string   `json:"peer_id"`
 }
 

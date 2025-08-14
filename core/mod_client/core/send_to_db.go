@@ -29,7 +29,7 @@ type RedirectResponse struct {
 type StoredResponse struct {
 	Type   string       `json:"type"`
 	Status string       `json:"status"`
-	Nodes  []types.Node `json:"nodes"`
+	Nodes  []types.Node `json:"nodes,omitempty"` // Add this
 }
 
 func SendToDb(key [20]byte, msgcert interface{}, route string) error {
@@ -156,21 +156,24 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 							log.Printf("Failed to decode stored response: %v", err)
 							return
 						}
-						for _, newNode := range storedResp.Nodes {
-							fmt.Println("new node discovered:", newNode)
-							copy := newNode
-							newNodesChan <- &copy
-						}
 						mu.Lock()
 						stored[n.PeerId] = true
 						madeProgress = true
+
+						// NEW: Handle nodes from stored response
+						if storedResp.Nodes != nil {
+							for _, newNode := range storedResp.Nodes {
+								copy := newNode
+								newNodesChan <- &copy
+							}
+						}
+
 						if len(stored) >= config.K {
 							mu.Unlock()
 							close(done)
 							return
 						}
 						mu.Unlock()
-
 					case "redirect":
 						var redirectResp RedirectResponse
 						if err := json.Unmarshal(respBytes, &redirectResp); err != nil {
