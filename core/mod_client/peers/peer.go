@@ -51,7 +51,7 @@ type ChatPeer struct {
 
 type reqFormat struct {
 	Type      string          `json:"type,omitempty"`
-	PeerID    string          `json:"peerid,omitempty"`
+	PeerID    string          `json:"peer_id,omitempty"`
 	ReqParams json.RawMessage `json:"reqparams,omitempty"`
 	Body      json.RawMessage `json:"body,omitempty"`
 }

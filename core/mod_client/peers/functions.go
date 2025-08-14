@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -96,8 +97,17 @@ func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
 	GetResp, err := Peer.Send(timeoutCtx, targetPeerID, jsonReq, body)
 
 	if err != nil {
-		fmt.Println("Error Sending trial get message")
+		if errors.Is(err, context.DeadlineExceeded) {
+			fmt.Println("⏳ POST request timed out after 5s")
+		} else {
+			fmt.Println("❌ POST request failed:", err)
+		}
+		return nil, err
 	}
+	if bytes.Equal(GetResp, []byte("Target peer not found")) || GetResp == nil || len(GetResp) == 0 {
+		return nil, errors.New("ping failed: empty response")
+	}
+
 	GetResp = bytes.TrimRight(GetResp, "\x00")
 	return GetResp, nil
 }

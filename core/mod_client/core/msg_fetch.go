@@ -78,6 +78,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if !ok {
 					return
 				}
+				fmt.Println("Received response from:", n.PeerId)
 				var base BaseResponse
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
