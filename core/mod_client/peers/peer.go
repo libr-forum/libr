@@ -373,10 +373,11 @@ func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 	// }
 	// _ = ack //can be used if required
 
-	var resp = make([]byte, 1024*4)
+	var resp = make([]byte, 1024*50)
 	reader.Read(resp)
 	resp = bytes.TrimRight(resp, "\x00")
 	defer stream.Close()
+	fmt.Println("received response from relay:", string(resp))
 
 	return resp, err
 }
