@@ -248,7 +248,7 @@ export const ChatRoom: React.FC = () => {
               ) : (
                 sortedMessages.map((message) => (
                   <MessageBubble
-                    key={message.authorPublicKey}
+                    key={message.authorPublicKey+String(message.timestamp)}
                     message={message}
                   />
                 ))
