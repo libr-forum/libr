@@ -14,7 +14,7 @@ import (
 
 func main() {
 	keycache.InitKeys()
-	utils.SetupMongo("mongodb+srv://lemongrass8923:lmao1234@cluster0.vswojqe.mongodb.net/")
+	utils.SetupMongo("mongodb+srv://peer:peerhehe@cluster0.vswojqe.mongodb.net/")
 	relayAddrs, err := utils.GetRelayAddr()
 
 	if err != nil {

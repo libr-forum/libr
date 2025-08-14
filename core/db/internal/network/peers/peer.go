@@ -51,7 +51,7 @@ type ChatPeer struct {
 
 type reqFormat struct {
 	Type      string          `json:"type,omitempty"`
-	PeerID    string          `json:"peerid,omitempty"`
+	PeerID    string          `json:"peer_id,omitempty"`
 	ReqParams json.RawMessage `json:"reqparams,omitempty"`
 	Body      json.RawMessage `json:"body,omitempty"`
 }
@@ -319,6 +319,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 		if reqData["Method"] == "GET" {
 			resp := ServeGetReq(reqStruct.ReqParams)
 			resp = bytes.TrimRight(resp, "\x00")
+			fmt.Println("[DEBUG]Resp bytes:", resp)
 			_, err = s.Write(resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error writing resp bytes to relay")
@@ -374,7 +375,7 @@ func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 	// }
 	// _ = ack //can be used if required
 
-	var resp = make([]byte, 1024*4)
+	var resp = make([]byte, 1024*50)
 	reader.Read(resp)
 	resp = bytes.TrimRight(resp, "\x00")
 	defer stream.Close()

@@ -55,8 +55,8 @@ type DeleteCert struct {
 }
 
 type Node struct {
-	NodeId    [20]byte `json:"nodeid"`
-	PeerId    string   `json:"peerid"`
+	NodeId    [20]byte `json:"node_id"`
+	PeerId    string   `json:"peer_id"`
 	BucketIdx int      `json:"-"`
 	LastSeen  int64    `json:"lastseen"`
 }

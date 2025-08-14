@@ -54,7 +54,11 @@ func SendPing(peerId string, target *models.Node) error {
 		fmt.Println("Ping failed:", err)
 		return err
 	}
+
 	fmt.Println("Ping Response: ", string(resp))
+	if resp == nil {
+		return errors.New("ping failed: empty response")
+	}
 
 	var res PingResponse
 	if err := json.Unmarshal(resp, &res); err != nil {
@@ -73,7 +77,7 @@ func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*models.Node {
 	return ClosestNodes
 }
 
-func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routing.RoutingTable) []*models.Node {
+func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, bool) {
 	closest := rt.FindClosest(key, config.K)
 	fmt.Println(closest)
 
@@ -82,17 +86,17 @@ func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routi
 
 	if len(closest) < config.K {
 		storage.StoreMsgCert(cert)
-		return nil
+		return closest, true
 	}
 
 	for _, n := range closest {
 		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
 			storage.StoreMsgCert(cert)
-			return nil
+			return closest, true
 		}
 	}
 
-	return closest
+	return closest, false
 }
 
 func SendFindValue(key string, self *models.Node, rt *routing.RoutingTable) ([]models.RetMsgCert, []*models.Node) {

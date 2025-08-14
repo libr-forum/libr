@@ -21,8 +21,9 @@ type PingResponse struct {
 }
 
 type StoredResponse struct {
-	Type   string `json:"type"`
-	Status string `json:"status"`
+	Type   string         `json:"type"`
+	Status string         `json:"status"`
+	Nodes  []*models.Node `json:"nodes"`
 }
 
 func HandlePing(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
@@ -87,6 +88,7 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 		if err != nil {
 			fmt.Println("Error while marshiling the PingResponse: ", err)
 		}
+		fmt.Println("Data from find value:", string(data))
 		return data
 	} else {
 		fmt.Println("Didn't find the value")
@@ -102,6 +104,7 @@ func FindValueHandler(key string, localNode *models.Node, rt *routing.RoutingTab
 		if err != nil {
 			fmt.Println("Error while marshiling the PingResponse: ", err)
 		}
+
 		return data
 	}
 }
@@ -191,9 +194,9 @@ func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingT
 	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	fmt.Println(tsmin, keyBytes)
 
-	closest := StoreValue(keyBytes, &msgcert, localNode, rt)
+	closest, stored := StoreValue(keyBytes, &msgcert, localNode, rt)
 
-	if closest != nil {
+	if !stored {
 		fmt.Println("Sending list of k closest nodes")
 		type RedirectResponse struct {
 			Type  string         `json:"type"`
@@ -207,6 +210,7 @@ func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingT
 		if err != nil {
 			fmt.Println("Error while marshiling the PingResponse: ", err)
 		}
+
 		return data
 	}
 
@@ -214,55 +218,35 @@ func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingT
 	resp := StoredResponse{
 		Type:   "stored",
 		Status: "ok",
+		Nodes:  closest,
 	}
 	data, err := json.Marshal(resp)
 	if err != nil {
 		fmt.Println("Error while marshiling the PingResponse: ", err)
 	}
+	fmt.Println("data:", string(data))
 	return data
 }
 
-func DeleteHandler(body interface{}, localNode *models.Node, rt *routing.RoutingTable) []byte {
-	bodyMap, ok := body.(map[string]interface{})
-	if !ok {
-		fmt.Println("Invalid body format in DeleteHandler")
-		return nil
-	}
-	pubKeyStr, ok := bodyMap["public_key"].(string)
-	if !ok || pubKeyStr == "" {
-		fmt.Println("Missing or invalid public_key in DeleteHandler")
-		return nil
-	}
-	// Optionally, validate and use public_key for senderNode if needed
-
-	var repCert models.ReportCert
-	jsonBytes, _ := json.Marshal(bodyMap)
-	if err := json.Unmarshal(jsonBytes, &repCert); err != nil {
-		fmt.Println("Error unmarshaling into ReportCert:", err)
-		return nil
-	}
-
+func DeleteHandler(repCert models.ReportCert, localNode *models.Node, rt *routing.RoutingTable) []byte {
 	tsmin := repCert.Msgcert.Msg.Ts
-	tsmin = tsmin - (tsmin % 60)
+	tsmin -= (tsmin % 60)
+
 	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	fmt.Println(tsmin, keyBytes)
 
 	closest, err := DeleteValue(&keyBytes, &repCert, localNode, rt)
-
 	if err != nil {
 		fmt.Println("Error", err)
 		type ErrorResponse struct {
 			Type  string `json:"type"`
-			Error error  `json:"error"`
+			Error string `json:"error"`
 		}
 		resp := ErrorResponse{
 			Type:  "redirect",
-			Error: err,
+			Error: err.Error(),
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			fmt.Println("Error while marshiling the PingResponse: ", err)
-		}
+		data, _ := json.Marshal(resp)
 		return data
 	}
 
@@ -276,21 +260,15 @@ func DeleteHandler(body interface{}, localNode *models.Node, rt *routing.Routing
 			Type:  "redirect",
 			Nodes: closest,
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			fmt.Println("Error while marshiling the PingResponse: ", err)
-		}
+		data, _ := json.Marshal(resp)
 		return data
 	}
 
-	fmt.Println("Store at: ", localNode)
+	fmt.Println("Store at:", localNode)
 	resp := StoredResponse{
 		Type:   "deleted",
 		Status: "ok",
 	}
-	data, err := json.Marshal(resp)
-	if err != nil {
-		fmt.Println("Error while marshiling the PingResponse: ", err)
-	}
+	data, _ := json.Marshal(resp)
 	return data
 }

@@ -146,11 +146,13 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 
 				resp, err := network.GlobalPostFunc(n.PeerId, "/route=find_node", jsonBytes)
 				if err != nil {
-					fmt.Println("⚠ FindNode failed:", err)
+					fmt.Printf("⚠ FindNode failed: %v (PeerId: %s)\n", err, n.PeerId)
 					return
 				}
 				var newNodes []*models.Node
 				if err := json.Unmarshal(resp, &newNodes); err != nil {
+					fmt.Println("resp", resp)
+					fmt.Println("Peer ID:", n.PeerId)
 					fmt.Println("⚠ Failed to decode FindNode response:", err)
 					return
 				}
@@ -197,7 +199,7 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 		bootstrapNode.PeerId, len(seen))
 }
 
-func NodeUpdate(rt *routing.RoutingTable) {
+func NodeUpdate(localNode *models.Node, rt *routing.RoutingTable) {
 	fmt.Println("Node Update heheheh")
 	for _, bucket := range rt.Buckets {
 		for _, dbnode := range bucket.Nodes {
@@ -212,6 +214,7 @@ func NodeUpdate(rt *routing.RoutingTable) {
 			nodeIDStr := node.GenerateNodeIDFromPublicKey()
 			jsonMap := map[string]string{
 				"node_id": nodeIDStr,
+				"peer_id": localNode.PeerId,
 			}
 			jsonBytes, _ := json.Marshal(jsonMap)
 			resp, err := network.GlobalPostFunc(dbnode.PeerId, "/route=ping", jsonBytes)

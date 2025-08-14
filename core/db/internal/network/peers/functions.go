@@ -74,7 +74,7 @@ func initDHT() {
 		fmt.Println("❗ No buckets found in routing table, bootstrapping from peers...")
 		bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
 	} else {
-		bootstrap.NodeUpdate(rt)
+		bootstrap.NodeUpdate(localNode, rt)
 	}
 
 	data, _ := json.MarshalIndent(rt, "", "  ")
@@ -163,6 +163,9 @@ func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
+	if bytes.Equal(GetResp, []byte("Target peer not found")) || GetResp == nil || len(GetResp) == 0 {
+		return nil, errors.New("ping failed: empty response")
+	}
 
 	return bytes.TrimRight(GetResp, "\x00"), nil
 }
@@ -206,37 +209,38 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 
 	fmt.Println("Peer ID:", peerId)
 
-	var body map[string]interface{}
-	if err := json.Unmarshal(bodyBytes, &body); err != nil {
-		fmt.Println("Failed to unmarshal body:", err)
-		return nil
-	}
-	fmt.Println("Body:", body)
-
 	switch route {
 	case "ping":
+		var body map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			fmt.Println("Failed to unmarshal body:", err)
+			return nil
+		}
 		return network.HandlePing(body, globalLocalNode, GlobalRT)
 
 	case "store":
 		var msgCert models.MsgCert
-		jsonBytes, _ := json.Marshal(body)
-		if err := json.Unmarshal(jsonBytes, &msgCert); err != nil {
+		if err := json.Unmarshal(bodyBytes, &msgCert); err != nil {
 			fmt.Println("Error unmarshaling into MsgCert:", err)
 			return nil
 		}
 		return network.StoreHandler(msgCert, globalLocalNode, GlobalRT)
 
 	case "find_node":
+		var body map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			fmt.Println("Failed to unmarshal body:", err)
+			return nil
+		}
 		return network.FindNodeHandler(body, globalLocalNode, GlobalRT)
 
 	case "delete":
 		var repCert models.ReportCert
-		jsonBytes, _ := json.Marshal(body)
-		if err := json.Unmarshal(jsonBytes, &repCert); err != nil {
+		if err := json.Unmarshal(bodyBytes, &repCert); err != nil {
 			fmt.Println("Error unmarshaling into ReportCert:", err)
 			return nil
 		}
-		return network.DeleteHandler(&repCert, globalLocalNode, GlobalRT)
+		return network.DeleteHandler(repCert, globalLocalNode, GlobalRT)
 
 	default:
 		fmt.Println("Unknown POST route:", route)

@@ -14,25 +14,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	MongoClient *mongo.Client
-	ctx         context.Context
-	cancel      context.CancelFunc
-)
+var MongoClient *mongo.Client
 
 // SetupMongo initializes the global MongoClient
 func SetupMongo(uri string) error {
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		cancel()
-		return err
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 
-	// Check connection
 	if err := client.Ping(ctx, nil); err != nil {
-		cancel()
-		return err
+		return fmt.Errorf("failed to ping MongoDB: %w", err)
 	}
 
 	MongoClient = client
@@ -42,9 +37,6 @@ func SetupMongo(uri string) error {
 
 // DisconnectMongo gracefully closes the MongoDB connection
 func DisconnectMongo() {
-	if cancel != nil {
-		cancel()
-	}
 	if MongoClient != nil {
 		if err := MongoClient.Disconnect(context.Background()); err != nil {
 			log.Println("⚠️ Error disconnecting MongoDB:", err)
@@ -56,6 +48,9 @@ func DisconnectMongo() {
 
 // 🚀 Uses global MongoClient and ctx
 func GetDbAddr() ([]*models.Node, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	collection := MongoClient.Database("Addrs").Collection("nodes") // replace with actual DB & collection
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -115,10 +110,13 @@ func GetOnlineMods() ([]*models.Mod, error) {
 }
 
 func GetRelayAddr() ([]string, error) {
-	collection := MongoClient.Database("Addrs").Collection("relays") // replace with actual DB & collection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	collection := MongoClient.Database("Addrs").Collection("relays")
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch relay addresses: %w", err)
 	}
 	defer cursor.Close(ctx)
 
@@ -128,11 +126,12 @@ func GetRelayAddr() ([]string, error) {
 			Address string `bson:"address"`
 		}
 		if err := cursor.Decode(&doc); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode relay document: %w", err)
 		}
 		if strings.HasPrefix(doc.Address, "/") {
 			relayList = append(relayList, strings.TrimSpace(doc.Address))
 		}
 	}
+
 	return relayList, nil
 }
