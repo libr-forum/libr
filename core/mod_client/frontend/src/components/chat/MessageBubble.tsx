@@ -103,6 +103,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 {message.status === 'pending' && (
                   <DropdownMenuItem
                     onClick={async () => {
+                      setMessages([]);
                       const retried = await apiService.sendMessage(message.communityId, message.content);
                       // Replace all messages with only the retried message
                       setMessages([retried]);
