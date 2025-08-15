@@ -352,7 +352,7 @@ const Footer: React.FC = () => {
               <span className="text-border">•</span>
               <Link to="/eula" className="hover:text-libr-accent1 transition-colors">EULA</Link>
             </div>
-            <p>&copy; 2025 libr Protocol. Open Source Research Project.</p>
+            <p>&copy; 2025 libr. All Rights Reserved.</p>
           </div>
         </div>
       </div>
