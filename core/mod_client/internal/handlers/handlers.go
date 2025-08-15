@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
@@ -20,13 +21,20 @@ func MsgIN(bodyBytes []byte) []byte {
 		return nil
 	}
 
-	// Moderate message
-	moderationStatus, err := service.AutoModerateMsg(req)
-	fmt.Println(moderationStatus)
-	if err != nil {
-		log.Printf("Moderation error: %v", err)
-		logger.LogToFile("[DEBUG]Moderation Error1")
-		return nil
+	var moderationStatus string
+	// Check if ts is within the last 1 minute
+	if req.TimeStamp < time.Now().Add(-10*time.Minute).Unix() {
+		log.Printf("Message timestamp is older than 10 minutes")
+		moderationStatus = "0"
+	} else {
+		// Moderate message
+		moderationStatus, err = service.AutoModerateMsg(req)
+		fmt.Println(moderationStatus)
+		if err != nil {
+			log.Printf("Moderation error: %v", err)
+			logger.LogToFile("[DEBUG]Moderation Error1")
+			return nil
+		}
 	}
 
 	// Load keys to sign

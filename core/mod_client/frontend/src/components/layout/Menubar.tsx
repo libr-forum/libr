@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserOpenURL } from '../../../wailsjs/runtime';
-import { PencilLine,Globe, Database } from 'lucide-react';
+import { PencilLine,Globe, Database, Copyright } from 'lucide-react';
 import { logger } from '../../logger/logger';
 import {
   GetOnlineMods,
@@ -42,7 +42,6 @@ export const Menubar: React.FC = () => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   React.useEffect(() => {
     logger.debug('[Menubar] Component mounted.');
-    return () => logger.debug('[Menubar] Component unmounted.');
     async function fetchMods() {
       try {
         const keys = await GetOnlineMods();
@@ -63,6 +62,9 @@ export const Menubar: React.FC = () => {
     }
 
     fetchMods();
+
+    // Only return cleanup function, not async code
+    return () => logger.debug('[Menubar] Component unmounted.');
   }, []);
 
   return (
@@ -74,7 +76,7 @@ export const Menubar: React.FC = () => {
       <div className="flex-1 overflow-y-auto flex flex-col w-full items-center">
         <div className="text-left w-full mt-4 mb-4 pl-2 flex items-center">
           <h3 className="text-sm font-semibold text-muted-foreground">
-            Active Moderators
+            Moderators
           </h3>
         </div>
 
@@ -98,6 +100,20 @@ export const Menubar: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+      
+      <div className="rounded-3xl m-2 bg-card w-[92%]">
+        <button
+          onClick={() => {
+            logger.info('[Menubar] Feedback button clicked.');
+            BrowserOpenURL("https://libr-ashen.vercel.app/eula");
+          
+          }}
+          className='flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2'
+        >
+          <Copyright className="aspect-square h-[40%]" />
+          <span className="mt-0.5">License & Agreement</span>
+        </button>
       </div>
       <div className="rounded-3xl m-2 bg-card w-[92%]">
         <button

@@ -49,7 +49,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 
 		toQuery := []*types.Node{}
 		for _, n := range currentClosest {
-			key := fmt.Sprintf("%s:%s", n.IP, n.Port)
+			key := n.PeerId
 			if !queried[key] {
 				toQuery = append(toQuery, n)
 				queried[key] = true
@@ -70,7 +70,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 			wg.Add(1)
 			go func(n *types.Node) {
 				defer wg.Done()
-				rawResp, err := network.GetFrom(n.IP, n.Port, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+				rawResp, err := network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
 				if err != nil {
 					return
 				}
@@ -78,6 +78,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if !ok {
 					return
 				}
+				fmt.Println("Received response from:", n.PeerId)
 				var base BaseResponse
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
@@ -178,7 +179,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	deleteThreshold := config.DeleteThreshold
 	now := time.Now().Truncate(time.Minute).Unix()
-	start := now - 1200
+	start := now - 3600
 
 	tsChan := make(chan int64, 100)
 	rawCerts := []types.RetMsgCert{}

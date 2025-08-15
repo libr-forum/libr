@@ -28,15 +28,15 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
           >
             <Link
               to="/"
-              className="inline-flex items-center text-libr-accent1 hover:text-libr-accent2 transition-colors mb-6"
+              className="inline-flex items-center text-libr-secondary hover:text-foreground transition-colors mb-6"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
             
-            <div className="flex items-center mb-4">
-              <Scale className="w-8 h-8 text-libr-accent1 mr-3" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent">
+            <div className="flex items-center mb-4 text-libr-secondary">
+              <Scale className="w-8 h-8 mr-3" />
+              <h1 className="text-4xl font-bold">
                 Terms and Conditions
               </h1>
             </div>
@@ -55,7 +55,7 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
         >
           <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
             <div className="flex items-center mb-4">
-              <FileText className="w-6 h-6 text-libr-accent1 mr-3" />
+              <FileText className="w-6 h-6 text-libr-secondary mr-3" />
               <h2 className="text-2xl font-semibold text-foreground">Terms and Conditions for libr</h2>
             </div>
             <div className="space-y-2 text-muted-foreground">
@@ -72,7 +72,7 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
           <div className="space-y-8">
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Users className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Users className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">The libr Framework & Key Definitions</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -85,19 +85,19 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                   <h4 className="font-medium text-foreground mb-2">Key Participants in the libr Ecosystem:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <div>
                         <strong className="text-foreground">Clients:</strong> Users who interact with the network to create, send, and read messages.
                       </div>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <div>
                         <strong className="text-foreground">Database Nodes (DBs):</strong> Participants who contribute storage and network resources to store messages, ensuring data availability and resilience.
                       </div>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <div>
                         <strong className="text-foreground">Moderators (Mods):</strong> Participants elected by a Community to evaluate and moderate content based on that Community's established guidelines.
                       </div>
@@ -109,7 +109,7 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Shield className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Shield className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">User Eligibility and Account Security</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -117,15 +117,15 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                   <h4 className="font-medium text-foreground mb-2">To use libr, you must:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Comply with all applicable laws in your jurisdiction</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Not be barred from receiving services under any applicable laws</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Be at least 18 years of age or the age of legal majority in your jurisdiction</span>
                     </li>
                   </ul>
@@ -145,7 +145,7 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Gavel className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Gavel className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">User Responsibilities & Acceptable Use</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -153,23 +153,23 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                   <h4 className="font-medium text-foreground mb-2">When using libr, you agree to:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Post content that complies with all applicable laws and the moderation guidelines of the Community you are participating in</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Accept that community-elected Moderators may approve, reject, or flag your content in accordance with their established rules</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Understand that due to the network's design, content that is successfully stored may remain accessible indefinitely</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Not attempt to circumvent, disable, or otherwise interfere with security-related features of the platform</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span>Not engage in any activity that could disrupt or interfere with the proper functioning of the libr protocol</span>
                     </li>
                   </ul>
@@ -263,19 +263,19 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                 </p>
                 <ul className="space-y-2">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Maintaining service quality and availability standards</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Adhering to community governance decisions</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Providing verifiable proofs of legitimate service provision</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Compliance with the consensus protocols and state transaction validation</span>
                   </li>
                 </ul>
@@ -343,19 +343,19 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                 </p>
                 <ul className="space-y-2">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Message metadata (such as timestamps) may be publicly visible</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Content approved by moderators becomes part of the distributed network</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Private key management is entirely your responsibility</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>The protocol is designed for public forum use, not private communications</span>
                   </li>
                 </ul>
@@ -386,13 +386,42 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                 please engage with the relevant Community's official channels, as specified in the libr protocol documentation.
               </p>
               <div className="space-y-2 text-muted-foreground">
-                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
-                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
-                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
-                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
-                <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
-                <p><strong className="text-foreground">Privacy Policy:</strong> <a href="/privacy-policy" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Privacy Policy</a></p>
-                <p><strong className="text-foreground">EULA:</strong> <a href="/eula" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our End User License Agreement</a></p>
+                <p>
+                  <strong className="text-foreground">Email: </strong>
+                  <a href="mailto:libr.forum@gmail.com" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    libr.forum@gmail.com
+                  </a>
+                </p>
+                <p>
+                  <strong className="text-foreground">GitHub: </strong>
+                  <a href="https://github.com/libr-forum/libr" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    https://github.com/libr-forum/libr
+                  </a>
+                </p>
+                <p>
+                  <strong className="text-foreground">Website: </strong>
+                  <a href="https://libr-ashen.vercel.app/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    https://libr-ashen.vercel.app/
+                  </a>
+                </p>
+                <p>
+                  <strong className="text-foreground">Apache 2.0 License: </strong>
+                  <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    View Full License Text
+                  </a>
+                </p>
+                <p>
+                  <strong className="text-foreground">Privacy Policy: </strong>
+                  <a href="/privacy-policy" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    View our Privacy Policy
+                  </a>
+                </p>
+                <p>
+                  <strong className="text-foreground">EULA: </strong>
+                  <a href="/eula" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    View our End User License Agreement
+                  </a>
+                </p>
               </div>
             </section>
 

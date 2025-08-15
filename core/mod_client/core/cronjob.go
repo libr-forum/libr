@@ -4,6 +4,7 @@ import (
 	"log"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
@@ -12,13 +13,28 @@ import (
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
 )
 
-var cronRunning = false
+var (
+	CronRunning bool
+	CronMu      sync.Mutex
+)
 
-func StartModerationCron(msgcert *types.MsgCert) {
-	if cronRunning {
+func MaybeStartCron() {
+	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
+	files, _ := filepath.Glob(dir)
+	if len(files) > 0 {
+		go StartModerationCron()
+	}
+}
+
+func StartModerationCron() {
+	CronMu.Lock()
+	if CronRunning {
+		CronMu.Unlock()
 		return
 	}
-	cronRunning = true
+	CronRunning = true
+	CronMu.Unlock()
+
 	log.Println("🚀 Starting moderation retry cron...")
 
 	ticker := time.NewTicker(60 * time.Second)
@@ -26,7 +42,7 @@ func StartModerationCron(msgcert *types.MsgCert) {
 
 	for {
 		<-ticker.C
-		dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "/*.json")
+		dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
 		files, err := filepath.Glob(dir)
 		if err != nil {
 			log.Printf("Cron check error: %v", err)
@@ -35,16 +51,17 @@ func StartModerationCron(msgcert *types.MsgCert) {
 
 		if len(files) == 0 {
 			log.Println("✅ All moderations resolved — stopping cron")
-			cronRunning = false
+			CronMu.Lock()
+			CronRunning = false
+			CronMu.Unlock()
 			return
 		}
 
-		// Retry pending moderations
-		RetryPendingModerations(msgcert)
+		RetryPendingModerations()
 	}
 }
 
-func RetryPendingModerations(msgcert *types.MsgCert) {
+func RetryPendingModerations() {
 	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "/*.json")
 	files, err := filepath.Glob(dir)
 	if err != nil {
@@ -106,22 +123,26 @@ func RetryPendingModerations(msgcert *types.MsgCert) {
 
 		// Count votes
 		rejCount := 0
+		accCount := 0
 		for _, cert := range allCerts {
-			if cert.Status == "0" {
+			switch cert.Status {
+			case "0":
 				rejCount++
+			case "1":
+				accCount++
 			}
 		}
-		ackCount := len(allCerts)
+		totalMods := len(allCerts)
 
 		// Decide final outcome
-		if rejCount > ackCount/2 {
+		if (rejCount > totalMods/2) && (pending.AckCount <= totalMods/2) {
 			log.Printf("Majority rejected — deleting %s", pending.MsgSign)
 			cache.DeletePendingModeration(pending.MsgSign)
-		} else if ackCount-rejCount-len(newAwaiting) > ackCount/2 {
+		} else if float32(accCount)/float32(pending.AckCount) > 0.5 && float32(accCount)/float32(totalMods) > 0.3 {
 			log.Printf("Majority approved — deleting %s", pending.MsgSign)
-			tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
+			tsmin := pending.MsgCert.Msg.Ts - (pending.MsgCert.Msg.Ts % 60)
 			key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-			repCert := CreateRepCert(*msgcert, allCerts, "report")
+			repCert := CreateRepCert(pending.MsgCert, allCerts, "report")
 			SendToDb(key, repCert, "/route=delete")
 			cache.DeletePendingModeration(pending.MsgSign)
 		} else {
