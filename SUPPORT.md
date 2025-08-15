@@ -5,13 +5,13 @@ Thanks for using LIBR! Here's how to get help when you need it.
 ## 🚀 Quick Help
 
 ### 🐛 **Found a Bug?**
-[Create a Bug Report](https://github.com/devlup-labs/libr/issues/new?template=bug_report.md)
+[Create a Bug Report](https://github.com/libr-forum/libr/issues/new?template=bug_report.md)
 
 ### 💡 **Have an Idea?**
-[Share it in Discussions](https://github.com/devlup-labs/libr/discussions/categories/ideas-feature-requests)
+[Share it in Discussions](https://github.com/libr-forum/libr/discussions/categories/ideas-feature-requests)
 
 ### ❓ **Need Help?**
-[Ask in Q&A Discussions](https://github.com/devlup-labs/libr/discussions/categories/q-a)
+[Ask in Q&A Discussions](https://github.com/libr-forum/libr/discussions/categories/q-a)
 
 ## 📚 **Documentation**
 
@@ -40,7 +40,7 @@ git checkout -b update-readme
 **Stuck with Git?**
 - **Beginner Git Guide:** [git-scm.com/book](https://git-scm.com/book)
 - **Interactive Git Tutorial:** [learngitbranching.js.org](https://learngitbranching.js.org/)
-- **Ask for help:** [Q&A Discussions](https://github.com/devlup-labs/libr/discussions/categories/q-a)
+- **Ask for help:** [Q&A Discussions](https://github.com/libr-forum/libr/discussions/categories/q-a)
 
 ### Common Workflow Questions
 
@@ -60,16 +60,16 @@ git rebase main
 
 **"My branch has conflicts, help!"**
 1. Don't panic! 😊
-2. Ask in [Discussions](https://github.com/devlup-labs/libr/discussions)
+2. Ask in [Discussions](https://github.com/libr-forum/libr/discussions)
 3. Our maintainers will help you resolve them
 
 ## 💬 **Community Channels**
 
 ### GitHub Discussions (Primary)
-- **[General Discussion](https://github.com/devlup-labs/libr/discussions/categories/general)** - Chat about anything LIBR-related
-- **[Q&A](https://github.com/devlup-labs/libr/discussions/categories/q-a)** - Get help from the community
-- **[Ideas](https://github.com/devlup-labs/libr/discussions/categories/ideas-feature-requests)** - Share feature requests and ideas
-- **[Show and Tell](https://github.com/devlup-labs/libr/discussions/categories/show-and-tell)** - Share what you've built
+- **[General Discussion](https://github.com/libr-forum/libr/discussions/categories/general)** - Chat about anything LIBR-related
+- **[Q&A](https://github.com/libr-forum/libr/discussions/categories/q-a)** - Get help from the community
+- **[Ideas](https://github.com/libr-forum/libr/discussions/categories/ideas-feature-requests)** - Share feature requests and ideas
+- **[Show and Tell](https://github.com/libr-forum/libr/discussions/categories/show-and-tell)** - Share what you've built
 
 ### Email Support
 For private matters or security issues: **devlup@iitj.ac.in**
@@ -79,7 +79,7 @@ For private matters or security issues: **devlup@iitj.ac.in**
 If you're new to open source or Git/GitHub:
 
 1. **Start here:** [New Contributor Guide](docs/BEGINNER_GUIDE.md)
-2. **Look for:** Issues labeled [`good first issue`](https://github.com/devlup-labs/libr/labels/good%20first%20issue)
+2. **Look for:** Issues labeled [`good first issue`](https://github.com/libr-forum/libr/labels/good%20first%20issue)
 3. **Learn Git:** We have [branch naming guidelines](CONTRIBUTING.md#-branch-naming--workflow-guidelines) to help you!
 4. **Get help:** Our [maintainers](docs/MAINTAINER_GUIDE.md) are here to help!
 
@@ -94,7 +94,7 @@ If you're new to open source or Git/GitHub:
 ### Setup Issues
 - **Project won't build?** Run `./scripts/setup.sh` first
 - **Dependencies missing?** Check our [setup guide](docs/BEGINNER_GUIDE.md#first-time-setup)
-- **Still stuck?** Create an issue with the [`help wanted`](https://github.com/devlup-labs/libr/labels/help%20wanted) label
+- **Still stuck?** Create an issue with the [`help wanted`](https://github.com/libr-forum/libr/labels/help%20wanted) label
 
 ### Development Questions
 - **Don't know which file to edit?** Ask in discussions first

@@ -55,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
     { href: "#technical-modules", label: "Modules" },
     { href: "#how-to-use", label: "How To" },
     { href: "https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", label: "Docs", external: true },
-    { href: "https://github.com/devlup-labs/Libr", label: "GitHub", external: true },
+    { href: "https://github.com/libr-forum/libr", label: "GitHub", external: true },
     { href: "https://forms.gle/udt5zATFogCGQtUTA", label: "Join Beta", external: true },
     { href: "https://forms.gle/Uchqc6Z49aoJwjvZ9", label: "Feedback", external: true }
   ];

@@ -56,11 +56,15 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
           <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
             <div className="flex items-center mb-4">
               <Download className="w-6 h-6 text-libr-accent1 mr-3" />
-              <h2 className="text-2xl font-semibold text-foreground">Software License Agreement</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Agreement Overview</h2>
             </div>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              This End User License Agreement (EULA) is a legally binding contract between you and the libr project maintainers. 
+              By downloading, installing, accessing, or using the libr software, documentation, or related materials, you agree to be bound by these terms.
+            </p>
             <p className="text-muted-foreground leading-relaxed">
-              This End User License Agreement (EULA) governs your use of libr client applications, 
-              protocol implementations, and associated software components distributed by the libr project.
+              libr is open-source software distributed under the Apache License 2.0, which provides you with extensive rights to use, 
+              modify, and distribute the software. If you do not agree to these terms, you may not use the software.
             </p>
           </div>
 
@@ -68,35 +72,39 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
                 <CheckCircle className="w-6 h-6 text-green-500 mr-3" />
-                <h3 className="text-xl font-semibold text-foreground">Grant of License</h3>
+                <h3 className="text-xl font-semibold text-foreground">License Grant</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  Subject to the terms of this EULA, we grant you a non-exclusive, non-transferable, 
-                  revocable license to use the libr software applications for personal or commercial purposes.
+                  Subject to your compliance with this Agreement and the Apache License 2.0, we grant you a perpetual, 
+                  worldwide, non-exclusive, no-charge, royalty-free, irrevocable license to use libr software.
                 </p>
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">You May:</h4>
+                  <h4 className="font-medium text-foreground mb-2">Scope of Use & Permitted Activities:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Install and use the software on your devices</span>
+                      <span>Download, install, and run the software on your devices for personal or commercial use</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Make backup copies for personal use</span>
+                      <span>Participate in, moderate, and operate decentralized, censorship-resilient communities</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Modify the software (where open-source licenses permit)</span>
+                      <span>Run client, moderator, database, and relay nodes in compliance with community governance</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Use the software for commercial purposes</span>
+                      <span>Modify the source code for your own purposes</span>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Distribute modified versions (under applicable open-source terms)</span>
+                      <span>Distribute original or modified versions (subject to Apache 2.0 requirements)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-4 h-4 text-green-500 mt-1 mr-3 flex-shrink-0" />
+                      <span>Contribute code, documentation, or translations under the project's open-source policy</span>
                     </li>
                   </ul>
                 </div>
@@ -106,31 +114,35 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
                 <XCircle className="w-6 h-6 text-red-500 mr-3" />
-                <h3 className="text-xl font-semibold text-foreground">Restrictions</h3>
+                <h3 className="text-xl font-semibold text-foreground">Restrictions and Prohibited Uses</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">You May Not:</h4>
+                  <h4 className="font-medium text-foreground mb-2">You Must Not:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Remove copyright notices or license information</span>
+                      <span>Remove or alter copyright notices, trademarks, or license information</span>
                     </li>
                     <li className="flex items-start">
                       <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Reverse engineer proprietary components (where applicable)</span>
+                      <span>Use the software for unlawful, harmful, or abusive activities including harassment, spam, or malware distribution</span>
                     </li>
                     <li className="flex items-start">
                       <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Use the software to violate laws or regulations</span>
+                      <span>Operate nodes in ways that violate network stability or flood relays with excessive requests</span>
                     </li>
                     <li className="flex items-start">
                       <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Distribute malware or harmful modifications</span>
+                      <span>Violate privacy rights of other users or applicable data protection laws</span>
                     </li>
                     <li className="flex items-start">
                       <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
-                      <span>Claim ownership of the libr trademark or branding</span>
+                      <span>Use the libr name or logo without explicit permission for commercial purposes</span>
+                    </li>
+                    <li className="flex items-start">
+                      <XCircle className="w-4 h-4 text-red-500 mt-1 mr-3 flex-shrink-0" />
+                      <span>Distribute modified versions without proper attribution as required by Apache 2.0</span>
                     </li>
                   </ul>
                 </div>
@@ -140,34 +152,131 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
             <section className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-6 border border-blue-500/20">
               <div className="flex items-center mb-4">
                 <Settings className="w-6 h-6 text-blue-500 mr-3" />
-                <h3 className="text-xl font-semibold text-foreground">Open Source Components</h3>
+                <h3 className="text-xl font-semibold text-foreground">Apache 2.0 License & Open Source Components</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  libr incorporates various open-source components, each governed by their respective licenses. 
-                  These may include but are not limited to:
+                  libr is distributed under the Apache License 2.0, which provides you with broad rights to use, modify, and distribute the software.
+                  The complete license text is available in the repository's LICENSE file.
                 </p>
-                <ul className="space-y-2">
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">Key Apache 2.0 Provisions:</h4>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <span><strong className="text-foreground">Patent Grant:</strong> Contributors grant you patent rights for their contributions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <span><strong className="text-foreground">Attribution:</strong> Modified versions must include NOTICE of changes</span>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <span><strong className="text-foreground">Trademark Protection:</strong> No license to use libr trademarks</span>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <span><strong className="text-foreground">Disclaimer:</strong> Software provided "AS IS" without warranties</span>
+                    </li>
+                  </ul>
+                </div>
+                <p>
+                  Third-party libraries incorporated into libr are subject to their respective licenses. 
+                  See the repository's NOTICE file and dependency documentation for complete details.
+                </p>
+              </div>
+            </section>
+
+            <section className="bg-card/30 rounded-xl p-6 border border-border">
+              <div className="flex items-center mb-4">
+                <AlertCircle className="w-6 h-6 text-libr-accent1 mr-3" />
+                <h3 className="text-xl font-semibold text-foreground">Intellectual Property Rights</h3>
+              </div>
+              <div className="space-y-4 text-muted-foreground">
+                <p>
+                  While the libr software source code is open-source under Apache 2.0, certain intellectual property rights are retained:
+                </p>
+                <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span><strong className="text-foreground">MIT License</strong> components</span>
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span><strong className="text-foreground">Source Code:</strong> Licensed under Apache 2.0, freely usable and modifiable</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span><strong className="text-foreground">Apache 2.0</strong> licensed libraries</span>
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span><strong className="text-foreground">Trademarks:</strong> The "libr" name and logo are trademarks, not covered by the software license</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span><strong className="text-foreground">BSD</strong> licensed software</span>
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span><strong className="text-foreground">Documentation:</strong> Project documentation follows the same Apache 2.0 terms</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span><strong className="text-foreground">GPL</strong> components (where applicable)</span>
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span><strong className="text-foreground">Contributions:</strong> Your contributions are licensed under Apache 2.0 terms</span>
                   </li>
                 </ul>
+              </div>
+            </section>
+
+            <section className="bg-card/30 rounded-xl p-6 border border-border">
+              <div className="flex items-center mb-4">
+                <Settings className="w-6 h-6 text-libr-accent1 mr-3" />
+                <h3 className="text-xl font-semibold text-foreground">Community Governance & Moderation</h3>
+              </div>
+              <div className="space-y-4 text-muted-foreground">
                 <p>
-                  The full list of dependencies and their licenses can be found in the software's documentation 
-                  and source code repositories.
+                  You acknowledge that libr enables decentralized, community-driven moderation. 
+                  The libr project maintainers do not centrally control content or enforce community policies.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Each community defines its own rules, governance, and moderation policies</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>As a node operator or participant, you agree to abide by policies of communities you join</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Node operators are responsible for their own compliance with local laws and regulations</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Content moderation decisions are made by community moderators, not libr maintainers</span>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section className="bg-card/30 rounded-xl p-6 border border-border">
+              <div className="flex items-center mb-4">
+                <CheckCircle className="w-6 h-6 text-libr-accent1 mr-3" />
+                <h3 className="text-xl font-semibold text-foreground">Privacy & Data Handling</h3>
+              </div>
+              <div className="space-y-4 text-muted-foreground">
+                <p>
+                  The libr software is designed with privacy in mind, but the decentralized nature has implications:
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Private keys and user credentials are stored locally on your device only</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Messages and posts are published to independent relay servers with their own privacy policies</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>The software itself does not collect personal data for libr maintainers</span>
+                  </li>
+                  <li className="flex items-start">
+                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <span>Third-party relay operators may have their own data collection practices</span>
+                  </li>
+                </ul>
+                <p className="mt-4">
+                  For detailed privacy information, please refer to our separate Privacy Policy.
                 </p>
               </div>
             </section>
@@ -240,43 +349,78 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
               <h3 className="text-xl font-semibold text-foreground mb-4">Termination</h3>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  This license is effective until terminated. Your rights under this license will terminate 
-                  automatically if you fail to comply with any of its terms.
+                  This Agreement is effective until terminated. Due to the open-source nature of libr under Apache 2.0, 
+                  your rights to use the software are perpetual unless you violate the license terms.
                 </p>
                 <p>
-                  Upon termination, you must cease all use of the software and destroy all copies in your possession. 
-                  Provisions regarding disclaimers, limitations of liability, and governing law survive termination.
+                  However, this EULA may be terminated if you breach any of its terms, particularly those related to:
+                </p>
+                <ul className="space-y-2 ml-4">
+                  <li>• Unlawful use of the software</li>
+                  <li>• Violation of network stability or community policies</li>
+                  <li>• Improper use of libr trademarks</li>
+                  <li>• Distribution without proper Apache 2.0 attribution</li>
+                </ul>
+                <p>
+                  Upon termination of this EULA, your Apache 2.0 license rights continue, but you must cease any activities 
+                  that violate this agreement and remove any unauthorized trademark usage.
                 </p>
               </div>
             </section>
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Governing Law</h3>
-              <p className="text-muted-foreground">
-                This EULA is governed by the laws of the jurisdiction where the libr project is based, 
-                without regard to conflict of law principles. Any disputes will be resolved in the 
-                appropriate courts of that jurisdiction.
-              </p>
-            </section>
-
-            <section className="bg-card/30 rounded-xl p-6 border border-border">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Contact Information</h3>
-              <p className="text-muted-foreground mb-4">
-                For questions about this EULA or licensing issues, contact us at:
-              </p>
-              <div className="space-y-2 text-muted-foreground">
-                <p><strong className="text-foreground">Email:</strong> libr.forum@gmail.com</p>
-                <p><strong className="text-foreground">GitHub:</strong> https://github.com/devlup-labs/Libr</p>
-                <p><strong className="text-foreground">License Information:</strong> Available in software documentation</p>
+              <h3 className="text-xl font-semibold text-foreground mb-4">Governing Law & Dispute Resolution</h3>
+              <div className="space-y-4 text-muted-foreground">
+                <p>
+                  This EULA is governed by the laws of India, where the libr project maintainers are primarily based, 
+                  without regard to conflict of law principles.
+                </p>
+                <p>
+                  Any disputes arising from this EULA will be resolved through:
+                </p>
+                <ul className="space-y-2 ml-4">
+                  <li>• First, good faith negotiation between parties</li>
+                  <li>• If unsuccessful, binding arbitration under Indian arbitration laws</li>
+                  <li>• As a last resort, appropriate courts in India</li>
+                </ul>
+                <p>
+                  For technical disputes related to the Apache 2.0 license itself, standard open-source dispute resolution 
+                  mechanisms apply.
+                </p>
               </div>
             </section>
 
             <div className="bg-gradient-to-r from-libr-accent1/10 to-libr-accent2/10 rounded-xl p-6 border border-libr-accent1/20">
-              <p className="text-center text-muted-foreground">
+              <h4 className="text-lg font-semibold text-foreground mb-3">Acknowledgment & Acceptance</h4>
+              <p className="text-muted-foreground mb-3">
                 By installing, copying, or using the libr software, you acknowledge that you have read, 
-                understood, and agree to be bound by the terms of this End User License Agreement.
+                understood, and agree to be bound by both:
+              </p>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>• This End User License Agreement (EULA)</li>
+                <li>• The Apache License 2.0 under which the software is distributed</li>
+              </ul>
+              <p className="text-muted-foreground mt-3 text-sm">
+                If you do not agree to these terms, you must not install, distribute, or use the software.
               </p>
             </div>
+
+            <section className="bg-card/30 rounded-xl p-6 border border-border">
+              <h3 className="text-xl font-semibold text-foreground mb-4">Contact and Governance</h3>
+              <p className="text-muted-foreground mb-4">
+                As libr is decentralized, there is no single corporate operator. For governance-related queries, appeals, or issues, 
+                please engage with the relevant Community's official channels, as specified in the libr protocol documentation.
+              </p>
+              <div className="space-y-2 text-muted-foreground">
+                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
+                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
+                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
+                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
+                <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
+                <p><strong className="text-foreground">Privacy Policy:</strong> <a href="/privacy-policy" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Privacy Policy</a></p>
+              </div>
+            </section>
+
           </div>
         </motion.div>
       </div>

@@ -21,7 +21,7 @@ git clone https://github.com/YOUR_USERNAME/libr.git
 cd libr
 
 # 3. Add the original repository as upstream
-git remote add upstream https://github.com/devlup-labs/libr.git
+git remote add upstream https://github.com/libr-forum/libr.git
 ```
 
 ### 2. Install Required Tools
@@ -64,7 +64,7 @@ src/
 ## 🤝 How to Contribute
 
 ### Step 1: Pick an Issue
-1. Go to the [Issues page](https://github.com/devlup-labs/libr/issues)
+1. Go to the [Issues page](https://github.com/libr-forum/libr/issues)
 2. Look for issues labeled `good first issue` - these are perfect for beginners!
 3. Comment "I'd like to work on this" on the issue you choose
 
@@ -249,4 +249,4 @@ Remember: Every expert was once a beginner. We're excited to help you learn and 
 **Need more help?** Check out:
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Detailed contribution guidelines
 - [README.md](README.md) - Project overview and setup
-- [Issues page](https://github.com/devlup-labs/libr/issues) - Find something to work on
+- [Issues page](https://github.com/libr-forum/libr/issues) - Find something to work on
