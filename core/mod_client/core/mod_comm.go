@@ -101,8 +101,10 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, first
 
 	wg.Wait()
 
-	log.Printf("Moderation summary for %s: finalCerts=%d acks=%d unresponsive=%d total=%d",
-		cert.Sign, len(modcertList), ackCount, unresponsive, totalMods)
+	if firstTry {
+		log.Printf("Moderation summary for %s: finalCerts=%d acks=%d unresponsive=%d total=%d",
+			cert.Sign, len(modcertList), ackCount, unresponsive, totalMods)
+	}
 
 	// Save pending state only if there are ACKs
 	if len(ackMods) > 0 {
@@ -117,9 +119,9 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, first
 
 		if err := cache.SavePendingModeration(pending); err != nil {
 			log.Printf("❌ Failed to save pending moderation: %v", err)
-		} else if firstTry {
+		} else if !CronRunning {
 			// Start cron only on first try
-			go StartModerationCron(&cert)
+			go StartModerationCron()
 		}
 	}
 

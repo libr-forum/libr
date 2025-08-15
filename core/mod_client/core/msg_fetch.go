@@ -179,7 +179,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	deleteThreshold := config.DeleteThreshold
 	now := time.Now().Truncate(time.Minute).Unix()
-	start := now - 1200
+	start := now - 3600
 
 	tsChan := make(chan int64, 100)
 	rawCerts := []types.RetMsgCert{}

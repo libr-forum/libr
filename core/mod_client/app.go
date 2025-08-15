@@ -38,8 +38,12 @@ func NewApp() *App {
 	cache.InitCacheFile()
 	keycache.InitKeys()
 	config.LoadConfig()
-	config.InitDB()
 	util.SetupMongo(config.MongoURI)
+	amImod, _ := util.AmIMod(base64.StdEncoding.EncodeToString(keycache.PubKey))
+	if amImod {
+		config.InitDB()
+	}
+	core.MaybeStartCron()
 	return &App{relayStatus: "offline"}
 }
 
@@ -202,6 +206,25 @@ func (a *App) SendInput(input string) (string, []types.ModCert) {
 func (a *App) Report(msgcert types.MsgCert, reason *string) string {
 	if a.relayStatus != "online" {
 		return "Offline"
+	}
+
+	// ✅ Check if msgcert already exists in pending moderation files
+	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
+	files, err := filepath.Glob(dir)
+	if err != nil {
+		logger.LogToFile("[DEBUG] Failed to list pending moderation files")
+		log.Printf("Failed to list pending moderation files: %v", err)
+	} else {
+		for _, filePath := range files {
+			pending, err := cache.LoadPendingModeration(filePath)
+			if err != nil {
+				logger.LogToFile(fmt.Sprintf("[DEBUG] Failed to load pending moderation file %s: %v", filePath, err))
+				continue
+			}
+			if pending.MsgSign == msgcert.Sign {
+				return ":white_check_mark: Already reported and pending moderation."
+			}
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
