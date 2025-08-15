@@ -136,7 +136,7 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
         const newMsg = await apiService.sendMessage(currentCommunity.id, formatted);
         addMessage(newMsg);
 
-        logger.info('[MessageInput] Message sent successfully', { messageId: newMsg?.id });
+        logger.info('[MessageInput] Message sent successfully', { messageContent: newMsg?.content });
 
         setTitle('');
         setBodyText('');

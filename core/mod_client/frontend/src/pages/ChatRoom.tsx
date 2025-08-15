@@ -38,6 +38,7 @@ export const ChatRoom: React.FC = () => {
     
     setLoading(true);
     try {
+      setMessages([]);
       const fetchedMessages = await apiService.getMessages(currentCommunity.id);
       setMessages(fetchedMessages);
     } catch (error) {
@@ -247,7 +248,7 @@ export const ChatRoom: React.FC = () => {
               ) : (
                 sortedMessages.map((message) => (
                   <MessageBubble
-                    key={message.authorPublicKey}
+                    key={message.authorPublicKey+String(message.timestamp)}
                     message={message}
                   />
                 ))

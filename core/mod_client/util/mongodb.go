@@ -60,18 +60,17 @@ func GetStartNodes() ([]*types.Node, error) {
 	var nodeList []*types.Node
 	for cursor.Next(ctx) {
 		var doc struct {
-			IP   string `bson:"ip"`
-			Port string `bson:"port"`
+			NodeId string `bson:"node_id"`
+			PeerId string `bson:"peer_id"`
 		}
 		if err := cursor.Decode(&doc); err != nil {
-			return nil, fmt.Errorf("failed to decode node document: %w", err)
+			return nil, err
 		}
 
-		addr := fmt.Sprintf("%s:%s", doc.IP, doc.Port)
+		nodeId, _ := DecodeNodeID(doc.NodeId)
 		node := &types.Node{
-			NodeId: GenerateNodeID(addr),
-			IP:     doc.IP,
-			Port:   doc.Port,
+			NodeId: nodeId,
+			PeerId: doc.PeerId,
 		}
 		nodeList = append(nodeList, node)
 	}
@@ -97,16 +96,14 @@ func GetOnlineMods() ([]types.Mod, error) {
 	var mods []types.Mod
 	for cursor.Next(ctx) {
 		var doc struct {
-			IP        string `bson:"ip"`
-			Port      string `bson:"port"`
+			PeerId    string `bson:"peer_id"`
 			PublicKey string `bson:"public_key"`
 		}
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, fmt.Errorf("failed to decode mod document: %w", err)
 		}
 		mods = append(mods, types.Mod{
-			IP:        doc.IP,
-			Port:      doc.Port,
+			PeerId:    doc.PeerId,
 			PublicKey: doc.PublicKey,
 		})
 	}

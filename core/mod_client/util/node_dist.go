@@ -2,11 +2,9 @@ package util
 
 import (
 	"crypto/sha1"
-	"encoding/csv"
-	"fmt"
-	"io"
+	"encoding/base64"
+	"errors"
 	"math/big"
-	"net/http"
 )
 
 func XOR(a, b [20]byte) [20]byte {
@@ -30,30 +28,18 @@ func GenerateNodeID(input string) [20]byte {
 	return id
 }
 
-func fetchRawData(gid string) ([][]string, error) {
-	url := fmt.Sprintf("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv&gid=%s", gid)
-	fmt.Println("▶ fetching sheet:", gid, "from URL:", url)
+func DecodeNodeID(base64Str string) ([20]byte, error) {
+	var id [20]byte
 
-	resp, err := http.Get(url)
+	bytes, err := base64.StdEncoding.DecodeString(base64Str)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
+		return id, err
 	}
 
-	reader := csv.NewReader(resp.Body)
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("invalid CSV: %w", err)
+	if len(bytes) != 20 {
+		return id, errors.New("invalid ID length: expected 20 bytes")
 	}
 
-	if len(records) <= 1 {
-		return nil, fmt.Errorf("no data rows in sheet")
-	}
-
-	return records[1:], nil // 👈 skip the header row
+	copy(id[:], bytes)
+	return id, nil
 }

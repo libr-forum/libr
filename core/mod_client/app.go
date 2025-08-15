@@ -129,6 +129,7 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) RegenKeys() string {
 	pub, _, _ := cryptoutils.GenerateKeyPair()
+	keycache.InitKeys()
 	return base64.StdEncoding.EncodeToString(pub)
 }
 
