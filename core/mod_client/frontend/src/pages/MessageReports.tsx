@@ -43,7 +43,7 @@ export const MsgReports: React.FC = () => {
         reason: report.note || '',
       });
 
-      await apiService.manualModerate(cert, action === 'approve' ? 1 : 0);
+      await apiService.manualModerate(cert, action === 'approve' ? 0 : 1);
       setReports(reports.filter(r => r.sign !== sign));
     } catch (error) {
       console.error('Failed to moderate message:', error);

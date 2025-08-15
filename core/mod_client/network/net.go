@@ -15,7 +15,7 @@ type BaseResponse struct {
 	Type string `json:"type"`
 }
 
-func SendTo(ip string, port string, route string, data interface{}, expect string) (interface{}, error) {
+func SendTo(peerid string, route string, data interface{}, expect string) (interface{}, error) {
 
 	switch expect {
 	case "mod":
@@ -26,7 +26,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, route, []byte(msgString))
+			resp, err := Peers.POST(peerid, route, []byte(msgString))
 			if err != nil {
 				return nil, err
 			}
@@ -39,7 +39,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, route, []byte(msgcertJSON))
+			resp, err := Peers.POST(peerid, route, []byte(msgcertJSON))
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +59,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, route, []byte(msgcertJSON))
+			resp, err := Peers.POST(peerid, route, []byte(msgcertJSON))
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +70,7 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 				log.Printf("Failed to generate canonical JSON: %v", err)
 				return nil, err
 			}
-			resp, err := Peers.POST(ip, port, route, []byte(reportCertJSON))
+			resp, err := Peers.POST(peerid, route, []byte(reportCertJSON))
 			if err != nil {
 				return nil, err
 			}
@@ -84,9 +84,9 @@ func SendTo(ip string, port string, route string, data interface{}, expect strin
 	}
 }
 
-func GetFrom(ip string, port string, route string, key string) (interface{}, error) {
+func GetFrom(peerid string, route string, key string) (interface{}, error) {
 
-	resp, err := Peers.GET(ip, port, route)
+	resp, err := Peers.GET(peerid, route)
 	if err != nil {
 		return nil, err
 	}
