@@ -12,6 +12,7 @@ import (
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/db/config"
 	"github.com/devlup-labs/Libr/core/db/internal/models"
+	"github.com/devlup-labs/Libr/core/db/internal/utils"
 )
 
 func ValidateMsgCert(msgcert *models.MsgCert) error {
@@ -118,6 +119,7 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 	msgCertPubKey := repCert.Msgcert.PublicKey
 
 	approveCount := 0
+	rejectCount := 0
 
 	for _, repmodcert := range repCert.RepModCerts {
 		if repCert.Mode == "delete" {
@@ -142,28 +144,64 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 			return fmt.Errorf("❌ Invalid signature from mod: %s", repmodcert.PublicKey)
 		}
 
-		if repmodcert.Status == "1" {
+		switch repmodcert.Status {
+		case "1":
 			approveCount++
+		case "0":
+			rejectCount++
+		}
+		if (rejectCount) > totalMods/2 {
+			return fmt.Errorf("❌ Too many rejections: got %d, need at most %d", rejectCount, totalMods/2)
 		}
 	}
 
-	// Check if majority of valid mods approved
-	threshold := int(math.Ceil(float64(len(validMods)) * float64(config.RepMajority)))
-	if approveCount < threshold {
-		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, threshold)
+	if float32(approveCount)/float32(rejectCount+approveCount) > 0.5 && float32(approveCount)/float32(totalMods) > 0.3 {
+		return nil
+	} else {
+		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, int(math.Ceil(float64(totalMods)*0.3)))
 	}
-
-	return nil
 }
 
 func ValidateModCert(msgCert *models.MsgCert) error {
-
+	apprCount := 0
+	rejCount := 0
+	validMods, _ := utils.GetOnlineMods()
+	totalMods := len(validMods)
 	for _, modcert := range msgCert.ModCerts {
 		payload := msgCert.Msg.Content + strconv.FormatInt(msgCert.Msg.Ts, 10) + modcert.Status
 		fmt.Println("Payload:", payload)
 		if !cryptoutils.VerifySignature(modcert.PublicKey, payload, modcert.Sign) {
 			return fmt.Errorf("❌ Invalid ModCert signature")
 		}
+		switch modcert.Status {
+		case "1":
+			apprCount++
+		case "0":
+			rejCount++
+		}
+		if (rejCount) > totalMods/2 {
+			return fmt.Errorf("❌ Too many rejections: got %d, need at most %d", rejCount, totalMods/2)
+		}
+	}
+	if float32(apprCount)/float32(rejCount+apprCount) > 0.5 && float32(apprCount)/float32(totalMods) > 0.3 {
+		return nil
+	} else {
+		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", apprCount, int(math.Ceil(float64(totalMods)*0.3)))
+	}
+
+}
+
+func ValidateMajority(modcertlist []*models.ModCert, totalMods int) error {
+	approveCount := 0
+	for _, modcert := range modcertlist {
+		if modcert.Status == "1" {
+			approveCount++
+		}
+	}
+
+	threshold := int(math.Ceil(float64(len(modcertlist)) * float64(config.RepMajority)))
+	if approveCount < threshold {
+		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, threshold)
 	}
 
 	return nil
