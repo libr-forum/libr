@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserOpenURL } from '../../../wailsjs/runtime';
-import { PencilLine,Globe, Database } from 'lucide-react';
+import { PencilLine,Globe, Database, Copyright } from 'lucide-react';
 import { logger } from '../../logger/logger';
 import {
   GetOnlineMods,
@@ -100,6 +100,20 @@ export const Menubar: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+      
+      <div className="rounded-3xl m-2 bg-card w-[92%]">
+        <button
+          onClick={() => {
+            logger.info('[Menubar] Feedback button clicked.');
+            BrowserOpenURL("https://libr-ashen.vercel.app/eula");
+          
+          }}
+          className='flex justify-start hover:bg-muted/50 libr-button w-[100%] items-center space-x-2'
+        >
+          <Copyright className="aspect-square h-[40%]" />
+          <span className="mt-0.5">License & Agreement</span>
+        </button>
       </div>
       <div className="rounded-3xl m-2 bg-card w-[92%]">
         <button
