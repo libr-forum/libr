@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 )
 
 var (
@@ -22,6 +23,8 @@ func InitKeys() {
 	}
 	fmt.Println("private:", base64.StdEncoding.EncodeToString(PrivKey))
 	fmt.Println("public:", base64.StdEncoding.EncodeToString(PubKey))
+	logger.LogToFile("private key: " + base64.StdEncoding.EncodeToString(PrivKey))
+	logger.LogToFile("public key: " + base64.StdEncoding.EncodeToString(PubKey))
 }
 
 func LoadPubKey() string {
