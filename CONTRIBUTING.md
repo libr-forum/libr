@@ -386,7 +386,7 @@ optimize-database-queries
    # Fork the repository on GitHub, then:
    git clone https://github.com/YOUR_USERNAME/libr.git
    cd libr
-   git remote add upstream https://github.com/devlup-labs/libr.git
+   git remote add upstream https://github.com/libr-forum/libr.git
    ```
 
 2. **Create a Feature Branch**

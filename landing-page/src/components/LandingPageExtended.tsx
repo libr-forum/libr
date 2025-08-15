@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Github, BookOpen, Instagram, Linkedin, Mail, PencilLine,Users } from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
@@ -115,7 +116,7 @@ const Community: React.FC = () => {
                       delay: index * 0.1
                     }}
                     viewport={{ once: false }}
-                    onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')}
+                    onClick={() => window.open('https://github.com/libr-forum/libr', '_blank')}
                     tabIndex={0}
                     role="button"
                     aria-label="View on GitHub"
@@ -150,7 +151,7 @@ const Community: React.FC = () => {
               <button
                 onClick={() => {
                   fetchStars();
-                  window.open('https://github.com/devlup-labs/Libr', '_blank');
+                  window.open('https://github.com/libr-forum/libr', '_blank');
                 }}
                 className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0"
               >
@@ -303,7 +304,7 @@ const Footer: React.FC = () => {
             <div className="flex gap-8 mb-4">
               <Linkedin onClick={() => window.open('https://www.linkedin.com/company/libr-social/', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
               <Instagram onClick={() => window.open('https://www.instagram.com/libr.social/', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
-              <Github onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
+              <Github onClick={() => window.open('https://github.com/libr-forum/libr', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
               <BookOpen onClick={() => window.open('https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
               <Mail onClick={() => window.open('https://mail.google.com/mail/?view=cm&fs=1&to=libr.forum@gmail.com', '_blank')} className="w-7 h-7 hover:text-libr-accent1 cursor-pointer transition-colors text-foreground" />
             </div>
@@ -322,13 +323,12 @@ const Footer: React.FC = () => {
           {/* <div>
             <h3 className="font-semibold mb-4 text-foreground">Community</h3>
             <ul className="space-y-2 text-muted-foreground">
-              <li><a href="https://github.com/devlup-labs/Libr" target="_blank" className="hover:text-libr-accent1 transition-colors">GitHub</a></li>
-              <li><a href="https://github.com/devlup-labs/Libr/blob/main/README.md" target="_blank" className="hover:text-libr-accent1 transition-colors">Research Paper</a></li>
+              <li><a href="https://github.com/libr-forum/libr" target="_blank" className="hover:text-libr-accent1 transition-colors">GitHub</a></li>
+              <li><a href="https://github.com/libr-forum/libr/blob/main/README.md" target="_blank" className="hover:text-libr-accent1 transition-colors">Research Paper</a></li>
               <li><a href="#" className="hover:text-libr-accent1 transition-colors">Academic Blog</a></li>
               <li><a href="#" className="hover:text-libr-accent1 transition-colors">Contact</a></li>
             </ul>
           </div> */}
-          
           <div>
             <span className="text-xl font-bold text-foreground mb-4">Share Feedback</span>
             <p className="text-muted-foreground mb-4">
@@ -343,8 +343,17 @@ const Footer: React.FC = () => {
           </div>
         </div>
         
-        <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 libr Protocol. Open Source Research Project.</p>
+        <div className="border-t border-border mt-8 pt-8 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link to="/privacy-policy" className="hover:text-libr-accent1 transition-colors">Privacy Policy</Link>
+              <span className="text-border">•</span>
+              <Link to="/terms-and-conditions" className="hover:text-libr-accent1 transition-colors">Terms & Conditions</Link>
+              <span className="text-border">•</span>
+              <Link to="/eula" className="hover:text-libr-accent1 transition-colors">EULA</Link>
+            </div>
+            <p>&copy; 2025 libr. All Rights Reserved.</p>
+          </div>
         </div>
       </div>
     </footer>

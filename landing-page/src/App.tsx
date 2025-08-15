@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Header, Hero, TechArch,WhatIsLIBR} from './components/LandingPageSections';
-import { HowItWorks, Community, Footer } from './components/LandingPageExtended';
-import { TechModules, HowToUse } from './components/AdditionalSections';
 import {BackgroundEffect} from './components/BackgroundEffect';
 import {Analytics} from '@vercel/analytics/react';
 import { MoveUp } from 'lucide-react';
+import LandingPage from './components/LandingPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import EULA from './pages/EULA';
 
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -137,15 +139,12 @@ const App: React.FC = () => {
         <ScrollProgress />
         <BackToTop />
         <main className="flex flex-col flex-nowrap">
-          <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
-          <Hero />  
-          <WhatIsLIBR/>
-          <HowToUse />
-          <TechArch />
-          <HowItWorks />
-          <TechModules />
-          <Community />
-          <Footer />
+          <Routes>
+            <Route path="/" element={<LandingPage isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+            <Route path="/eula" element={<EULA isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+          </Routes>
         </main>
       </div>
     </>

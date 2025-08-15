@@ -1,4 +1,5 @@
 import React,{useRef,useEffect,useState} from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Users, Globe, Lock, Moon, Sun, DatabaseZap, VenetianMask, Waypoints, Download, X, Menu} from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
@@ -13,6 +14,22 @@ const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false
 const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isLegalPage = ['/privacy-policy', '/terms-and-conditions', '/eula'].includes(location.pathname);
+
+  const handleSectionNavigation = (href: string) => {
+    if (isLegalPage && href.startsWith('#')) {
+      // Navigate to home page and then scroll to section
+      navigate('/');
+      setTimeout(() => {
+        const element = document.querySelector(href);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  };
 
   // Close menu on outside click
   useEffect(() => {
@@ -38,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
     { href: "#technical-modules", label: "Modules" },
     { href: "#how-to-use", label: "How To" },
     { href: "https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", label: "Docs", external: true },
-    { href: "https://github.com/devlup-labs/Libr", label: "GitHub", external: true },
+    { href: "https://github.com/libr-forum/libr", label: "GitHub", external: true },
     { href: "https://forms.gle/udt5zATFogCGQtUTA", label: "Join Beta", external: true },
     { href: "https://forms.gle/Uchqc6Z49aoJwjvZ9", label: "Feedback", external: true }
   ];
@@ -53,27 +70,49 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
       <nav className="container mx-auto section-padding py-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <a href="#welcome" className="flex items-center">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-              <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
-            </div>
-            <span className="text-2xl font-bold text-libr-secondary">libr</span>
-          </a>
+          {isLegalPage ? (
+            <Link to="/" className="flex items-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
+              </div>
+              <span className="text-2xl font-bold text-libr-secondary">libr</span>
+            </Link>
+          ) : (
+            <a href="#welcome" className="flex items-center">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
+              </div>
+              <span className="text-2xl font-bold text-libr-secondary">libr</span>
+            </a>
+          )}
         </div>
 
         {/* Desktop Nav Links */}
         <div className="hidden 980:flex items-center space-x-8">
-          {navLinks.map(({ href, label, external }) => (
-            <a
-              key={href}
-              href={href}
-              target={external ? "_blank" : undefined}
-              rel={external ? "noopener noreferrer" : undefined}
-              className="text-foreground hover:text-libr-accent1 transition-colors"
-            >
-              {label}
-            </a>
-          ))}
+          {navLinks.map(({ href, label, external }) => {
+            if (isLegalPage && !external && href.startsWith('#')) {
+              return (
+                <button
+                  key={href}
+                  onClick={() => handleSectionNavigation(href)}
+                  className="text-foreground hover:text-libr-accent1 transition-colors bg-transparent border-none cursor-pointer"
+                >
+                  {label}
+                </button>
+              );
+            }
+            return (
+              <a
+                key={href}
+                href={href}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
+                className="text-foreground hover:text-libr-accent1 transition-colors"
+              >
+                {label}
+              </a>
+            );
+          })}
         </div>
 
         {/* Mobile Menu Toggle + Theme Toggle */}
@@ -126,18 +165,34 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             className="980:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
           >
-            {navLinks.map(({ href, label, external }) => (
-              <a
-                key={href}
-                href={href}
-                target={external ? "_blank" : undefined}
-                rel={external ? "noopener noreferrer" : undefined}
-                onClick={() => setIsMenuOpen(false)}
-                className="text-foreground hover:text-libr-accent1 transition-colors text-base"
-              >
-                {label}
-              </a>
-            ))}
+            {navLinks.map(({ href, label, external }) => {
+              if (isLegalPage && !external && href.startsWith('#')) {
+                return (
+                  <button
+                    key={href}
+                    onClick={() => {
+                      handleSectionNavigation(href);
+                      setIsMenuOpen(false);
+                    }}
+                    className="text-foreground hover:text-libr-accent1 transition-colors text-base bg-transparent border-none cursor-pointer text-left"
+                  >
+                    {label}
+                  </button>
+                );
+              }
+              return (
+                <a
+                  key={href}
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-foreground hover:text-libr-accent1 transition-colors text-base"
+                >
+                  {label}
+                </a>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>

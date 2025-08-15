@@ -388,11 +388,11 @@ const CallToActionSection: React.FC = () => {
             }}
             viewport={{ once: false }}
           >
-            <button onClick={() => window.open('https://github.com/devlup-labs/Libr/blob/main/README.md', '_blank')} className="flex flex-row items-center libr-button-primary text-lg">
+            <button onClick={() => window.open('https://github.com/libr-forum/libr/blob/main/README.md', '_blank')} className="flex flex-row items-center libr-button-primary text-lg">
               <Users className="w-6 h-6 mr-3" />
               View Documentation
             </button>
-            <button onClick={() => window.open('https://github.com/devlup-labs/Libr', '_blank')}className="flex flex-row items-center libr-button-secondary text-lg">
+            <button onClick={() => window.open('https://github.com/libr-forum/libr', '_blank')}className="flex flex-row items-center libr-button-secondary text-lg">
               <Code className="w-6 h-6 mr-3" />
               Explore Code
             </button>
