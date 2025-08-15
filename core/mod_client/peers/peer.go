@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -246,6 +247,7 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 	reqSent.PeerID = cp.Host.ID().String() // now sending the the peerID in the req to registeer in the relay
 	//reqSent.PubIP = OwnPubIP // have too use a stun server to get public ip first and then send register command
 	fmt.Println(reqSent.PeerID)
+	logger.LogToFile("PeerID: " + reqSent.PeerID)
 	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
 
 	if err != nil {
