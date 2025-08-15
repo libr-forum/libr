@@ -1,12 +1,5 @@
 # LIBR
 
-<<<<<<< HEAD
-[![CI](https://github.com/devlup-labs/libr/actions/workflows/ci.yml/badge.svg)](https://github.com/devlup-labs/libr/actions/workflows/ci.yml)
-=======
-[![CI](https://github.com/libr-forum/libr/actions/workflows/ci.yml/badge.svg)](https://github.com/libr-forum/libr/actions/workflows/ci.yml)
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
 A Moderated, Censorship-Resilient Social Network Framework
 
 ## Overview
