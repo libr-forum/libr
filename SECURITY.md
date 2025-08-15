@@ -13,7 +13,11 @@ We release patches for security vulnerabilities. Currently supported versions:
 
 The LIBR team takes security bugs seriously. We appreciate your efforts to responsibly disclose your findings, and will make every effort to acknowledge your contributions.
 
+<<<<<<< HEAD
 To report a security issue, please use the GitHub Security Advisory ["Report a Vulnerability"](https://github.com/devlup-labs/libr/security/advisories/new) tab.
+=======
+To report a security issue, please use the GitHub Security Advisory ["Report a Vulnerability"](https://github.com/libr-forum/libr/security/advisories/new) tab.
+>>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 
 The LIBR team will send a response indicating the next steps in handling your report. After the initial reply to your report, the security team will keep you informed of the progress towards a fix and full announcement, and may ask for additional information or guidance.
 

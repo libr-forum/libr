@@ -36,6 +36,7 @@ func init() {
 		// ~/.config/libr/keys/
 		home, err := os.UserHomeDir()
 		if err != nil {
+			
 			panic("unable to get user home directory: " + err.Error())
 		}
 		PrivateKeyPath = filepath.Join(home, ".config", "libr", "keys", "priv.key")
