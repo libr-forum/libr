@@ -95,6 +95,7 @@ func Fetch(ts int64) []types.RetMsgCert {
 					}
 
 					for _, cert := range val.Values {
+						fmt.Println("⚠ Found certificate 98989898  :", cert.Msg.Ts)
 						if cert.Sign == "" {
 							continue
 						}
