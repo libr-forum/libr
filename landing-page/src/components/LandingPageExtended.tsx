@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Github, BookOpen, Instagram, Linkedin, Mail, PencilLine,Users } from 'lucide-react';
 import icon_transparent from "../assets/icon_transparent.png"
@@ -328,7 +329,6 @@ const Footer: React.FC = () => {
               <li><a href="#" className="hover:text-libr-accent1 transition-colors">Contact</a></li>
             </ul>
           </div> */}
-          
           <div>
             <span className="text-xl font-bold text-foreground mb-4">Share Feedback</span>
             <p className="text-muted-foreground mb-4">
@@ -343,8 +343,17 @@ const Footer: React.FC = () => {
           </div>
         </div>
         
-        <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 libr Protocol. Open Source Research Project.</p>
+        <div className="border-t border-border mt-8 pt-8 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link to="/privacy-policy" className="hover:text-libr-accent1 transition-colors">Privacy Policy</Link>
+              <span className="text-border">•</span>
+              <Link to="/terms-and-conditions" className="hover:text-libr-accent1 transition-colors">Terms & Conditions</Link>
+              <span className="text-border">•</span>
+              <Link to="/eula" className="hover:text-libr-accent1 transition-colors">EULA</Link>
+            </div>
+            <p>&copy; 2025 libr Protocol. Open Source Research Project.</p>
+          </div>
         </div>
       </div>
     </footer>
