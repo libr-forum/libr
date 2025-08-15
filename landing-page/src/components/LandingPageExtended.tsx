@@ -78,7 +78,7 @@ const Community: React.FC = () => {
     { number: "Apache 2.0 Licensed", label: "Open Source" },
     { number: "Go + libp2p", label: "Technology Stack" },
     { number: stars !== null ? `${stars} stars` : "—", label: "github.com/libr-forum/libr" },
-    { number: "v0.1.0-beta", label: "Version" },
+    { number: "v1.0.0-beta", label: "Version" },
   ];
 
   return (
