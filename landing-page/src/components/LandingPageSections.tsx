@@ -50,10 +50,10 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
 
   const navLinks = [
     { href: "#what-is-libr", label: "Product" },
+    { href: "#how-to-use", label: "How To" },
     { href: "#features", label: "Architecture" },
     { href: "#how-it-works", label: "Protocol" },
     { href: "#technical-modules", label: "Modules" },
-    { href: "#how-to-use", label: "How To" },
     { href: "https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", label: "Docs", external: true },
     { href: "https://github.com/libr-forum/libr", label: "GitHub", external: true },
     { href: "https://forms.gle/udt5zATFogCGQtUTA", label: "Join Beta", external: true },

@@ -28,15 +28,15 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
           >
             <Link
               to="/"
-              className="inline-flex items-center text-libr-accent1 hover:text-libr-accent2 transition-colors mb-6"
+              className="inline-flex items-center text-libr-foreground hover:text-libr-secondary transition-colors mb-6"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
             
-            <div className="flex items-center mb-4">
-              <FileCheck className="w-8 h-8 text-libr-accent1 mr-3" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent">
+            <div className="flex items-center mb-4 text-libr-foreground">
+              <FileCheck className="w-8 h-8 mr-3" />
+              <h1 className="text-4xl font-bold">
                 End User License Agreement
               </h1>
             </div>
@@ -55,7 +55,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
         >
           <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
             <div className="flex items-center mb-4">
-              <Download className="w-6 h-6 text-libr-accent1 mr-3" />
+              <Download className="w-6 h-6 text-libr-secondary mr-3" />
               <h2 className="text-2xl font-semibold text-foreground">Agreement Overview</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
@@ -151,7 +151,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
 
             <section className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-6 border border-blue-500/20">
               <div className="flex items-center mb-4">
-                <Settings className="w-6 h-6 text-blue-500 mr-3" />
+                <Settings className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Apache 2.0 License & Open Source Components</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -163,19 +163,19 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                   <h4 className="font-medium text-foreground mb-2">Key Apache 2.0 Provisions:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Patent Grant:</strong> Contributors grant you patent rights for their contributions</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Attribution:</strong> Modified versions must include NOTICE of changes</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Trademark Protection:</strong> No license to use libr trademarks</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Disclaimer:</strong> Software provided "AS IS" without warranties</span>
                     </li>
                   </ul>
@@ -189,7 +189,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <AlertCircle className="w-6 h-6 text-libr-accent1 mr-3" />
+                <AlertCircle className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Intellectual Property Rights</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -198,19 +198,19 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span><strong className="text-foreground">Source Code:</strong> Licensed under Apache 2.0, freely usable and modifiable</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span><strong className="text-foreground">Trademarks:</strong> The "libr" name and logo are trademarks, not covered by the software license</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span><strong className="text-foreground">Documentation:</strong> Project documentation follows the same Apache 2.0 terms</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span><strong className="text-foreground">Contributions:</strong> Your contributions are licensed under Apache 2.0 terms</span>
                   </li>
                 </ul>
@@ -219,7 +219,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Settings className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Settings className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Community Governance & Moderation</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -229,19 +229,19 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Each community defines its own rules, governance, and moderation policies</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>As a node operator or participant, you agree to abide by policies of communities you join</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Node operators are responsible for their own compliance with local laws and regulations</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Content moderation decisions are made by community moderators, not libr maintainers</span>
                   </li>
                 </ul>
@@ -250,7 +250,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <CheckCircle className="w-6 h-6 text-libr-accent1 mr-3" />
+                <CheckCircle className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Privacy & Data Handling</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -259,19 +259,19 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Private keys and user credentials are stored locally on your device only</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Messages and posts are published to independent relay servers with their own privacy policies</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>The software itself does not collect personal data for libr maintainers</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Third-party relay operators may have their own data collection practices</span>
                   </li>
                 </ul>
@@ -295,19 +295,19 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                   <h4 className="font-medium text-foreground mb-2">Update Types:</h4>
                   <ul className="space-y-2">
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Security Updates:</strong> Critical patches for security vulnerabilities</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Bug Fixes:</strong> Corrections for identified issues</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Feature Updates:</strong> New functionality and improvements</span>
                     </li>
                     <li className="flex items-start">
-                      <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       <span><strong className="text-foreground">Protocol Updates:</strong> Changes to the underlying libr protocol</span>
                     </li>
                   </ul>
@@ -412,10 +412,10 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                 please engage with the relevant Community's official channels, as specified in the libr protocol documentation.
               </p>
               <div className="space-y-2 text-muted-foreground">
-                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
-                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
-                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
-                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
+                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
+                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
+                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
+                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
                 <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
                 <p><strong className="text-foreground">Privacy Policy:</strong> <a href="/privacy-policy" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Privacy Policy</a></p>
               </div>

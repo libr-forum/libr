@@ -18,33 +18,33 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
   return (
     <div className="min-h-screen bg-libr-primary/50 text-foreground">
       <Header isDark={isDarkMode} toggleTheme={toggleTheme} />
-      <div className="container mx-auto px-4 py-8 max-w-4xl mt-20">{/* Added mt-20 for header spacing */}
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-8"
+      <div className="container mx-auto px-4 py-8 max-w-4xl mt-20">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <Link
+            to="/"
+            className="inline-flex items-center text-libr-foreground hover:text-libr-secondary transition-colors mb-6"
           >
-            <Link
-              to="/"
-              className="inline-flex items-center text-libr-accent1 hover:text-libr-accent2 transition-colors mb-6"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
-            
-            <div className="flex items-center mb-4">
-              <Shield className="w-8 h-8 text-libr-accent1 mr-3" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-libr-accent1 to-libr-accent2 bg-clip-text text-transparent">
-                Privacy Policy
-              </h1>
-            </div>
-            
-            <p className="text-muted-foreground text-lg">
-              Last updated: August 15, 2025
-            </p>
-          </motion.div>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Link>
+
+          <div className="flex items-center mb-4 text-libr-foreground">
+            <Shield className="w-8 h-8 mr-3" />
+            <h1 className="text-4xl font-bold">
+              Privacy Policy
+            </h1>
+          </div>
+
+          <p className="text-muted-foreground text-lg">
+            Last updated: August 15, 2025
+          </p>
+        </motion.div>
 
         {/* Content */}
         <motion.div
@@ -55,7 +55,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
         >
           <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
             <div className="flex items-center mb-4">
-              <Eye className="w-6 h-6 text-libr-accent1 mr-3" />
+              <Eye className="w-6 h-6 text-libr-secondary mr-3" />
               <h2 className="text-2xl font-semibold text-foreground">Introduction</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
@@ -71,7 +71,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
           <div className="space-y-8">
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Database className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Database className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Information We Collect or Expose</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -121,26 +121,26 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Share2 className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Share2 className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">How We Use Information</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
                 <p className="mb-4">Our use of any collected or exposed data is strictly limited to:</p>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Enabling message and content delivery within the P2P network</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Supporting secure and spam-resistant communication</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Maintaining the integrity of the community moderation framework</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Improving protocol performance and developing new features</span>
                   </li>
                 </ul>
@@ -150,7 +150,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Database className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Database className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Data Sharing</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -168,7 +168,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Settings className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Settings className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Data Retention</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -195,21 +195,21 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Shield className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Shield className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Security</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Your pseudonym and cryptographic identity are secure and unique to you</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>All content is cryptographically signed to ensure authenticity and prevent tampering</span>
                   </li>
                   <li className="flex items-start">
-                    <div className="w-2 h-2 bg-libr-accent1 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <span>Private keys are generated and stored locally on your device only</span>
                   </li>
                 </ul>
@@ -221,7 +221,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
 
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <div className="flex items-center mb-4">
-                <Bell className="w-6 h-6 text-libr-accent1 mr-3" />
+                <Bell className="w-6 h-6 text-libr-secondary mr-3" />
                 <h3 className="text-xl font-semibold text-foreground">Your Rights</h3>
               </div>
               <div className="space-y-4 text-muted-foreground">
@@ -284,15 +284,6 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
               </p>
             </section>
 
-                                    <section className="bg-card/30 rounded-xl p-6 border border-border">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Changes to This Policy</h3>
-              <p className="text-muted-foreground">
-                We may update this Privacy Policy from time to time. Changes will be published on our website and within the app. 
-                Continued use after updates constitutes acceptance of the new terms. Material changes will be communicated through 
-                our official channels with reasonable notice.
-              </p>
-            </section>
-
             <section className="bg-card/30 rounded-xl p-6 border border-border">
               <h3 className="text-xl font-semibold text-foreground mb-4">Contact and Governance</h3>
               <p className="text-muted-foreground mb-4">
@@ -300,21 +291,13 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
                 please engage with the relevant Community's official channels, as specified in the libr protocol documentation.
               </p>
               <div className="space-y-2 text-muted-foreground">
-                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
-                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
-                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
-                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
+                <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
+                <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
+                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
+                <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
                 <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
                 <p><strong className="text-foreground">EULA:</strong> <a href="/eula" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our End User License Agreement</a></p>
               </div>
-            </section>
-
-            <section className="bg-card/30 rounded-xl p-6 border border-border">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Governing Law</h3>
-              <p className="text-muted-foreground">
-                This Privacy Policy is governed by and construed in accordance with the laws of India, 
-                without regard to its conflict of law principles.
-              </p>
             </section>
           </div>
         </motion.div>
