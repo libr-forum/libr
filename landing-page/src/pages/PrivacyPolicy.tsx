@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Shield, Eye, Database, Share2, Bell, Settings } from 'lucide-react';
+import { ArrowLeft, Shield, Eye, Database, Share2, Bell, Settings, AlertTriangle } from 'lucide-react';
 import { Header } from '../components/LandingPageSections';
 import { Footer } from '../components/LandingPageExtended';
 
@@ -65,6 +65,16 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
             <p className="text-muted-foreground leading-relaxed">
               This Privacy Policy explains how your data is collected, used, and what remains beyond our control due to the decentralized nature of the network. 
               By using libr, you agree to the terms outlined in this policy.
+            </p>
+          </div>
+
+          <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-600 mr-3" />
+              <h2 className="text-2xl font-semibold text-red-600">Important Notice</h2>
+            </div>
+            <p className="text-red-600 leading-relaxed mb-4">
+              libr does not own or operate any hardware, nor does it possess or control any data. All data is owned and managed by the respective communities using the software. libr only provides the software framework and is not responsible for any content published, stored, or shared by users or communities.
             </p>
           </div>
 

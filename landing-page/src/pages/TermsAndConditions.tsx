@@ -59,13 +59,23 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
               <h2 className="text-2xl font-semibold text-foreground">Terms and Conditions for libr</h2>
             </div>
             <div className="space-y-2 text-muted-foreground">
-              <p><strong className="text-foreground">Effective Date:</strong> August 15, 2025</p>
-              <p><strong className="text-foreground">Last Updated:</strong> August 15, 2025</p>
+              <p><strong className="text-foreground">Effective Date:</strong> August 16, 2025</p>
+              <p><strong className="text-foreground">Last Updated:</strong> August 16, 2025</p>
             </div>
             <p className="text-muted-foreground leading-relaxed mt-4">
               Welcome to libr, a decentralized, censorship-resilient public forum with community-driven moderation. 
               These Terms and Conditions govern your use of the Platform, including all features, services, and tools provided through libr.
               By accessing or using libr, you agree to be bound by these Terms. If you do not agree, do not use the Platform.
+            </p>
+          </div>
+
+          <div className="bg-card/50 rounded-xl p-8 border border-border mb-8">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-600 mr-3" />
+              <h2 className="text-2xl font-semibold text-red-600">Important Notice</h2>
+            </div>
+            <p className="text-red-600 leading-relaxed mb-4">
+              libr does not own or operate any hardware, nor does it possess or control any data. All data is owned and managed by the respective communities using the software. libr only provides the software framework and is not responsible for any content published, stored, or shared by users or communities.
             </p>
           </div>
 
