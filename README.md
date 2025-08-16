@@ -37,13 +37,10 @@ LIBR is built with the following components:
 
 ## Getting Started
 
-### Prerequisites
+### Installation
 
-- Go 1.21+
-- Node.js 18+
-- Flutter 3.16+
-- Solidity compiler
-- Ethereum development environment (Hardhat, Truffle, etc.)
+Please see the [Installation Guide](./INSTALL.md) for setup instructions across Windows, Linux, and macOS.
+
 
 
 ## Project Structure
