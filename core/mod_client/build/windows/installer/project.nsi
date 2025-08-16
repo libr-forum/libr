@@ -89,7 +89,7 @@ Function .onInit
 FunctionEnd
 
 Function LaunchApplication
-    Exec "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    ExecShell "runas" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 FunctionEnd
 
 Function FinishPageCreate
@@ -120,10 +120,9 @@ Function LeaveFinishPage
 
     ${NSD_GetState} $Check_RunOnStartup $1
     ${If} $1 == ${BST_CHECKED}
-        ; Add registry entry to run app on startup
-        WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${INFO_PRODUCTNAME}" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+        ; Add registry entry to run app on startup (with admin rights)
+        WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${INFO_PRODUCTNAME}" 'powershell -Command "Start-Process -Verb RunAs -FilePath \"$INSTDIR\${PRODUCT_EXECUTABLE}\""'
     ${Else}
-        ; Remove registry entry if previously set
         DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${INFO_PRODUCTNAME}"
     ${EndIf}
 FunctionEnd
