@@ -74,7 +74,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
               <h2 className="text-2xl font-semibold text-red-600">Important Notice</h2>
             </div>
             <p className="text-red-600 leading-relaxed mb-4">
-              libr does not own or operate any hardware, nor does it possess or control any data. All data is owned and managed by the respective communities using the software. libr only provides the software framework and is not responsible for any content published, stored, or shared by users or communities.
+              libr does not own or operate any permanent hardware, nor does it possess or control any data. All data is owned and managed by the respective peers using the software. libr only provides the software framework and is not responsible for any content published, stored, or shared by peers or communities.
             </p>
           </div>
 
