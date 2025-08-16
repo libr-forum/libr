@@ -141,7 +141,10 @@ func LoadForbiddenWords() []string {
 
 func AutoModerateMsg(msg models.UserMsg) (string, error) {
 	for _, word := range forbidden {
-		if msg.Content == word {
+		if strings.Contains(
+			strings.ToLower(msg.Content),
+			strings.ToLower(word),
+		) {
 			return "0", nil
 		}
 	}
