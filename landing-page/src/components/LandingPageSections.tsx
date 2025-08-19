@@ -339,7 +339,7 @@ const Hero:React.FC = () => {
                 <span className="text-libr-secondary/40 text-5xl translate-y-14">Liberté</span>
                 <div className='flex flex-row items-center -translate-x-2'>
                   <span className="text-libr-secondary text-11xl ">libr</span>
-                  <audio ref={audioRef} src="../src/assets/libr.mp3" preload="auto" />
+                  <audio ref={audioRef} src="libr.mp3" preload="auto" />
                 </div>
                 <span className="text-libr-secondary/40 text-4xl -translate-y-16 tracking-wider">স্বাধীনতা</span>
                 <span className="text-libr-secondary/30 text-3xl -translate-y-17">Libertad</span>

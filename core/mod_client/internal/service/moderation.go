@@ -139,6 +139,8 @@ func LoadForbiddenWords() []string {
 	return config.Forbidden
 }
 
+var urlRegex = regexp.MustCompile(`(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)[^\s]+)`)
+
 func AutoModerateMsg(msg models.UserMsg) (string, error) {
 	for _, word := range forbidden {
 		if strings.Contains(
@@ -147,6 +149,10 @@ func AutoModerateMsg(msg models.UserMsg) (string, error) {
 		) {
 			return "0", nil
 		}
+	}
+
+	if urlRegex.MatchString(msg.Content) {
+		return "0", nil
 	}
 
 	clean, err := AnalyzeWithGoogleNLP(msg.Content)
