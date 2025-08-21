@@ -20,7 +20,10 @@ import (
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
-var forbidden = LoadForbiddenWords()
+var (
+    forbiddenWords = LoadForbiddenWords()
+    forbiddenRegex = compileForbiddenRegex(forbiddenWords)
+)
 
 type ModelFunc func(content string) (bool, error)
 
@@ -139,30 +142,41 @@ func LoadForbiddenWords() []string {
 	return config.Forbidden
 }
 
+func compileForbiddenRegex(words []string) *regexp.Regexp {
+    if len(words) == 0 {
+        return nil
+    }
+
+    esc := make([]string, len(words))
+    for i, w := range words {
+        esc[i] = regexp.QuoteMeta(w)
+    }
+
+    pattern := `(?i)\b(` + strings.Join(esc, "|") + `)\b`
+    return regexp.MustCompile(pattern)
+}
+
+
 var urlRegex = regexp.MustCompile(`(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)[^\s]+)`)
 
 func AutoModerateMsg(msg models.UserMsg) (string, error) {
-	for _, word := range forbidden {
-		if strings.Contains(
-			strings.ToLower(msg.Content),
-			strings.ToLower(word),
-		) {
-			return "0", nil
-		}
-	}
+	
+    if forbiddenRegex != nil && forbiddenRegex.MatchString(msg.Content) {
+        return "0", nil
+    }
 
-	if urlRegex.MatchString(msg.Content) {
-		return "0", nil
-	}
+    if urlRegex.MatchString(msg.Content) {
+        return "0", nil
+    }
 
-	clean, err := AnalyzeWithGoogleNLP(msg.Content)
-	if err != nil {
-		return "", err
-	}
-	if clean {
-		return "1", nil
-	}
-	return "0", nil
+    clean, err := AnalyzeWithGoogleNLP(msg.Content)
+    if err != nil {
+        return "", err
+    }
+    if clean {
+        return "1", nil
+    }
+    return "0", nil
 }
 
 func ManModerateMsg(cert types.MsgCert) (*models.ModResponse, error) {
