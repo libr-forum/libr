@@ -30,19 +30,34 @@ case "$DISTRO" in
     URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${VERSION}_${ARCH}.deb"
     echo "⬇️ Downloading $URL..."
     wget -O libr.deb "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
-    sudo dpkg -i libr.deb || sudo apt-get install -f -y
+    echo "⚙️ Installing .deb package..."
+    sudo dpkg -i libr.deb || { 
+      echo "⚠️ dpkg failed, trying apt-get -f install..."; 
+      sudo apt-get install -f -y; 
+    }
+    echo "🧹 Cleaning up..."
     rm libr.deb
     ;;
   fedora|rhel|centos)
     URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}.${ARCH}.rpm"
-    wget -qO libr.rpm "$URL"
-    sudo dnf install -y ./libr.rpm || sudo yum install -y ./libr.rpm
+    echo "⬇️ Downloading $URL..."
+    wget -O libr.rpm "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
+    echo "⚙️ Installing .rpm package..."
+    if command -v dnf >/dev/null 2>&1; then
+      sudo dnf install -y ./libr.rpm
+    else
+      sudo yum install -y ./libr.rpm
+    fi
+    echo "🧹 Cleaning up..."
     rm libr.rpm
     ;;
   arch)
     URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}-${ARCH}.pkg.tar.zst"
-    wget -qO libr.pkg.tar.zst "$URL"
+    echo "⬇️ Downloading $URL..."
+    wget -O libr.pkg.tar.zst "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
+    echo "⚙️ Installing Arch package..."
     sudo pacman -U --noconfirm libr.pkg.tar.zst
+    echo "🧹 Cleaning up..."
     rm libr.pkg.tar.zst
     ;;
   *)
