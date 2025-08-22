@@ -27,8 +27,7 @@ echo "📦 Installing libr $VERSION for $DISTRO ($ARCH)..."
 
 case "$DISTRO" in
   ubuntu|debian)
-    DEB_VERSION=$(echo "$VERSION")
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${DEB_VERSION}_${ARCH}.deb"
+    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${VERSION}_${ARCH}.deb"
     echo "⬇️ Downloading $URL..."
     wget -O libr.deb "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
     sudo dpkg -i libr.deb || sudo apt-get install -f -y
