@@ -52,7 +52,7 @@ case "$DISTRO" in
     rm libr.rpm
     ;;
   arch)
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}-${ARCH}.pkg.tar.zst"
+    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${VERSION}-${ARCH}.pkg.tar.zst"
     echo "⬇️ Downloading $URL..."
     wget -O libr.pkg.tar.zst "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
     echo "⚙️ Installing Arch package..."
