@@ -13,11 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
-	moddb "github.com/devlup-labs/Libr/core/mod_client/internal/mod_db"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/models"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
+	moddb "github.com/libr-forum/Libr/core/mod_client/internal/mod_db"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/models"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 var forbidden = LoadForbiddenWords()

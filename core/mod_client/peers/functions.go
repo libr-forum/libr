@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
+	"github.com/libr-forum/Libr/core/mod_client/internal/handlers"
 )
 
 var Peer *ChatPeer

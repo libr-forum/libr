@@ -58,7 +58,7 @@ const Community: React.FC = () => {
   // Fetch GitHub stars on mount and on reload
   const fetchStars = async () => {
     try {
-      const res = await fetch('https://api.github.com/repos/devlup-labs/Libr');
+      const res = await fetch('https://api.github.com/repos/libr-forum/Libr');
       const data = await res.json();
       if (typeof data.stargazers_count === 'number') {
         setStars(data.stargazers_count);

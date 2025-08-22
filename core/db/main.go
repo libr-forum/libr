@@ -7,9 +7,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/db/internal/keycache"
-	peer "github.com/devlup-labs/Libr/core/db/internal/network/peers"
-	"github.com/devlup-labs/Libr/core/db/internal/utils"
+	"github.com/libr-forum/Libr/core/db/internal/keycache"
+	peer "github.com/libr-forum/Libr/core/db/internal/network/peers"
+	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/devlup-labs/Libr/core/mod_client
+module github.com/libr-forum/Libr/core/mod_client
 
 go 1.24.4
 
@@ -105,7 +105,7 @@ require (
 require (
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/caarlos0/env/v10 v10.0.0
-	github.com/devlup-labs/Libr/core/crypto v1.1.0
+	github.com/libr-forum/Libr/core/crypto v1.1.0
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -136,6 +136,6 @@ require (
 	golang.org/x/text v0.26.0 // indirect
 )
 
-replace github.com/devlup-labs/Libr/core/crypto => ../crypto
+replace github.com/libr-forum/Libr/core/crypto => ../crypto
 
 // replace github.com/wailsapp/wails/v2 v2.10.2 => C:\Users\Arnav\go\pkg\mod

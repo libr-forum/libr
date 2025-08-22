@@ -14,8 +14,10 @@ Thumbs.db
 *.dll
 *.so
 *.dylib
-*.sh
+# *.sh
+!scripts/*
 
+.venv/
 # Test binary, built with `go test -c`
 *.test
 
@@ -29,10 +31,6 @@ vendor/
 go.work
 
 # Build directories
-<<<<<<< HEAD
-/build/
-=======
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 /dist/
 
 # Node.js
@@ -137,10 +135,6 @@ temp/
 .packages
 .pub-cache/
 .pub/
-<<<<<<< HEAD
-/build/
-=======
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -161,12 +155,6 @@ app.*.map.json
 cache
 artifacts
 
-<<<<<<< HEAD
-# Truffle
-build/
-
-=======
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 # Coverage reports
 coverage
 coverage.json
@@ -240,16 +228,8 @@ keystore/
 
 # Build outputs
 bin/
-<<<<<<< HEAD
-build/
-=======
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 dist/
 out/
 
 # Documentation builds
-<<<<<<< HEAD
 site/
-=======
-site/
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d

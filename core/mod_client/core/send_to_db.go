@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/mod_client/config"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/network"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	"github.com/libr-forum/Libr/core/mod_client/config"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/network"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 )
 
 type BaseResponse struct {

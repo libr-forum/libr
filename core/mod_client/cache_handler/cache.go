@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 const cacheFileName = "alias_cache.json"

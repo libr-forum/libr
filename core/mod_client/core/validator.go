@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 func IsValidMessage(content string) bool {

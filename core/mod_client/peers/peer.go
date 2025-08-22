@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -30,6 +29,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"

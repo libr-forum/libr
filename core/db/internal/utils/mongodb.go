@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/node"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

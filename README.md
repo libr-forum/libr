@@ -39,7 +39,115 @@ LIBR is built with the following components:
 
 ### Installation
 
-Please see the [Installation Guide](./INSTALL.md) for setup instructions across Windows, Linux, and macOS.
+Choose your installation method based on your operating system:
+
+#### 🐧 Linux (Recommended - Easy Installation)
+
+**Option 1: Automated Installation Script (Recommended)**
+```bash
+# Download and run the installation script
+curl -fsSL https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh | bash
+
+# Or download and inspect the script first (more secure)
+wget https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh
+chmod +x install-libr.sh
+./install-libr.sh
+```
+
+**What the script does:**
+- 🔍 Auto-detects your Linux distribution (Ubuntu, Debian, Fedora, RHEL, CentOS, Arch Linux)
+- 📦 Downloads the appropriate package format (.deb, .rpm, .pkg.tar.zst)
+- ⚙️ Installs dependencies and sets up desktop integration
+- ✅ Configures everything so you can run `libr` from anywhere
+- 🔄 Checks for existing installations and updates if needed
+
+**Option 2: APT Repository (Ubuntu/Debian)**
+```bash
+# Add Libr APT repository
+curl -fsSL https://libr-forum.github.io/libr-apt-repo/setup-repo.sh | bash
+
+# Install via package manager
+sudo apt install libr
+```
+
+**Option 3: Manual Installation**
+
+*For Ubuntu 22.04 and below:*
+1. Download the **Linux build** (`libr-linux-amd64`) from [Releases](../../releases)
+2. Make it executable: `chmod +x ./libr-linux-amd64`
+3. Run it: `./libr-linux-amd64`
+
+*For Ubuntu 24.04 (Noble) and newer:*
+If you encounter WebKitGTK library errors, install the updated libraries:
+```bash
+# Update package index
+sudo apt update
+
+# Install newer WebKitGTK packages
+sudo apt install -y libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
+
+# Create symlinks for compatibility
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 \
+            /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37
+
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so.0 \
+            /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18
+
+# Make executable and run
+chmod +x ./libr-linux-amd64
+./libr-linux-amd64
+```
+
+#### 🪟 Windows
+
+1. Download the latest **Windows release** (`libr-win-amd64.exe`) from the [Releases](../../releases) page
+2. Double-click to run it
+   - If the app doesn't start, try **right-click → Run as administrator**
+
+#### 🍎 macOS
+
+1. Download the **macOS release** (`libr-darwin-amd64.out`) from [Releases](../../releases)
+2. On first run, macOS may block the app. To fix this:
+   - Go to **System Settings → Privacy & Security**
+   - Allow the app under the "Security" section
+3. Make executable and run:
+   ```bash
+   chmod +x ./libr-darwin-amd64.out
+   ./libr-darwin-amd64.out
+   ```
+
+#### 📋 Verification
+
+After installation, verify that LIBR is working:
+```bash
+# Check if libr is installed
+libr --version
+
+# Launch the application
+libr
+```
+
+**After installation, you can:**
+- Find Libr in your applications menu under "Network" → "Libr"
+- Run `libr` from any terminal
+- The application includes desktop integration with proper icons and shortcuts
+
+The application should appear in your applications menu under "Network" → "Libr".
+
+#### 🔧 Troubleshooting
+
+**Common Issues:**
+
+- **"Command not found" error**: Make sure the binary is in your PATH or use the full path to the executable
+- **Permission denied**: Run `chmod +x` on the downloaded binary
+- **Library errors on Linux**: Install the required WebKitGTK libraries as shown above
+- **macOS security warnings**: Allow the app in System Settings → Privacy & Security
+
+**Need help?** 
+- 📋 [Submit feedback](https://docs.google.com/forms/d/e/1FAIpQLSdOnq6uPpLYEQIueuHtvydMI8q1CMHC_TJzDkUDUU8UCGo4ew/viewform)
+- 🐛 [Report issues](https://github.com/libr-forum/Libr/issues)
+
+---
 
 
 
@@ -100,6 +208,15 @@ We've created some tools to make contributing easier:
 
 # 🔍 Check if your commit message is correct
 ./scripts/validate-commit.sh "feat: add new feature"
+
+# 📦 Build Debian package (Linux)
+./scripts/build-deb.sh
+
+# 🗃️ Create APT repository
+./scripts/create-apt-repo.sh
+
+# 🧪 Test APT repository
+./scripts/test-repository.sh
 
 # Examples:
 ./scripts/validate-commit.sh "feat: add dark mode"        # ✅ Good

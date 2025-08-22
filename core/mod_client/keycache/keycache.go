@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
 )
 
 var (

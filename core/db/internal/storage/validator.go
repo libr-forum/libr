@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/utils"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 func ValidateMsgCert(msgcert *models.MsgCert) error {

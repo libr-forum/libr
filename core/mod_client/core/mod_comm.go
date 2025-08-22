@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
-	"github.com/devlup-labs/Libr/core/mod_client/network"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
+	"github.com/libr-forum/Libr/core/mod_client/network"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
 )
 
 func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, firstTry bool) []types.ModCert {

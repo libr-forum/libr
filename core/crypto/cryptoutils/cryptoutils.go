@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/devlup-labs/Libr/core/crypto/config"
-	"github.com/devlup-labs/Libr/core/crypto/logger"
+	"github.com/libr-forum/Libr/core/crypto/config"
+	"github.com/libr-forum/Libr/core/crypto/logger"
 )
 
 // GenerateKeyPair generates a new Ed25519 key pair,

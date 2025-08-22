@@ -6,11 +6,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/models"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/mod_client/internal/service"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/models"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 func MsgIN(bodyBytes []byte) []byte {

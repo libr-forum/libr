@@ -10,10 +10,10 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/network"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
-	"github.com/devlup-labs/Libr/core/db/internal/routing"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/network"
+	"github.com/libr-forum/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
 )
 
 func BootstrapFromPeers(dbnodes []*models.Node, localNode *models.Node, rt *routing.RoutingTable) {

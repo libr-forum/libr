@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 )
 
 var (

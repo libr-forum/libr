@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
-	"github.com/devlup-labs/Libr/core/db/internal/routing"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
 )
 
 func CountModCerts(modCerts []models.ModCert) (approved, rejected int) {

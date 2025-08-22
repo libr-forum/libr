@@ -1,9 +1,9 @@
-module github.com/devlup-labs/Libr/core/db
+module github.com/libr-forum/Libr/core/db
 
 go 1.24.4
 
 require (
-	github.com/devlup-labs/Libr/core/crypto v1.0.1
+	github.com/libr-forum/Libr/core/crypto v1.0.1
 	github.com/libp2p/go-libp2p v0.42.0
 	github.com/multiformats/go-multiaddr v0.16.0
 	github.com/pion/stun v0.6.1 // indirect
@@ -114,4 +114,4 @@ require (
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
 
-replace github.com/devlup-labs/Libr/core/crypto => ../crypto
+replace github.com/libr-forum/Libr/core/crypto => ../crypto

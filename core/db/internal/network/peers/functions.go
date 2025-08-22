@@ -15,14 +15,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/keycache"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/network"
-	"github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
-	"github.com/devlup-labs/Libr/core/db/internal/routing"
-	"github.com/devlup-labs/Libr/core/db/internal/utils"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/keycache"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/network"
+	"github.com/libr-forum/Libr/core/db/internal/network/bootstrap"
+	"github.com/libr-forum/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
+	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 var Peer *ChatPeer
@@ -262,14 +262,14 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 // 	"strings"
 // 	"time"
 
-// 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-// 	"github.com/devlup-labs/Libr/core/db/config"
-// 	"github.com/devlup-labs/Libr/core/db/internal/models"
-// 	"github.com/devlup-labs/Libr/core/db/internal/network"
-// 	"github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
-// 	"github.com/devlup-labs/Libr/core/db/internal/node"
-// 	"github.com/devlup-labs/Libr/core/db/internal/routing"
-// 	"github.com/devlup-labs/Libr/core/db/internal/utils"
+// 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+// 	"github.com/libr-forum/Libr/core/db/config"
+// 	"github.com/libr-forum/Libr/core/db/internal/models"
+// 	"github.com/libr-forum/Libr/core/db/internal/network"
+// 	"github.com/libr-forum/Libr/core/db/internal/network/bootstrap"
+// 	"github.com/libr-forum/Libr/core/db/internal/node"
+// 	"github.com/libr-forum/Libr/core/db/internal/routing"
+// 	"github.com/libr-forum/Libr/core/db/internal/utils"
 // )
 
 // var Peer *ChatPeer
