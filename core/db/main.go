@@ -9,6 +9,7 @@ import (
 
 	"github.com/libr-forum/Libr/core/db/internal/keycache"
 	peer "github.com/libr-forum/Libr/core/db/internal/network/peers"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
 	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
@@ -29,8 +30,8 @@ func main() {
 
 	<-sigChan
 	fmt.Println("Interrupt received. Exiting gracefully.")
-	if peer.GlobalRT != nil {
-		peer.GlobalRT.SaveToDBAsync()
+	if routing.GlobalRT != nil {
+		routing.GlobalRT.SaveToDBAsync()
 		time.Sleep(1 * time.Second)
 	}
 }

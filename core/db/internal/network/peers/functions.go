@@ -27,7 +27,6 @@ import (
 
 var Peer *ChatPeer
 var globalLocalNode *models.Node
-var GlobalRT *routing.RoutingTable
 
 type RelayDist struct {
 	relayID string
@@ -36,7 +35,7 @@ type RelayDist struct {
 
 func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
 	globalLocalNode = n
-	GlobalRT = rt
+	routing.GlobalRT = rt
 
 	// ✅ Register POST handler
 	network.RegisterPOST(POST)
@@ -70,11 +69,11 @@ func initDHT() {
 		}
 	}
 	if empty {
-		// All buckets are nil
 		fmt.Println("❗ No buckets found in routing table, bootstrapping from peers...")
 		bootstrap.BootstrapFromPeers(bootstrapAddrs, localNode, rt)
 	} else {
-		bootstrap.NodeUpdate(localNode, rt)
+		// pass bootstrapAddrs for fallback
+		bootstrap.NodeUpdate(localNode, rt, bootstrapAddrs)
 	}
 
 	data, _ := json.MarshalIndent(rt, "", "  ")
@@ -184,7 +183,7 @@ func ServeGetReq(paramsBytes []byte) []byte {
 			fmt.Println("ts is not a string")
 		}
 		fmt.Printf("Timestamp to retrieve: %s", keyStr)
-		return network.FindValueHandler(keyStr, globalLocalNode, GlobalRT)
+		return network.FindValueHandler(keyStr, globalLocalNode, routing.GlobalRT)
 	}
 
 	var resp []byte
@@ -216,7 +215,7 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Failed to unmarshal body:", err)
 			return nil
 		}
-		return network.HandlePing(body, globalLocalNode, GlobalRT)
+		return network.HandlePing(body, globalLocalNode, routing.GlobalRT)
 
 	case "store":
 		var msgCert models.MsgCert
@@ -224,7 +223,7 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Error unmarshaling into MsgCert:", err)
 			return nil
 		}
-		return network.StoreHandler(msgCert, globalLocalNode, GlobalRT)
+		return network.StoreHandler(msgCert, globalLocalNode, routing.GlobalRT)
 
 	case "find_node":
 		var body map[string]interface{}
@@ -232,7 +231,7 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Failed to unmarshal body:", err)
 			return nil
 		}
-		return network.FindNodeHandler(body, globalLocalNode, GlobalRT)
+		return network.FindNodeHandler(body, globalLocalNode, routing.GlobalRT)
 
 	case "delete":
 		var repCert models.ReportCert
@@ -240,7 +239,7 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 			fmt.Println("Error unmarshaling into ReportCert:", err)
 			return nil
 		}
-		return network.DeleteHandler(repCert, globalLocalNode, GlobalRT)
+		return network.DeleteHandler(repCert, globalLocalNode, routing.GlobalRT)
 
 	default:
 		fmt.Println("Unknown POST route:", route)

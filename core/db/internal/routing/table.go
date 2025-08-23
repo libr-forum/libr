@@ -12,6 +12,8 @@ import (
 	"github.com/libr-forum/Libr/core/db/internal/node"
 )
 
+var GlobalRT *RoutingTable
+
 // Pinger interface allows us to inject ping logic from the network package.
 type Pinger interface {
 	Ping(peerId string, target *models.Node) error
@@ -46,7 +48,6 @@ func (rt *RoutingTable) InsertNode(localNode *models.Node, newNode *models.Node,
 
 	// ✅ Log incoming node details
 	fmt.Printf("📥 InsertNode: %x | PeerID: %s\n", newNode.NodeId, newNode.PeerId)
-
 	return InsertNodeKBucket(rt.SelfID, localNode, newNode, rt.Buckets[index], pinger)
 }
 
@@ -78,6 +79,7 @@ func InsertNodeKBucket(selfID [20]byte, localNode *models.Node, newNode *models.
 	}
 
 	fmt.Println("🚫 New node rejected (bucket full, oldest still active)")
+
 	return "New node rejected (bucket full, oldest still active)"
 }
 
