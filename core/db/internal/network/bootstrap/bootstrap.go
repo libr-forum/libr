@@ -193,6 +193,8 @@ func Bootstrap(bootstrapNode *models.Node, localNode *models.Node, rt *routing.R
 	for _, n := range seen {
 		rt.InsertNode(localNode, n, pinger)
 		routing.GlobalRT = rt // Update the global reference
+
+		fmt.Print("Routing Table", rt)
 	}
 	seenMu.Unlock()
 

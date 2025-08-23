@@ -63,6 +63,8 @@ func HandlePing(body interface{}, localNode *models.Node, rt *routing.RoutingTab
 	rt.InsertNode(localNode, senderNode, GlobalPinger)
 	routing.GlobalRT = rt // Update the global reference
 
+	fmt.Print("Routing Table", rt)
+
 	fmt.Printf("Ping from node ID: %x, Peer ID: %s\n", nodeID, senderNode.PeerId)
 	data, err := json.Marshal(PingResponse{Status: "ok"})
 	if err != nil {
@@ -171,6 +173,8 @@ func FindNodeHandler(body interface{}, localNode *models.Node, rt *routing.Routi
 	// Insert sender node into routing table
 	rt.InsertNode(localNode, senderNode, GlobalPinger)
 	routing.GlobalRT = rt // Update the global reference
+
+	fmt.Print("Routing Table", rt)
 
 	data, err := json.Marshal(closest)
 	if err != nil {
