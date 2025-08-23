@@ -1,4 +1,4 @@
-package peer
+package peers
 
 import (
 	"bufio"
@@ -8,6 +8,8 @@ import (
 	"crypto/x509"
 	"log"
 	"math/big"
+	"net/http"
+	"os"
 	"sort"
 
 	"context"
@@ -20,7 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/mod_client/keycache"
 	"github.com/devlup-labs/Libr/core/mod_client/logger"
+	"github.com/joho/godotenv"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -42,6 +46,10 @@ import (
 const ChatProtocol = protocol.ID("/chat/1.0.0")
 
 var OwnPubIP string
+var PeerID string
+var PubKey string
+var JS_ServerURL string
+var JS_API_key string
 
 type ChatPeer struct {
 	Host      host.Host
@@ -57,6 +65,8 @@ type reqFormat struct {
 	Body      json.RawMessage `json:"body,omitempty"`
 }
 
+var Cp *ChatPeer
+
 // type RelayDist struct {
 // 	relayID string
 // 	dist    *big.Int
@@ -68,6 +78,15 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	for _, multiaddr := range relayMultiAddrList {
 		parts := strings.Split(multiaddr, "/")
 		relayList = append(relayList, parts[len(parts)-1])
+	}
+
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Could not load .env:", err)
+	}
+	JS_API_key = os.Getenv("JS_API_key")
+	JS_ServerURL = os.Getenv("JS_ServerURL")
+	if JS_API_key == "" || JS_ServerURL == "" {
+		return nil, fmt.Errorf("[DEBUG] Missing JS API key or server URL")
 	}
 
 	caCertPool := x509.NewCertPool()
@@ -86,7 +105,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	}
 
 	fmt.Println("[DEBUG] Creating libp2p Host")
-	h, err := libp2p.New(
+	h, _ := libp2p.New(
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"), // WebSocket
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.ConnectionManager(connMgr),
@@ -98,9 +117,12 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		// libp2p.Transport(websocket.New),
 	)
 
+	PubKey = keycache.LoadPubKey()
+	PeerID = h.ID().String()
+
+	err = connectJSServer()
 	if err != nil {
-		fmt.Println("[DEBUG] Failed to create Host:", err)
-		return nil, err
+		fmt.Println("[DEBUG] Failed to connect to JS server:", err)
 	}
 
 	fmt.Println("[DEBUG] Creating identify service")
@@ -179,7 +201,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	fmt.Println("[DEBUG] Creating circuit relay client")
 	// _ = client // Import for reservation function
 
-	cp := &ChatPeer{
+	Cp = &ChatPeer{
 		Host:      h,
 		relayAddr: relayMA,
 		relayID:   relayInfo.ID,
@@ -189,9 +211,9 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	fmt.Println(h.ID().String())
 
 	fmt.Println("[DEBUG] Setting stream handler for chat protocol")
-	h.SetStreamHandler(ChatProtocol, cp.handleChatStream)
+	h.SetStreamHandler(ChatProtocol, Cp.handleChatStream)
 
-	return cp, nil
+	return Cp, nil
 }
 
 func isPrivateAddr(addr multiaddr.Multiaddr) bool {
@@ -209,18 +231,51 @@ func isPrivateAddr(addr multiaddr.Multiaddr) bool {
 }
 
 // why????
+func connectJSServer() error {
+	postData := map[string]string{
+		"peer_id":    PeerID,
+		"public_key": PubKey,
+	}
 
-func (cp *ChatPeer) Start(ctx context.Context) error {
-	fmt.Println("[DEBUG] Connecting to relay:", cp.relayAddr)
-	relayInfo, _ := peer.AddrInfoFromP2pAddr(cp.relayAddr)
-	if err := cp.Host.Connect(ctx, *relayInfo); err != nil {
+	jsonData, err := json.Marshal(postData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", JS_ServerURL+"/api/postmod", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-Key", JS_API_key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	fmt.Printf("Successfully connected to JS server:")
+	return nil
+}
+
+func (Cp *ChatPeer) Start(ctx context.Context) error {
+	fmt.Println("[DEBUG] Connecting to relay:", Cp.relayAddr)
+	relayInfo, _ := peer.AddrInfoFromP2pAddr(Cp.relayAddr)
+	if err := Cp.Host.Connect(ctx, *relayInfo); err != nil {
 		fmt.Println("[DEBUG] Failed to connect to relay:", err)
 		return fmt.Errorf("failed to connect to relay: %w", err)
 	}
 
 	// Make reservation with the relay
 	fmt.Println("[DEBUG] Making reservation with relay...")
-	reservation, err := client.Reserve(ctx, cp.Host, *relayInfo)
+	reservation, err := client.Reserve(ctx, Cp.Host, *relayInfo)
 	if err != nil {
 		fmt.Printf("[DEBUG] Failed to make reservation: %v\n", err)
 		return fmt.Errorf("failed to make reservation: %w", err)
@@ -228,27 +283,27 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 	fmt.Printf("[DEBUG] Reservation successful! Expiry: %v\n", reservation.Expiration)
 
 	fmt.Printf("[DEBUG] Peer started!\n")
-	fmt.Printf("[DEBUG] Peer ID: %s\n", cp.Host.ID())
+	fmt.Printf("[DEBUG] Peer ID: %s\n", Cp.Host.ID())
 
-	for _, addr := range cp.Host.Addrs() {
-		fmt.Printf("[DEBUG] Address: %s/p2p/%s\n", addr, cp.Host.ID())
+	for _, addr := range Cp.Host.Addrs() {
+		fmt.Printf("[DEBUG] Address: %s/p2p/%s\n", addr, Cp.Host.ID())
 	}
 
-	circuitAddr := cp.relayAddr.Encapsulate(
-		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", cp.Host.ID())))
+	circuitAddr := Cp.relayAddr.Encapsulate(
+		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", Cp.Host.ID())))
 
 	fmt.Printf("[INFO] Circuit Address (share this with other peers): %s\n", circuitAddr)
 
 	// Start a goroutine to periodically refresh reservations
-	go cp.refreshReservations(ctx, *relayInfo)
+	go Cp.refreshReservations(ctx, *relayInfo)
 
 	var reqSent reqFormat
 	reqSent.Type = "register"
-	reqSent.PeerID = cp.Host.ID().String() // now sending the the peerID in the req to registeer in the relay
+	reqSent.PeerID = Cp.Host.ID().String() // now sending the the peerID in the req to registeer in the relay
 	//reqSent.PubIP = OwnPubIP // have too use a stun server to get public ip first and then send register command
 	fmt.Println(reqSent.PeerID)
 	logger.LogToFile("PeerID: " + reqSent.PeerID)
-	stream, err := cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
+	stream, err := Cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
 
 	if err != nil {
 		fmt.Println("[DEBUG]Error Opening stream to relay")
@@ -266,7 +321,7 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.AddrInfo) {
+func (Cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.AddrInfo) {
 	ticker := time.NewTicker(5 * time.Minute) // Refresh every 5 minutes
 	defer ticker.Stop()
 
@@ -274,7 +329,7 @@ func (cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.Addr
 		select {
 		case <-ticker.C:
 			fmt.Println("[DEBUG] Refreshing relay reservation...")
-			if reservation, err := client.Reserve(ctx, cp.Host, relayInfo); err != nil {
+			if reservation, err := client.Reserve(ctx, Cp.Host, relayInfo); err != nil {
 				fmt.Printf("[DEBUG] Failed to refresh reservation: %v\n", err)
 			} else {
 				fmt.Printf("[DEBUG] Reservation refreshed! Expiry: %v\n", reservation.Expiration)
@@ -285,7 +340,7 @@ func (cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.Addr
 	}
 }
 
-func (cp *ChatPeer) handleChatStream(s network.Stream) {
+func (Cp *ChatPeer) handleChatStream(s network.Stream) {
 	fmt.Println("[DEBUG] Incoming chat stream from", s.Conn().RemotePeer())
 	defer s.Close()
 
@@ -340,7 +395,7 @@ func (cp *ChatPeer) handleChatStream(s network.Stream) {
 	}
 }
 
-func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byte, body []byte) ([]byte, error) {
+func (Cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byte, body []byte) ([]byte, error) {
 	//completeIP := TargetIP + ":" + targetPort
 
 	var req reqFormat
@@ -349,7 +404,7 @@ func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 	req.PeerID = targetPeerID
 	req.ReqParams = jsonReq
 	req.Body = body
-	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
+	stream, err := Cp.Host.NewStream(ctx, Cp.relayID, ChatProtocol)
 	if err != nil {
 		fmt.Println("[DEBUG]Error opneing a fetch ID stream to relay")
 		return nil, err
@@ -383,11 +438,11 @@ func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 	return resp, err
 }
 
-func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
+func (Cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	var peers []peer.ID
-	for _, conn := range cp.Host.Network().Conns() {
+	for _, conn := range Cp.Host.Network().Conns() {
 		remotePeer := conn.RemotePeer()
-		if remotePeer != cp.relayID {
+		if remotePeer != Cp.relayID {
 			peers = append(peers, remotePeer)
 		}
 	}
@@ -395,9 +450,46 @@ func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	return peers
 }
 
-func (cp *ChatPeer) Close() error {
+func (Cp *ChatPeer) Close() error {
 	fmt.Println("[DEBUG] Closing Host")
-	return cp.Host.Close()
+	err := deleteFromJSServer()
+	if err != nil {
+		return err
+	}
+	return Cp.Host.Close()
+}
+
+func deleteFromJSServer() error {
+	deleteData := map[string]string{
+		"peer_id": PeerID,
+	}
+
+	jsonData, err := json.Marshal(deleteData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	req, err := http.NewRequest("DELETE", JS_ServerURL+"/api/deletemod", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", JS_API_key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	fmt.Printf("Successfully deleted node")
+	return nil
 }
 
 // func GetPublicIP() string {
