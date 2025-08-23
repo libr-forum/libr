@@ -21,6 +21,19 @@ fi
 if [ "$INSTALLED_VERSION" = "$VERSION" ]; then
   echo "✅ libr $VERSION already installed."
   exit 0
+elif [ "$INSTALLED_VERSION" != "none" ]; then
+  echo "♻️ Removing old version ($INSTALLED_VERSION)..."
+  case "$DISTRO" in
+    ubuntu|debian)
+      sudo apt-get remove -y libr || true
+      ;;
+    fedora|rhel|centos)
+      sudo dnf remove -y libr || sudo yum remove -y libr || true
+      ;;
+    arch)
+      sudo pacman -Rns --noconfirm libr || true
+      ;;
+  esac
 fi
 
 echo "📦 Installing libr $VERSION for $DISTRO ($ARCH)..."
@@ -32,11 +45,23 @@ case "$DISTRO" in
     wget -O libr.deb "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
     echo "⚙️ Installing .deb package..."
     sudo dpkg -i libr.deb || { 
-      echo "⚠️ dpkg failed, trying apt-get -f install..."; 
+      echo "⚠️ dpkg failed, fixing dependencies..."; 
       sudo apt-get install -f -y; 
     }
     echo "🧹 Cleaning up..."
     rm libr.deb
+
+    # Fix WebKitGTK compatibility issues (quietly)
+    echo "🔧 Checking WebKitGTK compatibility..."
+    if ! ldconfig -p | grep -q "libwebkit2gtk-4.0.so.37"; then
+      sudo apt update -qq
+      sudo apt install -y libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
+      sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 \
+                  /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 || true
+      sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so.0 \
+                  /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18 || true
+      echo "✅ WebKitGTK compatibility fixed."
+    fi
     ;;
   fedora|rhel|centos)
     URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}.${ARCH}.rpm"
@@ -52,7 +77,7 @@ case "$DISTRO" in
     rm libr.rpm
     ;;
   arch)
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${VERSION}-${ARCH}.pkg.tar.zst"
+    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}-${ARCH}.pkg.tar.zst"
     echo "⬇️ Downloading $URL..."
     wget -O libr.pkg.tar.zst "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
     echo "⚙️ Installing Arch package..."
