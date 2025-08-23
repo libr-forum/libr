@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{useEffect} from 'react';
 import { BrowserOpenURL } from '../../../wailsjs/runtime';
 import { PencilLine,Globe, Database, Copyright } from 'lucide-react';
 import { logger } from '../../logger/logger';
@@ -13,7 +13,9 @@ type ModDisplay = {
   alias: string;
   avatarSvg: string;
 };
-
+interface MenubarProps {
+  onLoaded?: () => void;
+}
 const ComingSoonDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   if (!open) return null;
   return (
@@ -37,7 +39,12 @@ const ComingSoonDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ op
 };
 
 
-export const Menubar: React.FC = () => {
+export const Menubar: React.FC<MenubarProps> = ({ onLoaded }) => {
+  useEffect(() => {
+    if (onLoaded) {
+      onLoaded();
+    }
+  }, [onLoaded]);
   const [mods, setMods] = React.useState<ModDisplay[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   React.useEffect(() => {

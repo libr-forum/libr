@@ -17,7 +17,7 @@ import { Communities } from './pages/Communities';
 import { logger } from './logger/logger'
 
 import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, GetRelayAddr } from '../wailsjs/go/main/App';
-import { EventsOn,Quit } from 'wailsjs/runtime/runtime';
+import { EventsOn,Quit,EventsOff } from 'wailsjs/runtime/runtime';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -30,6 +30,7 @@ import {
   AlertDialogAction
 } from "@/components/ui/alert-dialog";
 import { MsgReports } from './pages/MessageReports';
+;
 
 const queryClient = new QueryClient();
 
@@ -116,18 +117,6 @@ async function fetchRelayAddrs(): Promise<string[]> {
   }
 }
 
-
-// const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-//   return (
-//     <div className="flex h-screen bg-libr-primary relative">
-//       <Sidebar />
-//       <main className="flex-1 overflow-hidden transition-all duration-300">
-//         {children}
-//       </main>
-//     </div>
-//   );
-// };
-
 const App: React.FC = () => {
   const {
     isAuthenticated,
@@ -137,7 +126,6 @@ const App: React.FC = () => {
     setCurrentCommunity,
     communities
   } = useAppStore();
-
   const [relayFailed, setRelayFailed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -160,7 +148,6 @@ const App: React.FC = () => {
       try {
         logger.debug("🔄 Fetching relay addresses...");
         const relayAddrs = await fetchRelayAddrs();
-        // const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWCG3Jp3Jm3AeD9WgUVAVeze71X3mPaCz2jfQAAGnCDgku"]
         const status = await GetRelayStatus();
         let connected = false;
         for (let i = 0; i < 10; i++) {
