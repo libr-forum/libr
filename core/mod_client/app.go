@@ -423,7 +423,7 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 	}
 	defer f.Close()
 	defer func() {
-		service.Forbidden = service.LoadForbiddenWords()
+		service.ForbiddenWords = service.LoadForbiddenWords()
 	}()
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
