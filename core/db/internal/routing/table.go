@@ -3,6 +3,7 @@ package routing
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -22,6 +23,43 @@ type Pinger interface {
 type RoutingTable struct {
 	SelfID  [20]byte             `json:"self_id"`
 	Buckets [160]*models.KBucket `json:"buckets"`
+}
+
+func (rt *RoutingTable) String() string {
+	// Define a lightweight view for JSON
+	type NodeView struct {
+		PeerID   string `json:"peer_id"`
+		LastSeen int64  `json:"last_seen"`
+	}
+	type BucketView struct {
+		Size  int        `json:"size"`
+		Nodes []NodeView `json:"nodes"`
+	}
+	view := struct {
+		SelfID  string       `json:"self_id"`
+		Buckets []BucketView `json:"buckets"`
+	}{
+		SelfID: fmt.Sprintf("%x", rt.SelfID[:4]), // only first 4 bytes, compact
+	}
+
+	for _, b := range rt.Buckets {
+		if b != nil && len(b.Nodes) > 0 {
+			bucket := BucketView{Size: len(b.Nodes)}
+			for _, n := range b.Nodes { // n is *models.Node
+				if n == nil {
+					continue
+				}
+				bucket.Nodes = append(bucket.Nodes, NodeView{
+					PeerID:   n.PeerId,
+					LastSeen: n.LastSeen,
+				})
+			}
+			view.Buckets = append(view.Buckets, bucket)
+		}
+	}
+
+	data, _ := json.MarshalIndent(view, "", "  ")
+	return string(data)
 }
 
 func GetBucketIndex(selfID, targetID [20]byte) int {
@@ -55,14 +93,18 @@ func InsertNodeKBucket(selfID [20]byte, localNode *models.Node, newNode *models.
 	for i, existing := range bucket.Nodes {
 		// ✅ Update existing node info including PeerID/LastSeen
 		if bytes.Equal(existing.NodeId[:], newNode.NodeId[:]) {
+			existing.PeerId = newNode.PeerId
 			existing.LastSeen = newNode.LastSeen
+			// update other fields if needed (IP, Port, etc.)
 
+			// move node to the end (most recently seen)
 			bucket.Nodes = append(bucket.Nodes[:i], bucket.Nodes[i+1:]...)
 			bucket.Nodes = append(bucket.Nodes, existing)
 
-			fmt.Printf("🔁 Updated node in K-bucket: %x | Port: %s\n", newNode.NodeId, newNode.PeerId)
+			fmt.Printf("🔁 Updated node in K-bucket: %x | PeerID: %s\n", newNode.NodeId, newNode.PeerId)
 			return "Updated K-Bucket (refreshed existing node)"
 		}
+
 	}
 
 	if len(bucket.Nodes) < config.K {

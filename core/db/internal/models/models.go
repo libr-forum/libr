@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 type Msg struct {
 	Content string `json:"content"`
 	Ts      int64  `json:"ts"`
@@ -63,4 +65,9 @@ type Node struct {
 
 type KBucket struct {
 	Nodes []*Node
+}
+
+func (kb *KBucket) String() string {
+	data, _ := json.MarshalIndent(kb, "", "  ")
+	return string(data)
 }
