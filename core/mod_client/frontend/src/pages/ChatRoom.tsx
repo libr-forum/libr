@@ -9,8 +9,16 @@ import { Menubar } from '../components/layout/Menubar';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ArrowDown, Clock, Calendar, RotateCcw, Plus } from 'lucide-react';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
+import { useLocation } from 'react-router-dom';
 
 export const ChatRoom: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === '/chat') {
+      setLastLoadedDate(new Date());
+    }
+  }, [location.pathname]);
   const { 
     currentCommunity, 
     messages, 
@@ -30,13 +38,24 @@ export const ChatRoom: React.FC = () => {
   const [isBottomLoading, setIsBottomLoading] = useState(false);
   const [menubarLoaded, setMenubarLoaded] = useState(false);
   
+  const reloadMessages=async() =>{
+    const now = new Date();
+    setLastLoadedDate(now);
+    loadMessages(now, true);
+  }
+
   useEffect(() => {
-    if (currentCommunity && menubarLoaded) {
+    setLastLoadedDate(new Date());
+    //reloadMessages();
+    const fetchInitialMessages = async () => {
       const now = new Date();
-      setLastLoadedDate(now);
-      loadMessages(now, true);
-    }
-  }, [currentCommunity, menubarLoaded]);
+      console.log('Fetching initial messages for:', currentCommunity?.id, now);
+      const initialFetch = await apiService.getMessages(currentCommunity.id, now);
+      setMessages([]);
+      setMessages(initialFetch);
+    };
+    fetchInitialMessages();
+  }, [currentCommunity]);
 
   const loadMessages = async (curr: Date, replace = false) => {
     if (!currentCommunity) return [];
@@ -202,9 +221,7 @@ export const ChatRoom: React.FC = () => {
                 </button> */}
                 <button
                   onClick={() => {
-                    const now = new Date();
-                    setLastLoadedDate(now);
-                    loadMessages(now, true);
+                    reloadMessages();
                   }}
                   className="libr-button bg-libr-accent1/20 rounded-2xl hover:bg-muted flex items-center space-x-2 text-sm"
                   title="Reload Messages"
@@ -324,12 +341,16 @@ export const ChatRoom: React.FC = () => {
                 </motion.div>
               ) : (
                 <>
-                  {sortedMessages.map((message) => (
-                    <MessageBubble
-                      key={message.authorPublicKey+String(message.timestamp)}
-                      message={message}
-                    />
-                  ))}
+                  {sortedMessages.map((message) => {
+                    const key = message.authorPublicKey + String(message.timestamp);
+                    //console.log('Rendering MessageBubble with key:', key);
+                    return (
+                      <MessageBubble
+                        key={key}
+                        message={message}
+                      />
+                    );
+                  })}
                   {/* Add empty space at the end */}
                   <div style={{ height: "256px" }} />
                 </>

@@ -22,7 +22,7 @@ import (
 
 var (
 	ForbiddenWords = LoadForbiddenWords()
-	forbiddenRegex = compileForbiddenRegex(ForbiddenWords)
+	ForbiddenRegex = CompileForbiddenRegex(ForbiddenWords)
 )
 
 type ModelFunc func(content string) (bool, error)
@@ -142,7 +142,7 @@ func LoadForbiddenWords() []string {
 	return config.Forbidden
 }
 
-func compileForbiddenRegex(words []string) *regexp.Regexp {
+func CompileForbiddenRegex(words []string) *regexp.Regexp {
 	if len(words) == 0 {
 		return nil
 	}
@@ -160,7 +160,7 @@ var urlRegex = regexp.MustCompile(`(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]
 
 func AutoModerateMsg(msg models.UserMsg) (string, error) {
 
-	if forbiddenRegex != nil && forbiddenRegex.MatchString(msg.Content) {
+	if ForbiddenRegex != nil && ForbiddenRegex.MatchString(msg.Content) {
 		return "0", nil
 	}
 

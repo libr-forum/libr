@@ -9,9 +9,9 @@ import (
 // These variables are placeholders.
 // They will be replaced by the Go linker's -X flag in the build script.
 var (
-	Version   = "v0.1.0"  // Represents the semantic version, e.g., "v1.0.0"
-	GitCommit = "unknown" // Represents the git commit hash
-	BuildTime = "unknown" // Represents the build timestamp
+	Version   = "v1.0.0-beta" // Represents the semantic version, e.g., "v1.0.0"
+	GitCommit = "unknown"     // Represents the git commit hash
+	BuildTime = "unknown"     // Represents the build timestamp
 )
 
 // Info holds all the version-related information.

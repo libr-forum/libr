@@ -24,7 +24,6 @@ import (
 
 	"github.com/devlup-labs/Libr/core/mod_client/keycache"
 	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/joho/godotenv"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -72,6 +71,27 @@ var Cp *ChatPeer
 // 	dist    *big.Int
 // }
 
+type Config struct {
+	JS_ServerURL string `json:"JS_ServerURL"`
+	JS_API_key   string `json:"JS_API_key"`
+}
+
+func LoadConfig(filename string) (*Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	config := &Config{}
+	if err := decoder.Decode(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
 func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 
 	var relayList []string
@@ -80,14 +100,13 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		relayList = append(relayList, parts[len(parts)-1])
 	}
 
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Could not load .env:", err)
+	config, err := LoadConfig("config.json")
+	if err != nil {
+		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
 	}
-	JS_API_key = os.Getenv("JS_API_key")
-	JS_ServerURL = os.Getenv("JS_ServerURL")
-	if JS_API_key == "" || JS_ServerURL == "" {
-		return nil, fmt.Errorf("[DEBUG] Missing JS API key or server URL")
-	}
+
+	JS_ServerURL = config.JS_ServerURL
+	JS_API_key = config.JS_API_key
 
 	caCertPool := x509.NewCertPool()
 

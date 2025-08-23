@@ -424,6 +424,7 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 	defer f.Close()
 	defer func() {
 		service.ForbiddenWords = service.LoadForbiddenWords()
+		service.ForbiddenRegex = service.CompileForbiddenRegex(service.ForbiddenWords)
 	}()
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
