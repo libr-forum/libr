@@ -17,7 +17,7 @@ import (
 )
 
 func BootstrapFromPeers(dbnodes []*models.Node, localNode *models.Node, rt *routing.RoutingTable) {
-	fmt.Println("dbnodes:")
+	fmt.Println("🌐 Bootstrapping from peers...")
 	for _, n := range dbnodes {
 		fmt.Printf("PeerId: %s, NodeId: %s\n", n.PeerId, base64.StdEncoding.EncodeToString(n.NodeId[:]))
 	}

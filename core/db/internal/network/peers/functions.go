@@ -47,6 +47,8 @@ func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
 func initDHT() {
 	bootstrapAddrs, _ := utils.GetDbAddr()
 
+	fmt.Print("Bootstrap addresses: ", bootstrapAddrs, "\n")
+
 	// 3. Init DB and routing
 	config.InitDB()
 	nodeId := node.GenerateNodeID(base64.StdEncoding.EncodeToString(keycache.PubKey))
