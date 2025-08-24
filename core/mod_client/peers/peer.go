@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
 	"github.com/devlup-labs/Libr/core/mod_client/keycache"
 	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/libp2p/go-libp2p"
@@ -76,8 +77,9 @@ type Config struct {
 	JS_API_key   string `json:"JS_API_key"`
 }
 
-func LoadConfig(filename string) (*Config, error) {
-	file, err := os.Open(filename)
+func LoadConfig() (*Config, error) {
+	ModJSPath := service.GetModJSPath()
+	file, err := os.Open(ModJSPath)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +101,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		parts := strings.Split(multiaddr, "/")
 		relayList = append(relayList, parts[len(parts)-1])
 	}
-	config, err := LoadConfig("modconfig.json")
+	config, err := LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
 	}

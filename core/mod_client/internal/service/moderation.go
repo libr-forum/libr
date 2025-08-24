@@ -51,6 +51,26 @@ func GetModConfigPath() string {
 	return path
 }
 
+func GetModJSPath() string {
+	var path string
+
+	switch runtime.GOOS {
+	case "windows":
+		appData := os.Getenv("APPDATA")
+		path = filepath.Join(appData, "libr", "modconfig", "modjs.json")
+	case "darwin":
+		home, _ := os.UserHomeDir()
+		path = filepath.Join(home, "Library", "Application Support", "libr", "modconfig", "modjs.json")
+	case "linux":
+		home, _ := os.UserHomeDir()
+		path = filepath.Join(home, ".config", "libr", "modconfig", "modjs.json")
+	default:
+		path = filepath.Join("modconfig", "modjs.json")
+	}
+
+	return path
+}
+
 func GetModKeysPath() string {
 	var path string
 
