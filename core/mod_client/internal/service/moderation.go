@@ -71,6 +71,22 @@ func GetModJSPath() string {
 	return path
 }
 
+func ModJSInit() {
+	path := GetModJSPath()
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Create parent directories if needed
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			fmt.Println("Failed to create modjs directory:", err)
+			return
+		}
+		// Write empty JSON object
+		if err := os.WriteFile(path, []byte("{}"), 0644); err != nil {
+			fmt.Println("Failed to write empty modjs.json:", err)
+		}
+	}
+}
+
 func GetModKeysPath() string {
 	var path string
 

@@ -122,6 +122,7 @@ func NewApp() *App {
 		config.InitDB()
 	}
 	core.MaybeStartCron()
+	service.ModJSInit()
 	return &App{relayStatus: "offline"}
 }
 
