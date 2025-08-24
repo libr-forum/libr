@@ -10,8 +10,12 @@ export function Delete(arg1) {
   return window['go']['main']['App']['Delete'](arg1);
 }
 
-export function FetchAll() {
-  return window['go']['main']['App']['FetchAll']();
+export function FetchAll(arg1) {
+  return window['go']['main']['App']['FetchAll'](arg1);
+}
+
+export function FetchBatch(arg1) {
+  return window['go']['main']['App']['FetchBatch'](arg1);
 }
 
 export function FetchMessageReports() {

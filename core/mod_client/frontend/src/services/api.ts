@@ -1,4 +1,4 @@
-import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey,ManualModerate,FetchMessageReports } from "../../wailsjs/go/main/App"; 
+import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey,ManualModerate,FetchMessageReports,FetchBatch } from "../../wailsjs/go/main/App"; 
 import axios from 'axios';
 import { Community, Message, User, ModLogEntry, useAppStore,ReportedMessage } from '../store/useAppStore';
 import {types} from '../../wailsjs/go/models'
@@ -147,9 +147,9 @@ export const apiService = {
   },
 
   // Messages
-  async getMessages(_communityId: string): Promise<Message[]> {
+  async getMessages(_communityId: string, curr: Date): Promise<Message[]> {
     try {
-      const fetched = await FetchAll();
+      const fetched = await FetchAll(curr);
       // No caching: always return fresh mapped messages
       return await Promise.all(
         fetched.map(async (message: any) => {
@@ -173,6 +173,18 @@ export const apiService = {
       return [];
     }
   },
+
+  // async getMessageBatch(_communityId: string, curr: Date): Promise<{ lastTs: bigint, messages: Message[] }> {
+  //   try {
+  //     // Call Go backend FetchBatch via Wails
+  //     const batch = await FetchBatch(curr);
+
+  //     return { lastTs, messages };
+  //   } catch (err) {
+  //     console.error("Failed to fetch message batch:", err);
+  //     return { lastTs: BigInt(0), messages: [] };
+  //   }
+  // },
 
   async getMessageReports(_communityId: string): Promise<ReportedMessage[]> {
     try {

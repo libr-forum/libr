@@ -95,7 +95,12 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
         },
       },
       onUpdate: ({ editor }) => {
-        const text = editor.getText();
+        let text = editor.getText();
+        // Allow readable ASCII and emojis only
+        text = text.replace(
+          /[^\u0020-\u007E\u00A0-\u00FF\u2000-\u3300\u1F000-\u1FAFF\u1F300-\u1F6FF\u1F900-\u1F9FF\u2600-\u27BF]/g,
+          ''
+        );
         const cleanHTML = text.replace(/(<p>\s*<\/p>)+$/g, '');
         setBodyText(text);
         logger.debug('[MessageInput] Editor updated', { textLength: text.length });
@@ -199,8 +204,14 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
             placeholder="Title (optional)"
             value={title}
             onChange={(e) => {
-              logger.debug('[MessageInput] Title changed', e.target.value);
-              setTitle(e.target.value);
+              let val = e.target.value;
+              // Allow readable ASCII and emojis only
+              val = val.replace(
+                /[^\u0020-\u007E\u00A0-\u00FF\u2000-\u3300\u1F000-\u1FAFF\u1F300-\u1F6FF\u1F900-\u1F9FF\u2600-\u27BF]/g,
+                ''
+              );
+              logger.debug('[MessageInput] Title changed', val);
+              setTitle(val);
             }}
             className="w-full mb-3 p-3 text-sm h-[20%] max-h-20 border border-border/50 rounded-2xl bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-libr-accent1/50 resize-none leading-tight"
           />

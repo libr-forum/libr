@@ -17,6 +17,8 @@ import (
 	util "github.com/devlup-labs/Libr/core/mod_client/util"
 )
 
+var MsgBatch = 5
+
 func Fetch(ts int64) []types.RetMsgCert {
 	key := strconv.FormatInt(ts, 10)
 	keyBytes := util.GenerateNodeID(key)
@@ -176,9 +178,9 @@ func Fetch(ts int64) []types.RetMsgCert {
 	return results
 }
 
-func FetchRecent(ctx context.Context) []types.RetMsgCert {
+func FetchRecent(ctx context.Context, curr time.Time) []types.RetMsgCert {
 	deleteThreshold := config.DeleteThreshold
-	now := time.Now().Truncate(time.Minute).Unix()
+	now := curr.Truncate(time.Minute).Unix()
 	start := now - 3600
 
 	tsChan := make(chan int64, 100)
@@ -252,4 +254,41 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
 	fmt.Println(filtered)
 	return filtered
+}
+
+func FetchBatch(ctx context.Context, curr time.Time) (lastTs int64, certs []types.RetMsgCert) {
+	start := curr.Truncate(time.Minute).Unix()
+	var results []types.RetMsgCert
+	var mu sync.Mutex
+
+	ts := start
+	for {
+		select {
+		case <-ctx.Done():
+			return ts, results
+		default:
+			// Fetch messages for this minute
+			fetched := Fetch(ts)
+			mu.Lock()
+			results = append(results, fetched...)
+			mu.Unlock()
+			lastTs = ts
+
+			// Stop if we have enough messages
+			if len(results) >= MsgBatch {
+				break
+			}
+			ts -= 60 // Go to previous minute
+		}
+		if len(results) >= MsgBatch {
+			break
+		}
+	}
+
+	// Sort results by timestamp descending
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Msg.Ts > results[j].Msg.Ts
+	})
+
+	return lastTs, results
 }

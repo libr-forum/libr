@@ -90,10 +90,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   sideOffset={8}
                   className="z-50 bg-popover border border-border rounded-md shadow-lg p-2 text-sm w-64"
                 >
-                  <DropdownMenuItem disabled className="flex items-center justify-between">
-                    <span className="text-foreground">Time</span>
-                    <span>{formatTime(message.timestamp)}</span>
-                  </DropdownMenuItem>
+                  {/* Only show time if status is not pending */}
+                  {message.status !== 'pending' && (
+                    <DropdownMenuItem disabled className="flex items-center justify-between">
+                      <span className="text-foreground">Time</span>
+                      <span>{formatTime(message.timestamp)}</span>
+                    </DropdownMenuItem>
+                  )}
 
                   {status && (
                     <DropdownMenuItem disabled className="flex items-center justify-between">
@@ -125,7 +128,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                               <TooltipTrigger className="cursor-pointer text-muted-foreground">
                                 <CertAlias publicKey={cert.public_key} />
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className='bg-muted'>
                                 <span className="break-all">{cert.public_key}</span>
                               </TooltipContent>
                             </Tooltip>
@@ -140,7 +143,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                               <TooltipTrigger className="cursor-pointer text-muted-foreground">
                                 sign
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className='bg-muted'>
                                 <span className="break-all">{cert.sign}</span>
                               </TooltipContent>
                             </Tooltip>

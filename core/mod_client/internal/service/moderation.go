@@ -20,7 +20,10 @@ import (
 	"github.com/devlup-labs/Libr/core/mod_client/types"
 )
 
-var forbidden = LoadForbiddenWords()
+var (
+	ForbiddenWords = LoadForbiddenWords()
+	ForbiddenRegex = CompileForbiddenRegex(ForbiddenWords)
+)
 
 type ModelFunc func(content string) (bool, error)
 
@@ -139,16 +142,26 @@ func LoadForbiddenWords() []string {
 	return config.Forbidden
 }
 
+func CompileForbiddenRegex(words []string) *regexp.Regexp {
+	if len(words) == 0 {
+		return nil
+	}
+
+	esc := make([]string, len(words))
+	for i, w := range words {
+		esc[i] = regexp.QuoteMeta(w)
+	}
+
+	pattern := `(?i)\b(` + strings.Join(esc, "|") + `)\b`
+	return regexp.MustCompile(pattern)
+}
+
 var urlRegex = regexp.MustCompile(`(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)[^\s]+)`)
 
 func AutoModerateMsg(msg models.UserMsg) (string, error) {
-	for _, word := range forbidden {
-		if strings.Contains(
-			strings.ToLower(msg.Content),
-			strings.ToLower(word),
-		) {
-			return "0", nil
-		}
+
+	if ForbiddenRegex != nil && ForbiddenRegex.MatchString(msg.Content) {
+		return "0", nil
 	}
 
 	if urlRegex.MatchString(msg.Content) {

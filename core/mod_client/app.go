@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"time"
 
+	"runtime"
+
+	selfupdate "github.com/creativeprojects/go-selfupdate"
 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
 	"github.com/devlup-labs/Libr/core/mod_client/alias"
 	"github.com/devlup-labs/Libr/core/mod_client/avatar"
@@ -25,13 +29,87 @@ import (
 	"github.com/devlup-labs/Libr/core/mod_client/models"
 	Peers "github.com/devlup-labs/Libr/core/mod_client/peers"
 	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/devlup-labs/Libr/core/mod_client/util"
+	Version "github.com/devlup-labs/Libr/core/mod_client/version"
+	WailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
 	ctx         context.Context
 	relayStatus string
+}
+
+func (a *App) handleAutoUpdateOnStartup() {
+	log.Println("Checking for updates...")
+	currentVersion := Version.GetVersion()
+
+	// 1. CHECK FOR LATEST VERSION
+	latest, found, err := selfupdate.DetectLatest(context.Background(), selfupdate.ParseSlug("libr-forum/libr"))
+	log.Printf("DetectLatest: latest=%v, found=%v, err=%v", latest, found, err)
+	if latest != nil {
+		log.Printf("AssetURL: %s, AssetName: %s", latest.AssetURL, latest.AssetName)
+	}
+	if err != nil {
+		log.Printf("Error detecting latest version: %v", err)
+		return
+	}
+	if latest == nil {
+		log.Println("No latest release info found.")
+		return
+	}
+	log.Printf("Current version: %s, Latest version: %s", currentVersion, latest.Version())
+
+	// 2. COMPARE AND DECIDE
+	if !found || !latest.GreaterThan(currentVersion) {
+		log.Println("No new update found.")
+		return // We are up to date
+	}
+
+	log.Printf("New version %s found. Current version is %s. Starting update...", latest.Version(), currentVersion)
+
+	// 3. DOWNLOAD AND APPLY UPDATE
+	if latest.AssetURL == "" || latest.AssetName == "" {
+		log.Printf("Update asset info missing, cannot update.")
+		return
+	}
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("Could not locate executable path: %v", err)
+		return
+	}
+	if err := selfupdate.UpdateTo(context.Background(), latest.AssetURL, latest.AssetName, exePath); err != nil {
+		log.Printf("Error during update: %v", err)
+		return
+	}
+
+	log.Printf("Successfully updated to version %s. Restarting application.", latest.Version())
+
+	// 4. RESTART THE APPLICATION
+	a.restartApp()
+}
+
+// restartApp is now a private helper function to relaunch the application.
+func (a *App) restartApp() {
+	exe, err := os.Executable()
+	if err != nil {
+		log.Printf("Failed to find executable to restart: %v", err)
+		if a.ctx != nil {
+			WailsRuntime.Quit(a.ctx)
+		}
+		return
+	}
+
+	// For Windows, use 'start' to detach the new process
+	if runtime.GOOS == "windows" {
+		exec.Command("cmd", "/C", "start", "", exe).Start()
+	} else {
+		exec.Command(exe).Start()
+	}
+
+	// Quit the current application instance
+	if a.ctx != nil {
+		WailsRuntime.Quit(a.ctx)
+	}
 }
 
 func NewApp() *App {
@@ -125,10 +203,11 @@ func (a *App) GenerateAlias(key string) string {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	runtime.WindowMaximise(ctx)
+	WailsRuntime.WindowMaximise(ctx)
 	go func() {
-		runtime.EventsEmit(ctx, "navigate-to-root")
+		WailsRuntime.EventsEmit(ctx, "navigate-to-root")
 	}()
+	go a.handleAutoUpdateOnStartup()
 }
 
 func (a *App) RegenKeys() string {
@@ -153,9 +232,9 @@ func (a *App) GetRelayStatus() string {
 
 func (a *App) TitleBarTheme(isDark bool) {
 	if isDark {
-		runtime.WindowSetDarkTheme(a.ctx)
+		WailsRuntime.WindowSetDarkTheme(a.ctx)
 	} else {
-		runtime.WindowSetLightTheme(a.ctx)
+		WailsRuntime.WindowSetLightTheme(a.ctx)
 	}
 }
 
@@ -276,9 +355,14 @@ func (a *App) Delete(msgcert types.MsgCert) string {
 	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", time.Now().Unix())
 }
 
-func (a *App) FetchAll() []types.RetMsgCert {
-	messages := core.FetchRecent(context.Background())
+func (a *App) FetchAll(curr time.Time) []types.RetMsgCert {
+	messages := core.FetchRecent(context.Background(), curr)
 	return messages
+}
+
+func (a *App) FetchBatch(curr time.Time) (lastTs int64, certs []types.RetMsgCert) {
+	lastTs, messages := core.FetchBatch(context.Background(), curr)
+	return lastTs, messages
 }
 
 func (a *App) FetchMessageReports() []models.MsgCert {
@@ -338,9 +422,13 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 		return fmt.Errorf("failed to open config file for writing: %w", err)
 	}
 	defer f.Close()
-
+	defer func() {
+		service.ForbiddenWords = service.LoadForbiddenWords()
+		service.ForbiddenRegex = service.CompileForbiddenRegex(service.ForbiddenWords)
+	}()
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
+
 	return enc.Encode(cfg)
 }
 

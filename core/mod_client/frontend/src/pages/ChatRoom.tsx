@@ -1,6 +1,5 @@
-
 import React, { useEffect, useRef,useState } from 'react';
-import { motion ,AnimatePresence} from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import { MessageInput } from '../components/chat/MessageInput';
@@ -10,14 +9,23 @@ import { Menubar } from '../components/layout/Menubar';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ArrowDown, Clock, Calendar, RotateCcw, Plus } from 'lucide-react';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
+import { useLocation } from 'react-router-dom';
 
 export const ChatRoom: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === '/chat') {
+      setLastLoadedDate(new Date());
+    }
+  }, [location.pathname]);
   const { 
     currentCommunity, 
     messages, 
     setMessages, 
     setLoading, 
-    isLoading, 
+    isLoading,
+    addMessage 
   } = useAppStore();
   
   const [sortByNewest, setSortByNewest] = React.useState(true);
@@ -26,23 +34,45 @@ export const ChatRoom: React.FC = () => {
   const [inputOpen, setInputOpen] = useState(false);
   const messageInputRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [lastLoadedDate, setLastLoadedDate] = useState<Date>(new Date());
+  const [isBottomLoading, setIsBottomLoading] = useState(false);
+  const [menubarLoaded, setMenubarLoaded] = useState(false);
   
+  const reloadMessages=async() =>{
+    const now = new Date();
+    setLastLoadedDate(now);
+    loadMessages(now, true);
+  }
+
   useEffect(() => {
-    if (currentCommunity) {
-      loadMessages();
-    }
+    setLastLoadedDate(new Date());
+    //reloadMessages();
+    const fetchInitialMessages = async () => {
+      const now = new Date();
+      console.log('Fetching initial messages for:', currentCommunity?.id, now);
+      const initialFetch = await apiService.getMessages(currentCommunity.id, now);
+      setMessages([]);
+      setMessages(initialFetch);
+    };
+    fetchInitialMessages();
   }, [currentCommunity]);
 
-  const loadMessages = async () => {
-    if (!currentCommunity) return;
-    
+  const loadMessages = async (curr: Date, replace = false) => {
+    if (!currentCommunity) return [];
     setLoading(true);
     try {
-      setMessages([]);
-      const fetchedMessages = await apiService.getMessages(currentCommunity.id);
-      setMessages(fetchedMessages);
+      console.log('Fetching messages for:', currentCommunity.id, curr);
+      const fetchedMessages = await apiService.getMessages(currentCommunity.id, curr);
+      if (replace) {
+        setMessages([]);
+        setMessages(fetchedMessages);
+      } else {
+        fetchedMessages.forEach(msg => addMessage(msg));
+      }
+      return fetchedMessages;
     } catch (error) {
       console.error('Failed to load messages:', error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -52,7 +82,10 @@ export const ChatRoom: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault();
-        loadMessages();
+        setMessages([]);
+        const now = new Date();
+        setLastLoadedDate(now);
+        loadMessages(now, true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -90,6 +123,53 @@ export const ChatRoom: React.FC = () => {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [sortedMessages.length, sortByNewest]);
+
+  // Infinite scroll: load older messages when scrolled to bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = async () => {
+      if (
+        container.scrollHeight - container.scrollTop - container.clientHeight < 10 &&
+        !isLoading
+      ) {
+        setIsBottomLoading(true);
+        const oneHourAgo = new Date(lastLoadedDate.getTime() - 60 * 60 * 1000);
+        setLastLoadedDate(oneHourAgo);
+        await loadMessages(oneHourAgo, false); // append
+        setLastLoadedDate(oneHourAgo);
+        setIsBottomLoading(false);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [lastLoadedDate, isLoading, currentCommunity]);
+
+  const ensureScrollable = async () => {
+    const container = messagesContainerRef.current;
+    if (!container || isLoading) return;
+
+    let hoursFetched = 0;
+    let prevMessageCount = messages.length;
+
+    while (container.scrollHeight <= container.clientHeight && hoursFetched < 6) {
+      const oneHourAgo = new Date(lastLoadedDate.getTime() - 60 * 60 * 1000);
+      setLastLoadedDate(oneHourAgo);
+      await loadMessages(oneHourAgo, false);
+      hoursFetched += 1;
+
+      // If no new messages were loaded, break early
+      if (messages.length === prevMessageCount) break;
+      prevMessageCount = messages.length;
+    }
+  };
+
+  useEffect(() => {
+    ensureScrollable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, currentCommunity]);
 
   if (!currentCommunity) {
     return (
@@ -140,7 +220,9 @@ export const ChatRoom: React.FC = () => {
                   <span className='mt-0.5'>{sortByNewest ? 'Newest First' : 'Oldest First'}</span>
                 </button> */}
                 <button
-                  onClick={loadMessages}
+                  onClick={() => {
+                    reloadMessages();
+                  }}
                   className="libr-button bg-libr-accent1/20 rounded-2xl hover:bg-muted flex items-center space-x-2 text-sm"
                   title="Reload Messages"
                 >
@@ -177,6 +259,7 @@ export const ChatRoom: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
                     className="absolute right-0 top-full mt-2 bg-card border border-border rounded-lg shadow-lg z-20 p-4"
                   >
                     <input
@@ -257,18 +340,26 @@ export const ChatRoom: React.FC = () => {
                   </div>
                 </motion.div>
               ) : (
-                sortedMessages.map((message) => (
-                  <MessageBubble
-                    key={message.authorPublicKey+String(message.timestamp)}
-                    message={message}
-                  />
-                ))
+                <>
+                  {sortedMessages.map((message) => {
+                    const key = message.authorPublicKey + String(message.timestamp);
+                    //console.log('Rendering MessageBubble with key:', key);
+                    return (
+                      <MessageBubble
+                        key={key}
+                        message={message}
+                      />
+                    );
+                  })}
+                  {/* Add empty space at the end */}
+                  <div style={{ height: "256px" }} />
+                </>
               )}
               <div ref={messagesEndRef} />
             </div>
           </div>
           <div className='flex justify-center p-4 h-full w-[22%]'>
-            <Menubar/>
+            <Menubar onLoaded={() => setMenubarLoaded(true)} />
           </div>
         </div>
       </div>
