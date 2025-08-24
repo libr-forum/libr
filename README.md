@@ -16,12 +16,6 @@ LIBR strikes a balance by using a replicated DHT (Distributed Hash Table) settin
 
 👉 **Start with our [Beginner Guide](docs/BEGINNER_GUIDE.md)** - it has everything you need to get started, explained in simple terms.
 
-<<<<<<< HEAD
-🏷️ **Look for `good first issue` labels** in our [Issues page](https://github.com/devlup-labs/libr/issues) - these are perfect for newcomers!
-=======
-🏷️ **Look for `good first issue` labels** in our [Issues page](https://github.com/libr-forum/libr/issues) - these are perfect for newcomers!
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
-
 💬 **Questions?** Don't hesitate to ask! Create a new issue or contact our mentors.
 
 ## Architecture
@@ -43,13 +37,10 @@ LIBR is built with the following components:
 
 ## Getting Started
 
-### Prerequisites
+### Installation
 
-- Go 1.21+
-- Node.js 18+
-- Flutter 3.16+
-- Solidity compiler
-- Ethereum development environment (Hardhat, Truffle, etc.)
+Please see the [Installation Guide](./INSTALL.md) for setup instructions across Windows, Linux, and macOS.
+
 
 
 ## Project Structure
@@ -134,14 +125,6 @@ We welcome contributions from the community! Please check out our [Contributing 
 ## Documentation
 
 For more detailed information about the LIBR protocol and its implementation, check out:
-
-<<<<<<< HEAD
-- [Concept Document](https://github.com/devlup-labs/libr/blob/main/docs/libr_soc_concept_doc.pdf)
-- [Project Documentation](https://github.com/devlup-labs/libr/blob/main/docs/libr_project_doc.pdf)
-=======
-- [Concept Document](https://github.com/libr-forum/libr/blob/main/docs/libr_soc_concept_doc.pdf)
-- [Project Documentation](https://github.com/libr-forum/libr/blob/main/docs/libr_project_doc.pdf)
->>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
 
 ## License
 

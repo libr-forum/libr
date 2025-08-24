@@ -99,8 +99,7 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		parts := strings.Split(multiaddr, "/")
 		relayList = append(relayList, parts[len(parts)-1])
 	}
-
-	config, err := LoadConfig("config.json")
+	config, err := LoadConfig("modconfig.json")
 	if err != nil {
 		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
 	}

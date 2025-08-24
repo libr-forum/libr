@@ -229,7 +229,7 @@ const JoinBetaDropdown = () => {
         <div className="absolute top-[60%] mt-2 w-40 bg-libr-secondary rounded shadow-lg z-50">
           <div className="flex flex-col text-sm text-center text-libr-primary">
             <div
-              onClick={() => window.open("https://github.com/libr-forum/libr/releases/download/v1.0.0-beta/libr-amd64-installer.exe", "_blank")}
+              onClick={() => window.open("https://github.com/libr-forum/libr/releases/download/v1.0.0-beta/libr-win-amd64.exe", "_blank")}
               className="flex flex-row items-center justify-center gap-2 libr-button px-4 py-2 cursor-pointer"
             >
               <FaWindows/>
