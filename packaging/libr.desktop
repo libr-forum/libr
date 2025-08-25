@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Libr
+GenericName=Social Network Client
+Comment=A Moderated, Censorship-Resilient Social Network Framework
+Icon=libr
+Exec=libr
+Categories=Network;Chat;Internet;
+Terminal=false
+StartupNotify=true
+MimeType=x-scheme-handler/libr;
+Keywords=social;network;chat;decentralized;blockchain;censorship-resistant;
