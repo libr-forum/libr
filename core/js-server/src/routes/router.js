@@ -14,8 +14,8 @@ router.get("/getmod", modController.getMod);
 router.post("/postmod", modController.addMod);
 router.delete("/deletemod", modController.deleteMod);
 
-router.get("/getnode", nodeController.getNode);
-router.post("/postnode", nodeController.addNode);
-router.delete("/deletenode", nodeController.deleteNode);
+router.get("/getboot", nodeController.getNode);
+router.post("/postboot", nodeController.addNode);
+router.delete("/deleteboot", nodeController.deleteNode);
 
 export { router };
