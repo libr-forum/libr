@@ -37,3 +37,24 @@ export const addMod = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const deleteMod = async (req, res) => {
+    try {
+        const { public_key } = req.body;
+        if (!public_key) {
+            return res.status(400).json({ message: "public_key required" });
+        }
+
+        const result = await Mods.deleteOne({ public_key });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Mod not found" });
+        }
+
+        console.log("Mod deleted successfully");
+        res.json({ message: "Mod deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting mod:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

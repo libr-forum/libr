@@ -28,3 +28,24 @@ export const addRelay = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const deleteRelay = async (req, res) => {
+    try {
+        const { address } = req.body;
+        if (!address) {
+            return res.status(400).json({ message: "address required" });
+        }
+
+        const result = await Relay.deleteOne({ address });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Relay not found" });
+        }
+
+        console.log("Relay deleted successfully");
+        res.json({ message: "Relay deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting relay:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

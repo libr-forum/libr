@@ -37,3 +37,24 @@ export const addNode = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const deleteNode = async (req, res) => {
+    try {
+        const { node_id } = req.body;
+        if (!node_id) {
+            return res.status(400).json({ message: "node_id required" });
+        }
+
+        const result = await Nodes.deleteOne({ node_id });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Node not found" });
+        }
+
+        console.log("Node deleted successfully");
+        res.json({ message: "Node deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting node:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
