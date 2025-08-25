@@ -41,62 +41,140 @@ LIBR is built with the following components:
 
 Choose your installation method based on your operating system:
 
-#### 🐧 Linux (Recommended - Easy Installation)
+#### 🐧 Linux Installation
 
-**Option 1: Automated Installation Script (Recommended)**
+**Option 1: APT Repository (Ubuntu/Debian) - Recommended**
 ```bash
-# Download and run the installation script
-curl -fsSL https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh | bash
+# Add GPG key for repository verification
+wget -qO- https://libr-forum.github.io/libr-apt-repo/libr-repo-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/libr-repo-key.gpg
 
-# Or download and inspect the script first (more secure)
-wget https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh
-chmod +x install-libr.sh
-./install-libr.sh
-```
+# Add APT repository to sources
+echo "deb [signed-by=/usr/share/keyrings/libr-repo-key.gpg] https://libr-forum.github.io/libr-apt-repo/ ./" | sudo tee /etc/apt/sources.list.d/libr.list
 
-**What the script does:**
-- 🔍 Auto-detects your Linux distribution (Ubuntu, Debian, Fedora, RHEL, CentOS, Arch Linux)
-- 📦 Downloads the appropriate package format (.deb, .rpm, .pkg.tar.zst)
-- ⚙️ Installs dependencies and sets up desktop integration
-- ✅ Configures everything so you can run `libr` from anywhere
-- 🔄 Checks for existing installations and updates if needed
-
-**Option 2: APT Repository (Ubuntu/Debian)**
-```bash
-# Add Libr APT repository
-curl -fsSL https://libr-forum.github.io/libr-apt-repo/setup-repo.sh | bash
-
-# Install via package manager
+# Update package index and install
+sudo apt update
 sudo apt install libr
 ```
 
-**Option 3: Manual Installation**
+**Option 2: Direct Download - All Distributions**
 
-*For Ubuntu 22.04 and below:*
-1. Download the **Linux build** (`libr-linux-amd64`) from [Releases](../../releases)
-2. Make it executable: `chmod +x ./libr-linux-amd64`
-3. Run it: `./libr-linux-amd64`
-
-*For Ubuntu 24.04 (Noble) and newer:*
-If you encounter WebKitGTK library errors, install the updated libraries:
+*Ubuntu/Debian (.deb package):*
 ```bash
-# Update package index
-sudo apt update
+# Download the latest Debian package
+wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr_1.0.0-beta_amd64.deb
 
+# Install the package
+sudo dpkg -i libr_1.0.0-beta_amd64.deb
+
+# Fix any missing dependencies
+sudo apt-get install -f
+```
+
+*Fedora/RHEL/CentOS (.rpm package):*
+```bash
+# Download the latest RPM package
+wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1.x86_64.rpm
+
+# Install the package
+sudo dnf install ./libr-1.0.0-beta-1.x86_64.rpm
+# or on older systems: sudo yum install ./libr-1.0.0-beta-1.x86_64.rpm
+```
+
+*Arch Linux (.pkg.tar.zst package):*
+```bash
+# Download the latest Arch package
+wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1-x86_64.pkg.tar.zst
+
+# Install the package
+sudo pacman -U libr-1.0.0-beta-1-x86_64.pkg.tar.zst
+```
+
+**Option 3: Binary Installation**
+
+If packages aren't available for your distribution:
+```bash
+# Download the binary
+wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-linux-amd64
+
+# Make executable and install
+chmod +x libr-linux-amd64
+sudo mv libr-linux-amd64 /usr/local/bin/libr
+```
+
+**🔧 Solving WebKit Library Issues**
+
+Libr uses WebKitGTK for its UI, which may require specific library versions on different distributions:
+
+*Ubuntu 24.04 (Noble) and newer:*
+```bash
 # Install newer WebKitGTK packages
+sudo apt update
 sudo apt install -y libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
 
-# Create symlinks for compatibility
+# Create compatibility symlinks
 sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 \
             /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37
 
 sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so.0 \
             /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18
-
-# Make executable and run
-chmod +x ./libr-linux-amd64
-./libr-linux-amd64
 ```
+
+*Fedora 35+ and newer RHEL/CentOS:*
+```bash
+# Install WebKitGTK packages
+sudo dnf install webkit2gtk4.1-devel
+
+# Create compatibility symlinks if needed
+sudo ln -sf /usr/lib64/libwebkit2gtk-4.1.so.0 \
+            /usr/lib64/libwebkit2gtk-4.0.so.37
+
+sudo ln -sf /usr/lib64/libjavascriptcoregtk-4.1.so.0 \
+            /usr/lib64/libjavascriptcoregtk-4.0.so.18
+```
+
+*Arch Linux:*
+```bash
+# Install WebKitGTK package
+sudo pacman -S webkit2gtk-4.1
+
+# Create compatibility symlinks
+sudo ln -sf /usr/lib/libwebkit2gtk-4.1.so.0 \
+            /usr/lib/libwebkit2gtk-4.0.so.37
+
+sudo ln -sf /usr/lib/libjavascriptcoregtk-4.1.so.0 \
+            /usr/lib/libjavascriptcoregtk-4.0.so.18
+```
+
+*Generic Linux (if above don't work):*
+```bash
+# Try installing WebKit development packages
+# Ubuntu/Debian:
+sudo apt install libwebkit2gtk-4.0-dev
+
+# Fedora/RHEL/CentOS:
+sudo dnf install webkit2gtk3-devel
+
+# OpenSUSE:
+sudo zypper install webkit2gtk3-devel
+
+# Arch Linux:
+sudo pacman -S webkit2gtk
+```
+
+**Alternative: Automated Installation Script**
+
+If you prefer automatic detection and installation:
+```bash
+# Download and run the installation script
+curl -fsSL https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh | bash
+
+# Or inspect the script first (recommended for security)
+wget https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh
+chmod +x install-libr.sh
+./install-libr.sh
+```
+
+The script automatically detects your distribution and handles package installation and library dependencies.
 
 #### 🪟 Windows
 
@@ -140,8 +218,23 @@ The application should appear in your applications menu under "Network" → "Lib
 
 - **"Command not found" error**: Make sure the binary is in your PATH or use the full path to the executable
 - **Permission denied**: Run `chmod +x` on the downloaded binary
-- **Library errors on Linux**: Install the required WebKitGTK libraries as shown above
+- **WebKit library errors on Linux**: 
+  - Install the WebKitGTK packages for your distribution as shown above
+  - The error typically looks like: `libwebkit2gtk-4.0.so.37: cannot open shared object file`
+  - This affects Ubuntu 24.04+, modern Fedora, and Arch Linux due to library version changes
+  - The symlink solutions above resolve compatibility issues
+- **Package installation fails**: 
+  - On Debian/Ubuntu: Run `sudo apt-get install -f` to fix dependencies
+  - On Fedora/RHEL: Ensure EPEL repository is enabled for additional packages
+  - On Arch Linux: Update system with `sudo pacman -Syu` before installing
 - **macOS security warnings**: Allow the app in System Settings → Privacy & Security
+
+**Distribution-specific Notes:**
+
+- **Ubuntu 24.04+ (Noble)**: Requires WebKit 4.1 packages and compatibility symlinks
+- **Fedora 35+**: May need `webkit2gtk4.1-devel` package
+- **Arch Linux**: Install `webkit2gtk-4.1` or `webkit2gtk` packages
+- **RHEL/CentOS 8+**: Enable PowerTools/CRB repository for WebKit packages
 
 **Need help?** 
 - 📋 [Submit feedback](https://docs.google.com/forms/d/e/1FAIpQLSdOnq6uPpLYEQIueuHtvydMI8q1CMHC_TJzDkUDUU8UCGo4ew/viewform)
@@ -209,8 +302,17 @@ We've created some tools to make contributing easier:
 # 🔍 Check if your commit message is correct
 ./scripts/validate-commit.sh "feat: add new feature"
 
-# 📦 Build Debian package (Linux)
-./scripts/build-deb.sh
+# 📦 Build all package types (Debian, RPM, Arch)
+./scripts/build-packages.sh
+
+# 📦 Build specific package type
+./scripts/build-deb.sh        # Debian package only
+nfpm pkg --packager rpm --config packaging/nfpm-rpm.yaml --target dist/  # RPM
+nfpm pkg --packager archlinux --config packaging/nfpm-arch.yaml --target dist/  # Arch
+
+# 🧪 Test installation instructions
+./scripts/test-readme-validation.sh    # Validate README instructions
+./scripts/test-installation.sh         # Test with Docker containers
 
 # 🗃️ Create APT repository
 ./scripts/create-apt-repo.sh

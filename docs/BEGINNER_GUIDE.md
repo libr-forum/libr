@@ -22,7 +22,7 @@ cd libr
 
 # 3. Add the original repository as upstream
 <<<<<<< HEAD
-git remote add upstream https://github.com/devlup-labs/libr.git
+git remote add upstream https://github.com/libr-forum/libr.git
 =======
 git remote add upstream https://github.com/libr-forum/libr.git
 >>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
@@ -69,7 +69,7 @@ src/
 
 ### Step 1: Pick an Issue
 <<<<<<< HEAD
-1. Go to the [Issues page](https://github.com/devlup-labs/libr/issues)
+1. Go to the [Issues page](https://github.com/libr-forum/libr/issues)
 =======
 1. Go to the [Issues page](https://github.com/libr-forum/libr/issues)
 >>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
@@ -258,7 +258,7 @@ Remember: Every expert was once a beginner. We're excited to help you learn and 
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Detailed contribution guidelines
 - [README.md](README.md) - Project overview and setup
 <<<<<<< HEAD
-- [Issues page](https://github.com/devlup-labs/libr/issues) - Find something to work on
+- [Issues page](https://github.com/libr-forum/libr/issues) - Find something to work on
 =======
 - [Issues page](https://github.com/libr-forum/libr/issues) - Find something to work on
 >>>>>>> 9778abfea970abad1ec6f572173b51b742c8068d
