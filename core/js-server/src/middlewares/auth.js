@@ -1,5 +1,6 @@
 export const authMiddleware = (req, res, next) => {
     const apiKey = req.headers["x-api-key"];
+    console.log("API Key:", apiKey); // Debugging line
     const expectedApiKey = process.env.API_KEY;
 
     if (!apiKey) {
