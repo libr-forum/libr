@@ -75,6 +75,7 @@ var Cp *ChatPeer
 type Config struct {
 	JS_ServerURL string `json:"JS_ServerURL"`
 	JS_API_key   string `json:"JS_API_key"`
+	Client_type  string `json:"Client_type"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -101,13 +102,6 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		parts := strings.Split(multiaddr, "/")
 		relayList = append(relayList, parts[len(parts)-1])
 	}
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
-	}
-
-	JS_ServerURL = config.JS_ServerURL
-	JS_API_key = config.JS_API_key
 
 	caCertPool := x509.NewCertPool()
 
@@ -140,9 +134,25 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	PubKey = keycache.LoadPubKey()
 	PeerID = h.ID().String()
 
-	err = connectJSServer()
+	config, err := LoadConfig()
 	if err != nil {
-		fmt.Println("[DEBUG] Failed to connect to JS server:", err)
+		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
+	}
+
+	JS_ServerURL = config.JS_ServerURL
+	JS_API_key = config.JS_API_key
+	Client_type := config.Client_type
+
+	if Client_type == "mod" {
+		fmt.Println("Running in moderation mode")
+		if JS_API_key == "" {
+			fmt.Println("[DEBUG] Missing JS API key")
+			return nil, fmt.Errorf("missing JS_API_key")
+		}
+		err = connectJSServer()
+		if err != nil {
+			fmt.Println("[DEBUG] Failed to connect to JS server:", err)
+		}
 	}
 
 	fmt.Println("[DEBUG] Creating identify service")
