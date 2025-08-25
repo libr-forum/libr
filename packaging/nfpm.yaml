@@ -1,0 +1,132 @@
+name: libr
+homepage: https://github.com/libr-forum/Libr
+license: Apache-2.0
+maintainer: Lakshya Jain <lakshyajainrj19@gmail.com>
+description: |
+  libr - A Moderated, Censorship-Resilient Social Network Framework.
+
+section: net
+priority: optional
+
+# Use environment variable for version, fallback to default
+version: 1.0.0-beta
+
+arch: amd64
+platform: linux
+epoch: 0
+release: 1
+
+depends:
+  - ca-certificates
+  - libc6
+  - libwebkit2gtk-4.0-37 | libwebkit2gtk-4.1-0
+
+recommends:
+  - curl
+  - wget
+
+contents:
+  # Main executable
+  - src: ./dist/libr-linux-amd64
+    dst: /usr/bin/libr
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Desktop entry file
+  - src: ./packaging/libr.desktop
+    dst: /usr/share/applications/libr.desktop
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  # Main icon for pixmaps (fallback)
+  - src: ./packaging/icons/libr.png
+    dst: /usr/share/pixmaps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  # Icon theme hierarchy
+  - src: ./packaging/icons/hicolor/16x16/apps/libr.png
+    dst: /usr/share/icons/hicolor/16x16/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  - src: ./packaging/icons/hicolor/32x32/apps/libr.png
+    dst: /usr/share/icons/hicolor/32x32/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  - src: ./packaging/icons/hicolor/48x48/apps/libr.png
+    dst: /usr/share/icons/hicolor/48x48/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  - src: ./packaging/icons/hicolor/64x64/apps/libr.png
+    dst: /usr/share/icons/hicolor/64x64/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  - src: ./packaging/icons/hicolor/128x128/apps/libr.png
+    dst: /usr/share/icons/hicolor/128x128/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  - src: ./packaging/icons/hicolor/256x256/apps/libr.png
+    dst: /usr/share/icons/hicolor/256x256/apps/libr.png
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+  
+  # Create config directory
+  - dst: /etc/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Create data directory
+  - dst: /var/lib/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Create log directory
+  - dst: /var/log/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+# Post-install and post-remove scripts
+scripts:
+  postinstall: ./packaging/postinstall.sh
+  postremove: ./packaging/postremove.sh
+
+# Debian-specific configuration
+deb:
+  arch: amd64
+  compression: xz
+  fields:
+    Bugs: https://github.com/libr-forum/Libr/issues
+  predepends: []
+

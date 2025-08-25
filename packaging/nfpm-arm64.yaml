@@ -1,0 +1,70 @@
+name: libr
+homepage: https://github.com/libr-forum/Libr
+license: Apache-2.0
+maintainer: Lakshya Jain <lakshyajainrj19@gmail.com>
+description: |
+  libr - A Moderated, Censorship-Resilient Social Network Framework
+  .
+  Libr is a decentralized social network framework that provides
+  censorship resistance and moderated communities using blockchain
+  technology and distributed systems.
+
+section: net
+priority: optional
+
+# Use environment variable for version, fallback to default
+version: 1.0.0~beta
+
+arch: arm64
+platform: linux
+epoch: 0
+release: 1
+
+depends:
+  - ca-certificates
+  - libc6
+
+recommends:
+  - curl
+  - wget
+
+contents:
+  # Main executable
+  - src: ./dist/libr-linux-arm64
+    dst: /usr/bin/libr
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Create config directory
+  - dst: /etc/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Create data directory
+  - dst: /var/lib/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+  
+  # Create log directory
+  - dst: /var/log/libr
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+# Debian-specific configuration
+deb:
+  arch: arm64
+  compression: xz
+  fields:
+    Bugs: https://github.com/libr-forum/Libr/issues
+  predepends: []
