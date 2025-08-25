@@ -73,6 +73,7 @@ func GetModJSPath() string {
 
 func ModJSInit() {
 	path := GetModJSPath()
+	fmt.Println("modjs path:", path)
 	// Check if file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create parent directories if needed
@@ -80,9 +81,38 @@ func ModJSInit() {
 			fmt.Println("Failed to create modjs directory:", err)
 			return
 		}
-		// Write empty JSON object
-		if err := os.WriteFile(path, []byte("{}"), 0644); err != nil {
-			fmt.Println("Failed to write empty modjs.json:", err)
+		// Write default JSON with JS_ServerURL
+		defaultJSON := `{"JS_ServerURL":"https://libr-q0ok.onrender.com"}`
+		if err := os.WriteFile(path, []byte(defaultJSON), 0644); err != nil {
+			fmt.Println("Failed to write default modjs.json:", err)
+		}
+	} else {
+		// File exists, check if JS_ServerURL is present and correct
+		data, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Println("Failed to read modjs.json:", err)
+			return
+		}
+		var obj map[string]interface{}
+		if err := json.Unmarshal(data, &obj); err != nil {
+			fmt.Println("Failed to parse modjs.json:", err)
+			return
+		}
+		const correctURL = "https://libr-q0ok.onrender.com"
+		needUpdate := false
+		if url, ok := obj["JS_ServerURL"]; !ok || url != correctURL {
+			obj["JS_ServerURL"] = correctURL
+			needUpdate = true
+		}
+		if needUpdate {
+			newData, err := json.MarshalIndent(obj, "", "  ")
+			if err != nil {
+				fmt.Println("Failed to marshal updated modjs.json:", err)
+				return
+			}
+			if err := os.WriteFile(path, newData, 0644); err != nil {
+				fmt.Println("Failed to update modjs.json:", err)
+			}
 		}
 	}
 }
