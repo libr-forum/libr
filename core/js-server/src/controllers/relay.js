@@ -3,11 +3,22 @@ import Relay from "../models/relay.js";
 export const getRelay = async (req, res) => {
     try {
         const relays = await Relay.find();
-        res.json(relays);
+
+        // format the response
+        const formattedRelays = relays.map(relay => ({
+            address: relay.address
+        }));
+
+        res.json({
+            relay_list: {
+                relaylist: formattedRelays
+            }
+        });
     } catch (error) {
         console.error("Error fetching relays:", error);
         res.status(500).json({ message: "Internal server error" });
     }
+
 };
 
 export const addRelay = async (req, res) => {

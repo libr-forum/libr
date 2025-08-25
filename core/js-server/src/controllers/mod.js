@@ -3,7 +3,10 @@ import { Mods } from "../models/mod.js";
 export const getMod = async (req, res) => {
     try {
         const mods = await Mods.find();
-        res.json(mods);
+
+        res.json({
+            mod_list: mods
+        });
     } catch (error) {
         console.error("Error fetching mods:", error);
         res.status(500).json({ message: "Internal server error" });

@@ -3,7 +3,7 @@ import { Nodes } from "../models/node.js";
 export const getNode = async (req, res) => {
     try {
         const nodes = await Nodes.find();
-        res.json(nodes);
+        res.json({ boot_list: nodes });  // wrap inside boot_list
     } catch (error) {
         console.error("Error fetching nodes:", error);
         res.status(500).json({ message: "Internal server error" });
