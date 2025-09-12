@@ -1,6 +1,7 @@
 package config
 
 import (
+	
 	"database/sql"
 	"fmt"
 	"log"
@@ -100,3 +101,5 @@ func createTables() error {
 
 	return nil
 }
+
+var DBtype = "normal"

@@ -189,7 +189,7 @@ func SendFindValue(key string, self *models.Node, rt *routing.RoutingTable) ([]m
 // }
 
 func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, error) {
-	validMods, _ := utils.GetOnlineMods()
+	validMods, _ := utils.GetModsFromJSServer()
 
 	selfDist := node.XORBigInt(self.NodeId, *key)
 	closest := rt.FindClosest(*key, config.K)

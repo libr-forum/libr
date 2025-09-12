@@ -1,55 +1,120 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
 
-# Detect distribution
-source /etc/os-release
-DISTRO=$ID
-ARCH=$(dpkg --print-architecture 2>/dev/null || uname -m)
+set -euo pipefail
 
-# Fetch latest or use provided version
-LATEST_VERSION=$(curl -s https://api.github.com/repos/libr-forum/libr/releases/latest \
-  | grep tag_name | cut -d '"' -f4)
-VERSION=${1:-$LATEST_VERSION}
+# -------------------------------
+# Configuration
+# -------------------------------
+VERSION="${1:-latest}"   # default = latest release
+ARCH="$(uname -m)"
+DEBUG="${DEBUG:-1}"       # set DEBUG=0 to silence
+REPO="libr-forum/libr"
 
-# Check installed version
-if command -v libr >/dev/null 2>&1; then
-  INSTALLED_VERSION=$(libr --version | awk '{print $2}')
-else
-  INSTALLED_VERSION="none"
-fi
+log() { echo -e "🔹 $*"; }
+debug() { [[ "$DEBUG" -eq 1 ]] && echo -e "🐞 DEBUG: $*"; }
+err() { echo -e "❌ $*" >&2; exit 1; }
 
-if [ "$INSTALLED_VERSION" = "$VERSION" ]; then
-  echo "✅ libr $VERSION already installed."
-  exit 0
-fi
+# -------------------------------
+# Detect distro
+# -------------------------------
+detect_distro() {
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+    debug "Detected distro: $DISTRO"
+  else
+    err "Unable to detect distribution."
+  fi
+}
 
-echo "📦 Installing libr $VERSION for $DISTRO ($ARCH)..."
+# -------------------------------
+# Detect installed version
+# -------------------------------
+installed_version() {
+  if command -v libr >/dev/null 2>&1; then
+    libr --version 2>/dev/null | awk '{print $2}'
+  else
+    echo ""
+  fi
+}
 
-case "$DISTRO" in
-  ubuntu|debian)
-    DEB_VERSION=$(echo "$VERSION")
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr_${DEB_VERSION}_${ARCH}.deb"
-    echo "⬇️ Downloading $URL..."
-    wget -O libr.deb "$URL" || { echo "❌ Failed to download $URL"; exit 1; }
-    sudo dpkg -i libr.deb || sudo apt-get install -f -y
-    rm libr.deb
-    ;;
-  fedora|rhel|centos)
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}.${ARCH}.rpm"
-    wget -qO libr.rpm "$URL"
-    sudo dnf install -y ./libr.rpm || sudo yum install -y ./libr.rpm
-    rm libr.rpm
-    ;;
-  arch)
-    URL="https://github.com/libr-forum/libr/releases/download/$VERSION/libr-${VERSION}-${ARCH}.pkg.tar.zst"
-    wget -qO libr.pkg.tar.zst "$URL"
-    sudo pacman -U --noconfirm libr.pkg.tar.zst
-    rm libr.pkg.tar.zst
-    ;;
-  *)
-    echo "❌ Unsupported distribution: $DISTRO"
-    exit 1
-    ;;
-esac
+# -------------------------------
+# Get latest release from GitHub
+# -------------------------------
+latest_version() {
+  curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+    | grep '"tag_name":' | cut -d'"' -f4
+}
 
-echo "✅ libr $VERSION installed successfully."
+# -------------------------------
+# Download + Install package
+# -------------------------------
+install_pkg() {
+  local url="$1"
+  local file="$2"
+
+  log "⬇️ Downloading $url"
+  if ! curl -fL "$url" -o "$file"; then
+    err "Failed to download $url"
+  fi
+
+  case "$DISTRO" in
+    ubuntu|debian)
+      sudo dpkg -i "$file" || sudo apt-get install -f -y
+      ;;
+    fedora|rhel|centos|rocky|almalinux|opensuse*)
+      sudo rpm -Uvh --force "$file"
+      ;;
+    arch|manjaro)
+      sudo pacman -U --noconfirm "$file"
+      ;;
+    *)
+      err "Unsupported distro: $DISTRO"
+      ;;
+  esac
+}
+
+# -------------------------------
+# Main
+# -------------------------------
+main() {
+  detect_distro
+
+  if [[ "$VERSION" == "latest" ]]; then
+    VERSION="$(latest_version)"
+  fi
+  debug "Target version: $VERSION"
+
+  CURRENT="$(installed_version)"
+  debug "Currently installed version: ${CURRENT:-none}"
+
+  if [[ "$CURRENT" == "$VERSION" ]]; then
+    log "✅ libr $VERSION is already installed."
+    exit 0
+  fi
+
+  case "$DISTRO" in
+    ubuntu|debian)
+      FILE="libr_${VERSION}_${ARCH}.deb"
+      ;;
+    fedora|rhel|centos|rocky|almalinux|opensuse*)
+      FILE="libr-${VERSION}.${ARCH}.rpm"
+      ;;
+    arch|manjaro)
+      FILE="libr-${VERSION}-${ARCH}.pkg.tar.zst"
+      ;;
+    *)
+      err "Unsupported distro: $DISTRO"
+      ;;
+  esac
+
+  URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILE}"
+  debug "Download URL: $URL"
+  debug "Local filename: $FILE"
+
+  install_pkg "$URL" "$FILE"
+
+  log "🎉 libr $VERSION installed successfully!"
+}
+
+main "$@"

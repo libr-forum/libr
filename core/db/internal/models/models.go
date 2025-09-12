@@ -40,6 +40,11 @@ type Mod struct {
 	PublicKey string `json:"public_key"`
 }
 
+type Mods struct{
+	Peerid string `json:"peer_id"`
+	PublicKey string `json:"public_key"`
+}
+
 type ReportMsg struct {
 	PublicKey string `json:"public_key"`
 	Msg       Msg    `json:"msg"`
@@ -70,4 +75,9 @@ type KBucket struct {
 func (kb *KBucket) String() string {
 	data, _ := json.MarshalIndent(kb, "", "  ")
 	return string(data)
+}
+
+type DBConfig struct {
+	API_KEY string `json:"x_api_key"`
+	JS_ServerURL string `json:"jsurl"`
 }

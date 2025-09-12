@@ -8,6 +8,9 @@ import (
 	"crypto/x509"
 	"log"
 	"math/big"
+	"net/http"
+
+	//"os"
 	"sort"
 
 	"context"
@@ -29,6 +32,9 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/keycache"
+	"github.com/libr-forum/Libr/core/db/internal/node"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
@@ -84,24 +90,73 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		// Other TLS configurations like ClientAuth, InsecureSkipVerify, etc.
 	}
 
+	privKey := keycache.LoadPrivKey()
+
 	fmt.Println("[DEBUG] Creating libp2p Host")
+	
 	h, err := libp2p.New(
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"), // WebSocket
-		libp2p.Security(libp2ptls.ID, libp2ptls.New),
-		libp2p.ConnectionManager(connMgr),
-		libp2p.EnableNATService(),
-		libp2p.EnableRelay(),
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(websocket.New, websocket.WithTLSConfig(tlsConfig)),
-		// libp2p.Transport(websocket.NewWithTLSConfig(tlsConfig)),
-		// libp2p.Transport(websocket.New),
-	)
+    libp2p.Identity(privKey), // ✅ ensures peer ID is derived from privKey
+    libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"),
+    libp2p.Security(libp2ptls.ID, libp2ptls.New),
+    libp2p.ConnectionManager(connMgr),
+    libp2p.EnableNATService(),
+    libp2p.EnableRelay(),
+    libp2p.Transport(tcp.NewTCPTransport),
+    libp2p.Transport(websocket.New, websocket.WithTLSConfig(tlsConfig)),
+)
 
 	if err != nil {
 		fmt.Println("[DEBUG] Failed to create Host:", err)
 		return nil, err
 	}
 
+	//pubKey := keycache.LoadPubKey()
+	cf,err := config.ReadDBConfigFile()
+	if(err!=nil){
+		fmt.Println("Error reading vlas from config file")
+	}
+	JS_API_key := cf.API_KEY
+
+	JS_ServerURL := cf.JS_ServerURL
+
+	if(config.DBtype=="boot"){
+		fmt.Println("RUNNING DB AS BOOTSTRAP. APPROPRIATE CONFIG FOUND")
+	if JS_API_key == ""  {
+		fmt.Println("[DEBUG] Missing JS API key or server URL")
+		log.Fatal("Cant get config vars at peer.go")
+	}
+	node_id:=node.GenerateNodeIDFromPublicKey()
+	Data := map[string]string{
+		"peer_id": h.ID().String(),
+		"node_id" : node_id,
+	}
+
+	jsonData, err := json.Marshal(Data)
+	if(err!=nil){
+		fmt.Println("Error marchalling req json for post boot")
+	}
+	req,err := http.NewRequest("POST", JS_ServerURL+"/api/postboot", bytes.NewBuffer(jsonData))
+
+	if err != nil {
+		return nil,fmt.Errorf("failed to create request: %w",err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", JS_API_key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil,fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil,fmt.Errorf("server returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	fmt.Println("Inserted bootstrap node successfully")
+}
 	fmt.Println("[DEBUG] Creating identify service")
 	idSvc, err := identify.NewIDService(h)
 	if err != nil {
@@ -149,7 +204,9 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	sort.Slice(distmap, func(i, j int) bool {
 		return distmap[i].dist.Cmp(distmap[j].dist) < 0
 	})
-
+	if(len(relayMultiAddrList)==0){
+		log.Fatal("No relays given, please restart after some time")
+	}
 	relayIDused := distmap[0].relayID
 	fmt.Println(relayIDused)
 	var relayAddr string

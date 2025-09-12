@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
 )
 
@@ -27,4 +28,14 @@ func InitKeys() {
 func LoadPubKey() string {
 	pub, _, _ := cryptoutils.LoadKeys()
 	return base64.StdEncoding.EncodeToString(pub)
+}
+
+func LoadPrivKey() crypto.PrivKey {
+    _, priv, _ := cryptoutils.LoadKeys() // priv is ed25519.PrivateKey (a []byte)
+
+    libp2pPriv, err := crypto.UnmarshalEd25519PrivateKey(priv)
+    if err != nil {
+        panic(err)
+    }
+    return libp2pPriv
 }

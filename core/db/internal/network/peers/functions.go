@@ -45,9 +45,9 @@ func RegisterLocalState(n *models.Node, rt *routing.RoutingTable) {
 }
 
 func initDHT() {
-	bootstrapAddrs, _ := utils.GetDbAddr()
+	bootstrapAddrs, _ := utils.GetDBFromJSServer()
 
-	fmt.Print("Bootstrap addresses: ", bootstrapAddrs, "\n")
+	// fmt.Print("Bootstrap addresses: ", bootstrapAddrs, "\n")
 
 	// 3. Init DB and routing
 	config.InitDB()

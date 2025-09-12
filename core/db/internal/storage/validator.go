@@ -77,7 +77,7 @@ func ValidateRepCertFields(repCert *models.ReportCert) error {
 	return nil
 }
 
-func ValidateRepCert(repCert *models.ReportCert, validMods []*models.Mod) error {
+func ValidateRepCert(repCert *models.ReportCert, validMods []*models.Mods) error {
 	if err := ValidateRepCertFields(repCert); err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func ValidateRepCert(repCert *models.ReportCert, validMods []*models.Mod) error 
 	return ValidateRepModCerts(repCert, validMods)
 }
 
-func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) error {
+func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mods) error {
 	validMap := make(map[string]struct{})
 	for _, mod := range validMods {
 		validMap[mod.PublicKey] = struct{}{}
@@ -165,7 +165,7 @@ func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) er
 func ValidateModCert(msgCert *models.MsgCert) error {
 	apprCount := 0
 	rejCount := 0
-	validMods, _ := utils.GetOnlineMods()
+	validMods, _ := utils.GetModsFromJSServer()
 	totalMods := len(validMods)
 	for _, modcert := range msgCert.ModCerts {
 		payload := msgCert.Msg.Content + strconv.FormatInt(msgCert.Msg.Ts, 10) + modcert.Status
