@@ -436,7 +436,7 @@ const WhatIsLIBR: React.FC = () => {
                 <Users /> Moderation Per Community Rules
               </div>
               <div className="flex flew-row gap-2">
-                <VenetianMask /> Pseudonomity
+                <VenetianMask /> Pseudonymity
               </div>
             </div>
           </motion.div>
