@@ -11,7 +11,7 @@ jobs:
     name: Test Core Protocol (Go)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Check if core-protocol folder exists
         id: check_core_protocol
         run: |
@@ -36,7 +36,7 @@ jobs:
     name: Test Network Layer (Go)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Check if network folder exists
         id: check_network
         run: |
@@ -61,7 +61,7 @@ jobs:
     name: Test Web Client (React)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Check if web folder exists
         id: check_web
         run: |
@@ -91,7 +91,7 @@ jobs:
     name: Test Mobile Client (Flutter)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Check if mobile folder exists
         id: check_mobile
         run: |
@@ -121,7 +121,7 @@ jobs:
     name: Test Smart Contracts (Solidity)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Check if contracts folder exists
         id: check_contracts
         run: |
@@ -156,7 +156,7 @@ jobs:
     name: Lint Code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       
       # Lint Core Protocol
       - name: Check if core-protocol folder exists
