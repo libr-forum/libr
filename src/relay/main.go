@@ -133,6 +133,8 @@ func main() {
 		port = parsed
 	}
 
+	fmt.Print("Starting relay server with peer ID: ", relayPeerID, " on port: ", port, "\n")
+
 	ledgerBaseURL := strings.TrimSpace(os.Getenv("LEDGER_BASE_URL"))
 	if ledgerBaseURL == "" {
 		ledgerBaseURL = "http://127.0.0.1:9000"
