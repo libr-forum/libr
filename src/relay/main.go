@@ -125,10 +125,10 @@ func main() {
 	}
 
 	port := 8080
-	if raw := strings.TrimSpace(os.Getenv("RELAY_PORT")); raw != "" {
+	if raw := strings.TrimSpace(os.Getenv("PORT")); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed <= 0 || parsed > 65535 {
-			log.Fatalf("invalid RELAY_PORT %q", raw)
+			log.Fatalf("invalid PORT %q", raw)
 		}
 		port = parsed
 	}
