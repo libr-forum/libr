@@ -2,7 +2,7 @@ require('dotenv').config();
 
 module.exports = {
   port: parseInt(process.env.PORT || '3000', 10),
-  mongoUri: process.env.MONGO_URI || 'mongodb+srv://peer:peerhehe@cluster0.vswojqe.mongodb.net/',
+  mongoUri: process.env.MONGO_URI || '',
   // Seconds before a mod/relay entry is considered stale if not refreshed
   entryTtlMs: parseInt(process.env.ENTRY_TTL_SECONDS || '180', 10) * 1000,
   // How often the expiry job runs

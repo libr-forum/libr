@@ -6,6 +6,9 @@ let db;
 let client;
 
 async function connect() {
+  if (!config.mongoUri) {
+    throw new Error('MONGO_URI environment variable is required to connect to MongoDB');
+  }
   client = new MongoClient(config.mongoUri);
   await client.connect();
   db = client.db('Addrs');
