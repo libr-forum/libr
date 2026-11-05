@@ -28,6 +28,9 @@ type ModConfig struct {
 	Forbidden    []string `json:"forbidden"`
 	Thresholds   string   `json:"thresholds"`
 	ImageAutoMod *bool    `json:"image_auto_mod"` // Use pointer to handle missing keys gracefully default true
+	LLMEnabled   bool     `json:"llm_enabled"`
+	LLMProvider  string   `json:"llm_provider"`
+	LLMModel     string   `json:"llm_model"`
 }
 
 type Category struct {

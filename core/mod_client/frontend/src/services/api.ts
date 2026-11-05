@@ -1,4 +1,4 @@
-import { SendInput, SendImageInput, FetchAll, GenerateAvatar, GenerateAlias, GetModerationLogs, GetModConfig, SaveModConfig, ModAuthentication, SaveGoogleApiKey, ManualModerate, FetchMessageReports, ModerateBySign, IsModerationCronRunning, GetPendingModerationStats } from "../../wailsjs/go/main/App";
+import { SendInput, SendImageInput, FetchAll, GenerateAvatar, GenerateAlias, GetModerationLogs, GetModConfig, SaveModConfig, ModAuthentication, SaveGoogleApiKey, ManualModerate, FetchMessageReports, ModerateBySign, IsModerationCronRunning, GetPendingModerationStats, ResendToDb, GetModKeys, SaveModKey, TestLLMConnection } from "../../wailsjs/go/main/App";
 import axios from 'axios';
 import { Community, Message, User, ModLogEntry, useAppStore, ReportedMessage } from '../store/useAppStore';
 import { types } from '../../wailsjs/go/models'
@@ -222,6 +222,7 @@ export const apiService = {
     // For image messages: ANY non-rejected outcome should be treated as pending.
     // This covers: 'pending_manual', 'timeout', 'No online moderators available', 'No moderators available'
     // The pending_mods cron will track it and complete it once a mod comes online.
+    const storageFailed = result.status === 'storage_failed';
     const isImagePending = isImage && result.status !== 'error' && result.status !== 'offline';
     const timeout = result.status === 'timeout';
     const modcerts: types.ModCert[] = result.mod_certs ?? [];
@@ -235,7 +236,7 @@ export const apiService = {
       authorAlias: user.alias,
       timestamp: BigInt(result.ts > 0 ? result.ts : Math.floor(Date.now() / 1000)),
       communityId,
-      status: approved ? 'approved' : (timeout || isImagePending) ? 'pending' : 'rejected',
+      status: approved ? 'approved' : (timeout || isImagePending || storageFailed) ? 'pending' : 'rejected',
       avatarSvg: user.avatarSvg,
       moderationNote: modcerts,
       sign: result.sign ?? '',
@@ -255,16 +256,66 @@ export const apiService = {
     console.log(`Message ${action}ed with note: ${note}`);
   },
 
-  async GetModConfig(): Promise<{ forbidden: string[]; thresholds: string; image_auto_mod?: boolean }> {
+  async GetModConfig(): Promise<{
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }> {
     return await GetModConfig();
   },
 
-  async SaveModConfig(data: { forbidden: string[]; thresholds: string; image_auto_mod?: boolean }): Promise<void> {
-    await SaveModConfig(data as any)
+  async SaveModConfig(data: {
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }): Promise<void> {
+    await SaveModConfig(data as any);
   },
 
   async SaveGoogleApiKey(key: string) {
-    await SaveGoogleApiKey(key)
+    await SaveGoogleApiKey(key);
+  },
+
+  async GetModKeys(): Promise<Record<string, string>> {
+    return await GetModKeys();
+  },
+
+  async SaveModKey(keyName: string, keyValue: string): Promise<void> {
+    await SaveModKey(keyName, keyValue);
+  },
+
+  async TestLLMConnection(provider: string, model: string, apiKey: string): Promise<string> {
+    return await TestLLMConnection(provider, model, apiKey);
+  },
+
+  async resendToDb(message: Message): Promise<Message> {
+    const msg: types.Msg = {
+      content: message.content,
+      ts: Number(message.timestamp),
+    };
+    const msgcert = new types.MsgCert({
+      public_key: message.authorPublicKey,
+      msg: msg,
+      mod_certs: message.moderationNote,
+      sign: message.sign,
+    });
+
+    const result = await ResendToDb(msgcert);
+    const approved = result.status === 'sent';
+    const storageFailed = result.status === 'storage_failed';
+
+    const user = useAppStore.getState().user;
+
+    return {
+      ...message,
+      status: approved ? 'approved' : storageFailed ? 'pending' : 'rejected',
+    };
   }
 };
 

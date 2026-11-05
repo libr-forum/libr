@@ -8,7 +8,7 @@ import { apiService } from '../services/api';
 import { TopBar } from '../components/layout/TopBar';
 import { Menubar } from '../components/layout/Menubar';
 import { Sidebar } from '../components/layout/Sidebar';
-import { ArrowDown, Clock, Calendar, RotateCcw, Plus } from 'lucide-react';
+import { ArrowDown, Clock, Calendar, RotateCcw, Plus, Check } from 'lucide-react';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 
 export const ChatRoom: React.FC = () => {
@@ -24,27 +24,81 @@ export const ChatRoom: React.FC = () => {
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [inputOpen, setInputOpen] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [justReloaded, setJustReloaded] = useState(false);
+  const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    };
+  }, []);
   
   useEffect(() => {
+    let cancelTimer = false;
     if (currentCommunity) {
-      loadMessages();
+      loadMessages().then((msgs) => {
+        // If initial load returned empty (e.g. peer circuit bootstrap right after DB start),
+        // automatically retry after 2 seconds
+        if (!cancelTimer && (!msgs || msgs.length === 0)) {
+          setTimeout(() => {
+            if (!cancelTimer) {
+              loadMessages(true);
+            }
+          }, 2000);
+        }
+      });
     }
+    return () => {
+      cancelTimer = true;
+    };
   }, [currentCommunity]);
 
-  const loadMessages = async () => {
-    if (!currentCommunity) return;
+  const loadMessages = async (silent = false): Promise<any[]> => {
+    if (!currentCommunity) return [];
     
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
-      setMessages([]);
       const fetchedMessages = await apiService.getMessages(currentCommunity.id);
-      setMessages(fetchedMessages);
+      if (fetchedMessages && fetchedMessages.length > 0) {
+        setMessages(fetchedMessages);
+      } else if (!silent) {
+        setMessages([]);
+      }
+      return fetchedMessages || [];
     } catch (error) {
       console.error('Failed to load messages:', error);
+      return [];
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleReload = async () => {
+    if (isReloading || !currentCommunity) return;
+    setIsReloading(true);
+    setJustReloaded(false);
+    const startTime = Date.now();
+    try {
+      const fetched = await loadMessages(true);
+      if (Array.isArray(fetched)) {
+        setMessages(fetched);
+      }
+    } catch (err) {
+      console.error('Failed to reload messages:', err);
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const minDelay = Math.max(0, 500 - elapsed);
+      setTimeout(() => {
+        setIsReloading(false);
+        setJustReloaded(true);
+        if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = setTimeout(() => {
+          setJustReloaded(false);
+        }, 1800);
+      }, minDelay);
     }
   };
 
@@ -52,12 +106,12 @@ export const ChatRoom: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault();
-        loadMessages();
+        handleReload();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentCommunity]);
+  }, [currentCommunity, isReloading]);
 
   const sortedMessages = React.useMemo(() => {
     let filtered = [...messages];
@@ -140,18 +194,45 @@ export const ChatRoom: React.FC = () => {
                   <span className='mt-0.5'>{sortByNewest ? 'Newest First' : 'Oldest First'}</span>
                 </button> */}
                 <button
-                  onClick={loadMessages}
-                  className="libr-button bg-libr-accent1/20 rounded-2xl hover:bg-muted flex items-center space-x-2 text-sm"
-                  title="Reload Messages"
+                  onClick={handleReload}
+                  disabled={isReloading}
+                  className={`libr-button rounded-2xl flex items-center space-x-2 text-sm transition-all duration-200 ${
+                    justReloaded
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                      : isReloading
+                      ? 'bg-libr-accent1/30 text-foreground cursor-not-allowed opacity-90'
+                      : 'bg-libr-accent1/20 hover:bg-muted text-foreground'
+                  }`}
+                  title={isReloading ? "Reloading messages..." : justReloaded ? "Messages up to date" : "Reload Messages"}
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  <span className='mt-0.5'>Reload</span>
+                  {justReloaded ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span className='mt-0.5 font-medium'>Updated</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className={`w-4 h-4 ${isReloading ? 'animate-spin text-libr-accent1' : ''}`} />
+                      <span className='mt-0.5'>{isReloading ? 'Reloading...' : 'Reload'}</span>
+                    </>
+                  )}
                 </button>
-                <span className="text-sm text-muted-foreground">
-                  {selectedDate 
-                    ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
-                    : `${messages.length} messages`
-                  }
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>
+                    {selectedDate 
+                      ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
+                      : `${messages.length} messages`
+                    }
+                  </span>
+                  {justReloaded && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-xs text-emerald-400 font-medium"
+                    >
+                      • synced
+                    </motion.span>
+                  )}
                 </span>
               </div>
               
@@ -224,9 +305,20 @@ export const ChatRoom: React.FC = () => {
 
             {/* Messages */}
             <div 
-              className="flex-1 overflow-y-auto mt-2 pl-0 space-y-2 min-h-0 rounded-3xl" 
+              className="flex-1 overflow-y-auto mt-2 pl-0 space-y-2 min-h-0 rounded-3xl relative" 
               ref={messagesContainerRef}
             >
+              {/* Subtle top progress bar when manually reloading */}
+              {isReloading && (
+                <div className="sticky top-0 left-0 right-0 z-10 h-0.5 w-full bg-libr-accent1/20 overflow-hidden rounded-full">
+                  <motion.div
+                    className="h-full bg-libr-accent1"
+                    initial={{ x: '-100%', width: '40%' }}
+                    animate={{ x: '350%' }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </div>
+              )}
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <motion.div

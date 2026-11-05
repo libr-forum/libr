@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: librserver
+    runtime: node
+    region: oregon        # change to the region closest to your users
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /health
+
+    envVars:
+      # Set this in the Render dashboard (secret) — do not commit the real value
+      - key: MONGO_URI
+        sync: false
+
+      # Mod/relay entry TTL (seconds). Entry is removed if not refreshed within this window.
+      - key: ENTRY_TTL_SECONDS
+        value: "180"
+
+      # How often the expiry job sweeps for stale entries (seconds)
+      - key: EXPIRY_JOB_INTERVAL_SECONDS
+        value: "90"
+
+      # Pino log level: trace | debug | info | warn | error | fatal
+      - key: LOG_LEVEL
+        value: "info"
+
+      # Render automatically injects PORT — do not add it here

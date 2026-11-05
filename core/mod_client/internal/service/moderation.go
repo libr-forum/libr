@@ -1,6 +1,7 @@
 package service
 
 import (
+	"time"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -89,6 +90,42 @@ func GetGoogleApiKey() (string, error) {
 	}
 
 	return key, nil
+}
+
+func ReadModKeys() (map[string]string, error) {
+	path := GetModKeysPath()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]string), nil
+		}
+		return nil, fmt.Errorf("failed to read modkeys.json: %w", err)
+	}
+
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		return make(map[string]string), nil
+	}
+	return data, nil
+}
+
+func WriteModKey(keyName, keyValue string) error {
+	keys, _ := ReadModKeys()
+	if keys == nil {
+		keys = make(map[string]string)
+	}
+	keys[keyName] = keyValue
+
+	path := GetModKeysPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create modkeys directory: %w", err)
+	}
+
+	content, err := json.MarshalIndent(keys, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, content, 0644)
 }
 
 func ensureModConfigExists() {
@@ -206,6 +243,18 @@ func AutoModerateMsg(msg models.UserMsg) (string, error) {
 		}
 	}
 
+	modCfg, modCfgErr := ReadModConfigFile()
+	if modCfgErr == nil && modCfg.LLMEnabled {
+		clean, err := AnalyzeWithLLM(cleanedContent, modCfg)
+		if err == nil {
+			if clean {
+				return "1", nil
+			}
+			return "0", nil
+		}
+		fmt.Printf("[WARN] AnalyzeWithLLM error: %v — falling back to Google NLP\n", err)
+	}
+
 	clean, err := AnalyzeWithGoogleNLP(cleanedContent)
 	if err != nil {
 		// Google NLP unavailable (e.g. missing API key); fall back to allow
@@ -216,6 +265,23 @@ func AutoModerateMsg(msg models.UserMsg) (string, error) {
 		return "1", nil
 	}
 	return "0", nil
+}
+
+func AnalyzeWithLLM(content string, cfg models.ModConfig) (bool, error) {
+	keys, _ := ReadModKeys()
+	apiKey := ""
+	if keys != nil {
+		providerKeyName := strings.ToUpper(cfg.LLMProvider) + "_API_KEY"
+		if k, ok := keys[providerKeyName]; ok && k != "" {
+			apiKey = k
+		} else if k, ok := keys["LLM_API_KEY"]; ok && k != "" {
+			apiKey = k
+		} else if k, ok := keys["GOOGLE_NLP_API_KEY"]; ok && (cfg.LLMProvider == "gemini" || cfg.LLMProvider == "google") {
+			apiKey = k
+		}
+	}
+
+	return AnalyzeWithDirectCloudLLM(content, cfg, apiKey)
 }
 
 func AnalyzeImageWithGoogleVision(base64Uri string) (bool, error) {
@@ -468,4 +534,108 @@ func AppendToModLog(msg models.UserMsg, status string) error {
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(entries)
+}
+
+func ResolveCloudEndpoint(provider, model string) (url string, reqModel string) {
+	p := strings.ToLower(provider)
+	m := model
+	if strings.HasPrefix(m, "groq/") {
+		m = strings.TrimPrefix(m, "groq/")
+	} else if strings.HasPrefix(m, "gemini/") {
+		m = strings.TrimPrefix(m, "gemini/")
+	} else if strings.HasPrefix(m, "openai/") {
+		m = strings.TrimPrefix(m, "openai/")
+	} else if strings.HasPrefix(m, "deepseek/") {
+		m = strings.TrimPrefix(m, "deepseek/")
+	}
+
+	switch {
+	case p == "groq" || strings.HasPrefix(model, "groq/"):
+		return "https://api.groq.com/openai/v1/chat/completions", m
+	case p == "gemini" || strings.HasPrefix(model, "gemini/"):
+		return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", m
+	case p == "openai" || strings.HasPrefix(model, "gpt-") || strings.HasPrefix(model, "o1") || strings.HasPrefix(model, "o3"):
+		return "https://api.openai.com/v1/chat/completions", m
+	case p == "deepseek" || strings.HasPrefix(model, "deepseek/"):
+		return "https://api.deepseek.com/v1/chat/completions", m
+	default:
+		return "", model
+	}
+}
+
+func AnalyzeWithDirectCloudLLM(content string, cfg models.ModConfig, apiKey string) (bool, error) {
+	url, reqModel := ResolveCloudEndpoint(cfg.LLMProvider, cfg.LLMModel)
+	if url == "" || apiKey == "" {
+		return AnalyzeWithGoogleNLP(content)
+	}
+
+	systemPrompt := `You are a strict, objective content moderation evaluator for a decentralized discussion platform.
+Analyze the text and return ONLY a valid JSON object:
+{"flagged": true/false, "confidence": 0.0 to 1.0, "reason": "summary of violation or empty", "suggested_action": "allow"|"reject"}`
+
+	payload := map[string]interface{}{
+		"model": reqModel,
+		"messages": []map[string]string{
+			{"role": "system", "content": systemPrompt},
+			{"role": "user", "content": "Evaluate this content:\n---\n" + content + "\n---"},
+		},
+		"temperature": 0.0,
+		"response_format": map[string]string{"type": "json_object"},
+	}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return AnalyzeWithGoogleNLP(content)
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return AnalyzeWithGoogleNLP(content)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("[WARN] Direct cloud LLM error (%s): %v — falling back to Google NLP\n", url, err)
+		return AnalyzeWithGoogleNLP(content)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("[WARN] Direct cloud LLM returned %d: %s\n", resp.StatusCode, string(body))
+		return AnalyzeWithGoogleNLP(content)
+	}
+
+	var chatResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil || len(chatResp.Choices) == 0 {
+		return AnalyzeWithGoogleNLP(content)
+	}
+
+	rawText := chatResp.Choices[0].Message.Content
+	rawText = strings.TrimPrefix(rawText, "```json")
+	rawText = strings.TrimPrefix(rawText, "```")
+	rawText = strings.TrimSuffix(rawText, "```")
+
+	var modRes struct {
+		Flagged    bool    `json:"flagged"`
+		Confidence float64 `json:"confidence"`
+		Reason     string  `json:"reason"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(rawText)), &modRes); err != nil {
+		return AnalyzeWithGoogleNLP(content)
+	}
+
+	if modRes.Flagged {
+		fmt.Printf("[INFO] Content flagged by Direct Cloud LLM (%s): %s\n", reqModel, modRes.Reason)
+		return false, nil
+	}
+	return true, nil
 }

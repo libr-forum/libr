@@ -113,10 +113,13 @@ export const ModLogs: React.FC = () => {
                   </div>
                   <button
                     onClick={() => loadModerationLogs(false)}
-                    className="libr-button bg-libr-accent1/20 hover:bg-muted rounded-2xl flex items-center justify-center space-x-2 text-sm px-4 h-9"
+                    disabled={isLoading}
+                    className={`libr-button bg-libr-accent1/20 hover:bg-muted rounded-2xl flex items-center justify-center space-x-2 text-sm px-4 h-9 ${
+                      isLoading ? 'opacity-80 cursor-not-allowed' : ''
+                    }`}
                   >
-                    <RotateCcw className="w-4 h-4" />
-                    <span className="mt-0.5">Refresh</span>
+                    <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin text-libr-accent1' : ''}`} />
+                    <span className="mt-0.5">{isLoading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
                   <div className="flex items-center relative">
                     <Filter className="w-4 h-4 text-muted-foreground absolute left-3 pointer-events-none" />

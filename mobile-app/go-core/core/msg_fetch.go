@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	cache "github.com/libr-forum/Libr/core/mod_client/core/cache_handler"
 	"github.com/libr-forum/Libr/core/mod_client/config"
 	"github.com/libr-forum/Libr/core/mod_client/network"
 	"github.com/libr-forum/Libr/core/mod_client/types"
@@ -381,6 +382,31 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	sort.Slice(filtered, func(i, j int) bool {
 		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
 	})
+
+	// Merge with recently sent messages that might not have propagated through DHT yet
+	sentCerts := cache.GetRecentSentMessages()
+	seenSigns := make(map[string]struct{})
+	for _, m := range filtered {
+		seenSigns[m.Sign] = struct{}{}
+	}
+
+	for _, sc := range sentCerts {
+		if _, seen := seenSigns[sc.Sign]; !seen {
+			filtered = append(filtered, types.RetMsgCert{
+				PublicKey: sc.PublicKey,
+				Msg:       sc.Msg,
+				ModCerts:  sc.ModCerts,
+				Sign:      sc.Sign,
+				Deleted:   "",
+			})
+		}
+	}
+
+	// Sort again after merging
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
+	})
+
 	return filtered
 }
 

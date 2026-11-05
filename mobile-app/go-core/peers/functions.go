@@ -37,6 +37,9 @@ func StartNode(relayMultiAddrList []string) error {
 }
 
 func GET(targetPeerID string, route string) ([]byte, error) {
+	if Peer == nil || Peer.Host == nil {
+		return nil, fmt.Errorf("libp2p peer not initialized")
+	}
 	reqparams := make(map[string]string)
 	parts := strings.Split(route, "/")
 	params := strings.Split(parts[1], "&&")
@@ -62,6 +65,9 @@ func GET(targetPeerID string, route string) ([]byte, error) {
 }
 
 func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
+	if Peer == nil || Peer.Host == nil {
+		return nil, fmt.Errorf("libp2p peer not initialized")
+	}
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

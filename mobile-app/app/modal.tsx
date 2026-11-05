@@ -16,7 +16,7 @@ const AdaptiveInput = Platform.OS === 'android' ? RichTextInput : PasteInput;
 
 export default function CreateMessageModal() {
   const router = useRouter();
-  const { state, addMessage, removeMessage } = useAppStore();
+  const { state, addMessage, removeMessage, showNotice } = useAppStore();
   const colors = getAppColors(state.isIncognito);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -152,7 +152,7 @@ export default function CreateMessageModal() {
 
       if (result.status === 'sent' || result.status?.startsWith('sent:') || result.status === 'pending_manual') {
         if (result.status === 'pending_manual') {
-          Alert.alert('Manual Approval', 'Message contains an image and has been sent for manual approval.');
+          showNotice('Under Review', 'Your message contains an image and has been submitted to moderators for review.', 'clock');
         }
 
         // 5. Replace temp with real data once confirmed

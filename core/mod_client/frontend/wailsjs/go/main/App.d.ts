@@ -24,6 +24,8 @@ export function GenerateAvatar(arg1:string):Promise<string>;
 
 export function GetModConfig():Promise<models.ModConfig>;
 
+export function GetModKeys():Promise<Record<string, string>>;
+
 export function GetModerationLogs():Promise<Array<models.ModLogEntry>>;
 
 export function GetOnlineMods():Promise<Array<string>>;
@@ -50,12 +52,20 @@ export function RegenKeys():Promise<string>;
 
 export function Report(arg1:types.MsgCert,arg2:any):Promise<string>;
 
+export function ResendToDb(arg1:types.MsgCert):Promise<types.SendResult>;
+
 export function SaveGoogleApiKey(arg1:string):Promise<void>;
 
 export function SaveModConfig(arg1:models.ModConfig):Promise<void>;
 
+export function SaveModKey(arg1:string,arg2:string):Promise<void>;
+
 export function SendImageInput(arg1:string):Promise<types.SendResult>;
 
 export function SendInput(arg1:string):Promise<types.SendResult>;
+
+export function TestDirectCloudConnection(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function TestLLMConnection(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function TitleBarTheme(arg1:boolean):Promise<void>;

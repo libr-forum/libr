@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
 	"github.com/libr-forum/Libr/core/mod_client/config"
 	"github.com/libr-forum/Libr/core/mod_client/network"
 	"github.com/libr-forum/Libr/core/mod_client/types"
@@ -70,7 +72,26 @@ func Fetch(ts int64) []types.RetMsgCert {
 			wg.Add(1)
 			go func(n *types.Node) {
 				defer wg.Done()
-				rawResp, err := network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+				var rawResp interface{}
+				var err error
+				for attempt := 0; attempt < 3; attempt++ {
+					rawResp, err = network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+					if err == nil {
+						if b, ok := rawResp.([]byte); ok {
+							// If relay returned a transient connection/offline error, wait and retry
+							if strings.Contains(string(b), `"error"`) {
+								if attempt < 2 {
+									time.Sleep(500 * time.Millisecond)
+									continue
+								}
+							}
+						}
+						break
+					}
+					if attempt < 2 {
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
 				if err != nil {
 					return
 				}
@@ -78,11 +99,15 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if !ok {
 					return
 				}
-				fmt.Println("Received response from:", n.PeerId)
 				var base BaseResponse
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
 				}
+				if base.Type == "" {
+					fmt.Printf("[DEBUG] Response from %s for ts=%d is not a find_value response: %s\n", n.PeerId, ts, string(respBytes))
+					return
+				}
+				fmt.Println("Received response from:", n.PeerId)
 
 				switch base.Type {
 				case "found":
@@ -165,15 +190,17 @@ func Fetch(ts int64) []types.RetMsgCert {
 		}
 	}
 
-	var results []types.RetMsgCert
+	var messages []types.RetMsgCert
 	for _, cert := range unique {
-		results = append(results, cert)
+		messages = append(messages, cert)
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Msg.Ts > results[j].Msg.Ts
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Msg.Ts > messages[j].Msg.Ts
 	})
-	return results
+
+
+	return messages
 }
 
 func FetchRecent(ctx context.Context) []types.RetMsgCert {
@@ -225,7 +252,6 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 				}
 			}
 		}()
-		fmt.Println(rawCerts)
 	}
 
 	wg.Wait()
@@ -249,6 +275,30 @@ func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	sort.Slice(filtered, func(i, j int) bool {
 		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
 	})
+		// Merge with recently sent messages that might not have propagated through DHT yet
+	sentCerts := cache.GetRecentSentMessages()
+	seenSigns := make(map[string]struct{})
+	for _, m := range filtered {
+		seenSigns[m.Sign] = struct{}{}
+	}
+
+	for _, sc := range sentCerts {
+		if _, seen := seenSigns[sc.Sign]; !seen {
+			filtered = append(filtered, types.RetMsgCert{
+				PublicKey: sc.PublicKey,
+				Msg:       sc.Msg,
+				ModCerts:  sc.ModCerts,
+				Sign:      sc.Sign,
+				Deleted:   "",
+			})
+		}
+	}
+
+	// Sort again after merging
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
+	})
+
 	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
 	fmt.Println(filtered)
 	return filtered

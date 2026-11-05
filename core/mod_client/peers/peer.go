@@ -187,6 +187,8 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		relayID:   relayInfo.ID,
 		peers:     make(map[peer.ID]string),
 	}
+	// Protect relay connection from connection manager pruning
+	h.ConnManager().Protect(relayInfo.ID, "relay")
 
 	fmt.Println(h.ID().String())
 
@@ -241,13 +243,25 @@ func (cp *ChatPeer) Start(ctx context.Context) error {
 
 	fmt.Printf("[INFO] Circuit Address (share this with other peers): %s\n", circuitAddr)
 
+	// Protect connection to relay from connection manager
+	cp.Host.ConnManager().Protect(relayInfo.ID, "relay")
+
 	// Start a goroutine to periodically refresh reservations
 	go cp.refreshReservations(ctx, *relayInfo)
 	go cp.keepAlive(ctx, *relayInfo)
 
+	// Register with relay with immediate retries
+	for attempt := 1; attempt <= 3; attempt++ {
 	err = cp.registerWithRelay(relayInfo.ID)
-	if err != nil {
-		fmt.Println("[DEBUG] Initial register with relay failed:", err)
+	if err == nil {
+		break
+	}
+	fmt.Printf("[DEBUG] Register with relay attempt %d failed: %v\n", attempt, err)
+	time.Sleep(1 * time.Second)
+	}
+
+	if cp.OnStatusChange != nil {
+		cp.OnStatusChange("online")
 	}
 
 	return nil
@@ -278,6 +292,8 @@ func (cp *ChatPeer) registerWithRelay(relayID peer.ID) error {
 	if err != nil {
 		return fmt.Errorf("error writing to register stream: %w", err)
 	}
+	// Crucial: signal EOF immediately so the relay's io.ReadAll receives it without delay
+	_ = stream.CloseWrite()
 
 	fmt.Println("[DEBUG] Registered peer ID with relay successfully:", reqSent.PeerID)
 	return nil
@@ -307,7 +323,25 @@ func (cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.Addr
 }
 
 func (cp *ChatPeer) keepAlive(ctx context.Context, relayInfo peer.AddrInfo) {
-	ticker := time.NewTicker(40 * time.Second) // Ping every 40 seconds to prevent idle timeout
+	// Fast initial check after 2 seconds to ensure registration is cemented
+	select {
+	case <-time.After(2 * time.Second):
+		if cp.Host.Network().Connectedness(relayInfo.ID) != network.Connected {
+			fmt.Println("[DEBUG] Initial relay connection dropped! Reconnecting...")
+			_ = cp.Host.Connect(ctx, relayInfo)
+			_ = cp.registerWithRelay(relayInfo.ID)
+			_, _ = client.Reserve(ctx, cp.Host, relayInfo)
+		} else {
+			_ = cp.registerWithRelay(relayInfo.ID)
+		}
+		if cp.OnStatusChange != nil {
+			cp.OnStatusChange("online")
+		}
+	case <-ctx.Done():
+		return
+	}
+
+	ticker := time.NewTicker(20 * time.Second) // Ping every 20 seconds to prevent idle timeout
 	defer ticker.Stop()
 
 	for {

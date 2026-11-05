@@ -171,10 +171,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   {message.status === 'pending' && (
                     <DropdownMenuItem
                       onClick={async () => {
-                        setMessages([]);
-                        const retried = await apiService.sendMessage(message.communityId, message.content);
-                        // Replace all messages with only the retried message
-                        setMessages([retried]);
+                        let retried: Message;
+                        const { messages, setMessages } = useAppStore.getState();
+                        if (message.moderationNote && message.moderationNote.length > 0) {
+                          // Resend only to DB
+                          retried = await apiService.resendToDb(message);
+                        } else {
+                          // Full moderation resend
+                          retried = await apiService.sendMessage(message.communityId, message.content);
+                        }
+                        setMessages(messages.map(m => m.id === message.id ? retried : m));
                       }}
                       className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
                     >
@@ -258,7 +264,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   )}
 
                 </DropdownMenuContent>
-
               </DropdownMenu>
             </div>
 

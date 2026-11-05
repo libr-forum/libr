@@ -75,6 +75,7 @@ export function useRelayConnection() {
       for (let i = 0; i < 10; i++) {
         const status = await GetRelayStatus();
         if (status === 'online') {
+          useAppStore.getState().setRelayStatus('online');
           connected = true;
           break;
         }
@@ -83,6 +84,7 @@ export function useRelayConnection() {
         if (error != null) {
           const recheck = await GetRelayStatus();
           if (recheck === 'online') {
+            useAppStore.getState().setRelayStatus('online');
             connected = true;
             break;
           }
@@ -186,22 +188,23 @@ const App: React.FC = () => {
       logger.debug("🔄 Fetching relay addresses...");
       const relayAddrs = await fetchRelayAddrs();
       
-      const status = await GetRelayStatus();
+      let status = await GetRelayStatus();
       let connected = false;
-      for (let i = 0; i < 10; i++) {
-        if (status === "online") {
-          connected = true;
-          break;
-        }
+      if (status === "online") {
+        setRelayStatus("online");
+        connected = true;
+      } else {
+        for (let i = 0; i < 10; i++) {
+          const error = await Connect(relayAddrs);
+          const recheck = await GetRelayStatus();
+          if (recheck === "online") {
+            setRelayStatus("online");
+            connected = true;
+            break;
+          }
 
-        const error = await Connect(relayAddrs);
-        const recheck = await GetRelayStatus();
-        if (recheck === "online") {
-          connected = true;
-          break;
+          await new Promise(res => setTimeout(res, 1000));
         }
-
-        await new Promise(res => setTimeout(res, 1000));
       }
 
       if (!connected) {

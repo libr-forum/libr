@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
-import { AppState as ReactNativeAppState, AppStateStatus } from 'react-native';
+import { AppState as ReactNativeAppState, AppStateStatus, Platform, PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
@@ -28,7 +28,16 @@ interface AppState {
   reportedSigns: Set<string>;
   /** Whether the current user is a moderator. */
   isModerator: boolean;
+  /** Global custom alert / notification modal config. */
+  noticeModal: NoticeModalConfig | null;
 }
+
+export type NoticeModalConfig = {
+  visible: boolean;
+  title: string;
+  message: string;
+  icon?: 'check' | 'clock' | 'info';
+};
 
 type Action =
   | { type: 'SET_PUBLIC_KEY'; payload: string }
@@ -42,7 +51,9 @@ type Action =
   | { type: 'ADD_MESSAGE'; payload: RetMsgCert }
   | { type: 'SET_MODERATOR'; payload: boolean }
   | { type: 'ADD_REPORTED_SIGN'; payload: string }
-  | { type: 'SET_REPORTED_SIGNS'; payload: Set<string> };
+  | { type: 'REMOVE_REPORTED_SIGN'; payload: string }
+  | { type: 'SET_REPORTED_SIGNS'; payload: Set<string> }
+  | { type: 'SET_NOTICE_MODAL'; payload: NoticeModalConfig | null };
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +67,7 @@ const initialState: AppState = {
   isFetching: false,
   reportedSigns: new Set(),
   isModerator: false,
+  noticeModal: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -92,8 +104,14 @@ function reducer(state: AppState, action: Action): AppState {
       newSet.add(action.payload);
       return { ...state, reportedSigns: newSet };
     }
+    case 'REMOVE_REPORTED_SIGN': {
+      const newSet = new Set(state.reportedSigns);
+      newSet.delete(action.payload);
+      return { ...state, reportedSigns: newSet };
+    }
     case 'SET_REPORTED_SIGNS': return { ...state, reportedSigns: action.payload };
     case 'SET_MODERATOR': return { ...state, isModerator: action.payload };
+    case 'SET_NOTICE_MODAL': return { ...state, noticeModal: action.payload };
     default: return state;
   }
 }
@@ -113,21 +131,39 @@ interface StoreContextValue {
   addMessage: (msg: RetMsgCert) => void;
   setModerator: (isMod: boolean) => void;
   addReportedSign: (sign: string, cert?: RetMsgCert) => void;
+  removeReportedSign: (sign: string) => void;
+  showNotice: (title: string, message: string, icon?: 'check' | 'clock' | 'info') => void;
+  hideNotice: () => void;
 }
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 const REPORTED_SIGNS_KEY = '@libr_reported_signs';
 const REPORTED_MESSAGES_KEY = '@libr_reported_messages';
+const NOTIFIED_SIGNS_KEY = '@libr_notified_signs';
+const DISMISSED_SIGNS_KEY = '@libr_dismissed_signs';
+
+/**
+ * Checks for newly finalized moderation results and displays an OS notification
+ * for any items that have not yet been notified.
+ */
+async function checkAndSendModerationNotifications(): Promise<boolean> {
+  // Go core's cronjob now triggers native system notifications directly via NotificationHandler
+  // immediately upon reaching quorum, both in the background and foreground.
+  return false;
+}
 
 // ── Background Task Definition ────────────────────────────────────────────────
 const BACKGROUND_MODERATION_TASK = 'BACKGROUND_MODERATION_TASK';
 
 TaskManager.defineTask(BACKGROUND_MODERATION_TASK, async () => {
   try {
-    const result = await LibrCore.tickCron();
-    console.log('[BackgroundFetch] Moderation tick result:', result);
-    return result === 'ok' 
-      ? BackgroundFetch.BackgroundFetchResult.NewData 
+    const tickResult = await LibrCore.tickCron();
+    console.log('[BackgroundFetch] Moderation tick result:', tickResult);
+
+    const hasNewNotification = await checkAndSendModerationNotifications();
+
+    return hasNewNotification || tickResult === 'ok'
+      ? BackgroundFetch.BackgroundFetchResult.NewData
       : BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (error) {
     console.warn('[BackgroundFetch] Moderation tick failed:', error);
@@ -137,6 +173,28 @@ TaskManager.defineTask(BACKGROUND_MODERATION_TASK, async () => {
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // Request notification permissions on Android 13+
+  useEffect(() => {
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
+        .catch(err => console.warn('[AppStore] Notification permission request error:', err));
+    }
+  }, []);
+
+  // Periodic foreground check for completed moderations to show status bar alerts
+  useEffect(() => {
+    // Initial check on mount
+    checkAndSendModerationNotifications();
+
+    const interval = setInterval(() => {
+      if (ReactNativeAppState.currentState === 'active') {
+        checkAndSendModerationNotifications();
+      }
+    }, 10000); // Check every 10 seconds while active
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Register Background Task
   useEffect(() => {
@@ -174,7 +232,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Manage Go Cron Job Lifecycle
   useEffect(() => {
     const subscription = ReactNativeAppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') {
+      if (nextAppState === 'active' && state.connectionStatus === 'connected') {
         LibrCore.startCron().catch(console.warn);
       } else if (nextAppState === 'background') {
         // We no longer explicitly stop the cron, but it likely will be suspended by OS.
@@ -183,8 +241,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Start immediately if already active
-    if (ReactNativeAppState.currentState === 'active') {
+    // Start immediately if already connected
+    if (ReactNativeAppState.currentState === 'active' && state.connectionStatus === 'connected') {
       LibrCore.startCron().catch(console.warn);
     }
 
@@ -192,7 +250,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       subscription.remove();
       LibrCore.stopCron().catch(console.warn);
     };
-  }, []);
+  }, [state.connectionStatus]);
 
   const setPublicKey = useCallback((key: string) => dispatch({ type: 'SET_PUBLIC_KEY', payload: key }), []);
   const setIncognito = useCallback((value: boolean) => dispatch({ type: 'SET_INCOGNITO', payload: value }), []);
@@ -224,8 +282,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const removeReportedSign = useCallback((sign: string) => {
+    dispatch({ type: 'REMOVE_REPORTED_SIGN', payload: sign });
+    AsyncStorage.getItem(REPORTED_SIGNS_KEY).then((data: string | null) => {
+      if (data) {
+        const arr: string[] = JSON.parse(data).filter((s: string) => s !== sign);
+        AsyncStorage.setItem(REPORTED_SIGNS_KEY, JSON.stringify(arr));
+      }
+    }).catch(() => { });
+    AsyncStorage.getItem(REPORTED_MESSAGES_KEY).then((data: string | null) => {
+      if (data) {
+        const cache: Record<string, RetMsgCert> = JSON.parse(data);
+        delete cache[sign];
+        AsyncStorage.setItem(REPORTED_MESSAGES_KEY, JSON.stringify(cache));
+      }
+    }).catch(() => { });
+  }, []);
+
+  const showNotice = useCallback((title: string, message: string, icon: 'check' | 'clock' | 'info' = 'check') => {
+    dispatch({ type: 'SET_NOTICE_MODAL', payload: { visible: true, title, message, icon } });
+  }, []);
+
+  const hideNotice = useCallback(() => {
+    dispatch({ type: 'SET_NOTICE_MODAL', payload: null });
+  }, []);
+
   return (
-    <StoreContext.Provider value={{ state, setPublicKey, setIncognito, setPeerId, setConnectionStatus, setError, setMessages, setFetching, removeMessage, addMessage, setModerator, addReportedSign }}>
+    <StoreContext.Provider value={{ state, setPublicKey, setIncognito, setPeerId, setConnectionStatus, setError, setMessages, setFetching, removeMessage, addMessage, setModerator, addReportedSign, removeReportedSign, showNotice, hideNotice }}>
       {children}
     </StoreContext.Provider>
   );

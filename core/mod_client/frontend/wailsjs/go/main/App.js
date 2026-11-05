@@ -42,6 +42,10 @@ export function GetModConfig() {
   return window['go']['main']['App']['GetModConfig']();
 }
 
+export function GetModKeys() {
+  return window['go']['main']['App']['GetModKeys']();
+}
+
 export function GetModerationLogs() {
   return window['go']['main']['App']['GetModerationLogs']();
 }
@@ -94,6 +98,10 @@ export function Report(arg1, arg2) {
   return window['go']['main']['App']['Report'](arg1, arg2);
 }
 
+export function ResendToDb(arg1) {
+  return window['go']['main']['App']['ResendToDb'](arg1);
+}
+
 export function SaveGoogleApiKey(arg1) {
   return window['go']['main']['App']['SaveGoogleApiKey'](arg1);
 }
@@ -102,12 +110,24 @@ export function SaveModConfig(arg1) {
   return window['go']['main']['App']['SaveModConfig'](arg1);
 }
 
+export function SaveModKey(arg1, arg2) {
+  return window['go']['main']['App']['SaveModKey'](arg1, arg2);
+}
+
 export function SendImageInput(arg1) {
   return window['go']['main']['App']['SendImageInput'](arg1);
 }
 
 export function SendInput(arg1) {
   return window['go']['main']['App']['SendInput'](arg1);
+}
+
+export function TestDirectCloudConnection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestDirectCloudConnection'](arg1, arg2, arg3);
+}
+
+export function TestLLMConnection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestLLMConnection'](arg1, arg2, arg3);
 }
 
 export function TitleBarTheme(arg1) {

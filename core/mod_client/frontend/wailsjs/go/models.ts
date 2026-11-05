@@ -83,6 +83,9 @@ export namespace models {
 	    forbidden: string[];
 	    thresholds: string;
 	    image_auto_mod?: boolean;
+	    llm_enabled: boolean;
+	    llm_provider: string;
+	    llm_model: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModConfig(source);
@@ -93,6 +96,9 @@ export namespace models {
 	        this.forbidden = source["forbidden"];
 	        this.thresholds = source["thresholds"];
 	        this.image_auto_mod = source["image_auto_mod"];
+	        this.llm_enabled = source["llm_enabled"];
+	        this.llm_provider = source["llm_provider"];
+	        this.llm_model = source["llm_model"];
 	    }
 	}
 	export class ModLogEntry {

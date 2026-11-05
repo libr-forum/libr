@@ -7,6 +7,13 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 import java.lang.reflect.Proxy
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
 
 class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -39,6 +46,33 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             android.util.Log.e("LibrApp", "===== LibrCoreModule init SUCCESS =====")
         } catch (e: Throwable) {
             android.util.Log.e("LibrApp", "===== LibrCoreModule setMessageHandler failed: ${e.message} =====", e)
+        }
+
+        try {
+            val bridgeClass = Class.forName("bridge.Bridge")
+            val notifHandlerClass = Class.forName("bridge.NotificationHandler")
+            
+            val notifProxy = Proxy.newProxyInstance(
+                notifHandlerClass.classLoader,
+                arrayOf(notifHandlerClass),
+                object : InvocationHandler {
+                    override fun invoke(proxy: Any, method: Method, args: Array<out Any>?): Any? {
+                        if (method.name == "onNotification" && args != null && args.size >= 2) {
+                            val title = args[0] as? String ?: ""
+                            val message = args[1] as? String ?: ""
+                            android.util.Log.d("LibrApp", "Direct background notification from Go: $title - $message")
+                            postNotificationDirectly(title, message)
+                        }
+                        return null
+                    }
+                }
+            )
+            
+            val setNotificationHandler = bridgeClass.getMethod("setNotificationHandler", notifHandlerClass)
+            setNotificationHandler.invoke(null, notifProxy)
+            android.util.Log.e("LibrApp", "===== LibrCoreModule setNotificationHandler SUCCESS =====")
+        } catch (e: Throwable) {
+            android.util.Log.e("LibrApp", "===== LibrCoreModule setNotificationHandler failed: ${e.message} =====", e)
         }
     }
 
@@ -223,6 +257,20 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         }.start()
     }
 
+    @ReactMethod fun dismissReport(msgSign: String, promise: Promise) {
+        Thread {
+            try { promise.resolve(callBridgeString("dismissReport", msgSign)?.toString() ?: "ok") }
+            catch (e: Exception) { promise.reject("ERR_DISMISS_REPORT", e.message) }
+        }.start()
+    }
+
+        @ReactMethod fun resendToDb(msgCertJSON: String, promise: Promise) {
+        Thread {
+            try { promise.resolve(callBridgeString("resendToDb", msgCertJSON)?.toString() ?: "error:not_built") }
+            catch (e: Exception) { promise.reject("ERR_RESEND", e.message) }
+        }.start()
+    }
+
     @ReactMethod fun moderateMessage(msgCertJSON: String, action: String, promise: Promise) {
         Thread {
             try { promise.resolve(callBridgeString("moderateMessage", msgCertJSON, action)?.toString() ?: "error:not_built") }
@@ -238,5 +286,75 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod fun generateAvatar(key: String, promise: Promise) {
         try { promise.resolve(callBridgeString("generateAvatar", key)?.toString() ?: "") }
         catch (e: Exception) { promise.reject("ERR_AVATAR", e.message) }
+    }
+
+    companion object {
+        const val NOTIFICATION_CHANNEL_ID = "libr_moderation_alerts"
+        const val NOTIFICATION_CHANNEL_NAME = "Moderation Alerts"
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for approved or rejected messages and reports"
+                enableLights(true)
+                enableVibration(true)
+            }
+            val manager = reactApplicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            manager?.createNotificationChannel(channel)
+        }
+    }
+
+    fun postNotificationDirectly(title: String, message: String) {
+        try {
+            createNotificationChannel()
+
+            val intent = Intent(reactApplicationContext, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                reactApplicationContext,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            )
+
+            val appIcon = reactApplicationContext.applicationInfo.icon.let {
+                if (it != 0) it else android.R.drawable.ic_dialog_info
+            }
+
+            val builder = NotificationCompat.Builder(reactApplicationContext, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(appIcon)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+
+            val manager = reactApplicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val notificationId = (System.currentTimeMillis() % 100000).toInt()
+            manager?.notify(notificationId, builder.build())
+        } catch (e: Exception) {
+            android.util.Log.e("LibrApp", "Failed to post direct notification: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun showSystemNotification(title: String, message: String, promise: Promise) {
+        Thread {
+            try {
+                postNotificationDirectly(title, message)
+                promise.resolve("ok")
+            } catch (e: Exception) {
+                android.util.Log.e("LibrApp", "Failed to show system notification: ${e.message}", e)
+                promise.reject("ERR_NOTIFICATION", e.message)
+            }
+        }.start()
     }
 }

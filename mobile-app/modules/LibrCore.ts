@@ -109,6 +109,10 @@ interface LibrCoreInterface {
   moderateMessage(msgCertJSON: string, action: 'approve' | 'reject'): Promise<string>;
   /** Delete a message. msgCertJSON is a JSON-encoded MsgCert. Returns "ok" or "error:...". */
   deleteMessage(msgCertJSON: string): Promise<string>;
+  /** Dismiss / delete a completed moderation or report by signature. */
+  dismissReport(msgSign: string): Promise<string>;
+  /** Re-send an approved message certificate to the DHT. */
+  resendToDb(msgCertJSON: string): Promise<string>;
 
   // ── Cron & Tasks ────────────────────────────────────────────────────────
   /** Start the background moderation cron job. */
@@ -123,6 +127,8 @@ interface LibrCoreInterface {
   generateAlias(key: string): Promise<string>;
   /** Returns a base64-encoded SVG avatar for a base64 public key. */
   generateAvatar(key: string): Promise<string>;
+  /** Show an OS status bar notification. */
+  showSystemNotification(title: string, message: string): Promise<string>;
 }
 
 const { LibrCore } = NativeModules;
@@ -160,11 +166,23 @@ const MockLibrCore: LibrCoreInterface = {
     console.log('[LibrCore Mock] deleteMessage', json);
     return 'ok';
   },
+  dismissReport: async (sign) => {
+    console.log('[LibrCore Mock] dismissReport', sign);
+    return 'ok';
+  },
+  resendToDb: async (json) => {
+    console.log('[LibrCore Mock] resendToDb', json);
+    return 'ok';
+  },
   startCron: async () => 'ok',
   stopCron: async () => 'ok',
   tickCron: async () => 'ok',
   generateAlias: async (k) => k.slice(0, 10),
   generateAvatar: async (k) => '',
+  showSystemNotification: async (title, message) => {
+    console.log('[LibrCore Mock] showSystemNotification:', title, message);
+    return 'ok';
+  },
 };
 
 export const LibrCoreEvents = LibrCore ? new NativeEventEmitter(LibrCore) : null;

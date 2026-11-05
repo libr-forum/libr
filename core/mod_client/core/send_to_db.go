@@ -319,18 +319,9 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 			log.Printf("Recursive store finished: %d stored, %d failed, %d total nodes discovered", storedCount, failedCount, totalKnown)
 
 			// NEW: Provide detailed result analysis
-			if storedCount >= config.K {
-				log.Printf("✅ SUCCESS: Achieved target replication (%d/%d)", storedCount, config.K)
-			} else if networkCfg.GracefulDegradation && storedCount >= networkCfg.MinStorageNodes {
-				log.Printf("⚠️  PARTIAL SUCCESS: Achieved minimum replication (%d/%d, target: %d)", storedCount, networkCfg.MinStorageNodes, config.K)
-				logger.LogToFile(fmt.Sprintf("Sparse network: stored on %d/%d nodes", storedCount, config.K))
-			} else {
-				log.Printf("❌ INSUFFICIENT REPLICATION: Only %d/%d stored (minimum: %d)", storedCount, config.K, networkCfg.MinStorageNodes)
-				if totalKnown < config.K {
-					log.Printf("Network too small: only %d nodes discovered", totalKnown)
-				}
+			if storedCount == 0 {
+				return fmt.Errorf("insufficient replication: zero nodes stored")
 			}
-
 			return nil
 		}
 	}

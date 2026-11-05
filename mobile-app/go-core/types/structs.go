@@ -94,3 +94,13 @@ type PendingModeration struct {
 	SignerIdentityID string    `json:"signer_identity_id,omitempty"` // identity used to finalize manual moderation
 	CreatedAt        time.Time `json:"created_at"`                   // timestamp for cron retry
 }
+
+type FinalizedModeration struct {
+	MsgSign     string    `json:"msg_sign"`
+	Type        string    `json:"type"`        // "report" or "manual_mod"
+	Status      string    `json:"status"`      // "approved" or "rejected"
+	Approved    int       `json:"approved"`
+	Rejected    int       `json:"rejected"`
+	Total       int       `json:"total"`
+	FinalizedAt time.Time `json:"finalized_at"`
+}

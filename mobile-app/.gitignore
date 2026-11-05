@@ -51,9 +51,15 @@ android/app/build
 android/local.properties
 android/GeneratedPluginRegistrant.java
 android/.idea
+android/.settings/
 android/*.iml
 android/.cxx
 android/.externalNativeBuild
+*.apk
+*.aab
+.settings/
+.project
+.classpath
 
 # iOS specific
 ios/Pods

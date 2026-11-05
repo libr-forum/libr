@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
 	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
@@ -30,15 +31,18 @@ func InitServerClient(baseURL string) {
 
 // GetOnlineMods returns a list of currently live moderators from the server.
 // Only entries whose lastSeen is within the server-side TTL are returned.
+// Fallback: If the server is unreachable, it returns the last known good list from cache.
 func GetOnlineMods() ([]types.Mod, error) {
 	resp, err := httpClient.Get(serverURL + "/mods")
 	if err != nil {
-		return nil, fmt.Errorf("GetOnlineMods: request failed: %w", err)
+		fmt.Printf("⚠️ GetOnlineMods: request failed: %v. Falling back to cache.\n", err)
+		return cache.GetModsCache()
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GetOnlineMods: server returned %d", resp.StatusCode)
+		fmt.Printf("⚠️ GetOnlineMods: server returned %d. Falling back to cache.\n", resp.StatusCode)
+		return cache.GetModsCache()
 	}
 
 	var docs []struct {
@@ -46,13 +50,22 @@ func GetOnlineMods() ([]types.Mod, error) {
 		PublicKey string `json:"publicKey"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&docs); err != nil {
-		return nil, fmt.Errorf("GetOnlineMods: decode failed: %w", err)
+		fmt.Printf("⚠️ GetOnlineMods: decode failed: %v. Falling back to cache.\n", err)
+		return cache.GetModsCache()
 	}
 
 	mods := make([]types.Mod, 0, len(docs))
 	for _, d := range docs {
 		mods = append(mods, types.Mod{PeerId: d.PeerId, PublicKey: d.PublicKey})
 	}
+
+	// Update cache with fresh data
+	if len(mods) > 0 {
+		if err := cache.SaveModsCache(mods); err != nil {
+			fmt.Printf("⚠️ Failed to update mods cache: %v\n", err)
+		}
+	}
+
 	return mods, nil
 }
 

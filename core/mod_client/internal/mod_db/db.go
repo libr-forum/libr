@@ -80,18 +80,19 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 			Status:    "acknowledged",
 		}, nil
 	}
-	log.Printf("Insert failed")
+	log.Printf("Insert failed: %v", err)
 	var moderated sql.NullInt64
 	var modsign sql.NullString
 	var sign string
 	var ts int64
+	var existingType sql.NullString
 
 	row := config.DB.QueryRow(`
-    SELECT sign, moderated, modsign, ts
+    SELECT sign, moderated, modsign, ts, type
     FROM msgresult
     WHERE sign = ?;`, cert.Sign)
 
-	err = row.Scan(&sign, &moderated, &modsign, &ts)
+	err = row.Scan(&sign, &moderated, &modsign, &ts, &existingType)
 	if err != nil {
 		fmt.Println("Error scanning row:", err)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -100,23 +101,50 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 		return nil, fmt.Errorf("failed to scan existing record: %w", err)
 	}
 
-	fmt.Println("Fetching existing record:", sign, moderated, modsign)
+	fmt.Println("Fetching existing record:", sign, moderated, modsign, existingType)
 
-	// Only proceed if moderated is non-NULL
+	// If this is an incoming report:
+	if cert.Type == "report" {
+		// If the existing record was an approved manual_mod message (or if re-reporting an approved message):
+		// Reset it back to unmoderated report state so moderators can review it.
+		if existingType.String != "report" {
+			updateQuery := `
+            UPDATE msgresult
+            SET type = 'report',
+                reason = ?,
+                moderated = NULL,
+                modsign = NULL
+            WHERE sign = ?;`
+			if _, err := config.DB.Exec(updateQuery, cert.Reason, cert.Sign); err != nil {
+				return nil, fmt.Errorf("failed to update record to report: %w", err)
+			}
+			fmt.Println("Updated existing message to report successfully")
+			return &models.ModResponse{
+				Sign:      cert.Sign,
+				PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+				Status:    "acknowledged",
+			}, nil
+		}
+
+		// If it's already a report and this mod has already made a decision:
+		if moderated.Valid && modsign.Valid && modsign.String != "" {
+			return &models.ModResponse{
+				Sign:      modsign.String,
+				PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+				Status:    strconv.FormatInt(moderated.Int64, 10),
+			}, nil
+		}
+
+		// Still unmoderated report awaiting review:
+		return &models.ModResponse{
+			Sign:      cert.Sign,
+			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+			Status:    "acknowledged",
+		}, nil
+	}
+
+	// For non-report types (e.g. manual_mod image submissions):
 	if moderated.Valid && modsign.Valid && modsign.String != "" {
-		// payload := fmt.Sprintf("%d", moderated.Int64) + modsign.String
-
-		// pub, priv, err := cryptoutils.LoadKeys()
-		// if err != nil {
-		// 	log.Printf("Key load error: %v", err)
-		// 	return nil, fmt.Errorf("failed to load keys: %w", err)
-		// }
-
-		// _, signed, err := cryptoutils.SignMessage(priv, payload)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("signing sign-moderated: %w", err)
-		// }
-
 		return &models.ModResponse{
 			Sign:      modsign.String,
 			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
@@ -126,7 +154,7 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 
 	return &models.ModResponse{
 		Sign:      cert.Sign,
-		PublicKey: cert.PublicKey,
+		PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
 		Status:    "acknowledged",
 	}, nil
 }

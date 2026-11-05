@@ -133,6 +133,15 @@ func SetMessageHandler(h MessageHandler) {
 	peer.SetMessageHandler(h)
 }
 
+// NotificationHandler is an interface implemented in native Android code to show push notifications.
+type NotificationHandler interface {
+	OnNotification(title string, message string)
+}
+
+func SetNotificationHandler(h NotificationHandler) {
+	core.SetNotificationHandler(h)
+}
+
 // ── Key management ────────────────────────────────────────────────────────────
 
 // InitApp initialises keys and the discovery server client. Must be called once
@@ -147,6 +156,7 @@ func InitApp(keyDir string, serverURL string) string {
 		util.InitServerClient(serverURL)
 	}
 	keycache.InitKeys()
+	cache.InitCacheFile()
 	if err := identity.EnsureInitialized(); err != nil {
 		return base64.StdEncoding.EncodeToString(keycache.PubKey)
 	}
@@ -350,11 +360,44 @@ func SendTextMessage(content string) string {
 	dbStatus := "stored"
 	if dbErr != nil {
 		dbStatus = fmt.Sprintf("db_error:%v", dbErr)
+	} else {
+		// Add to in-memory cache for immediate UI refresh
+		cache.AddToSentCache(msgCert)
 	}
 
 	result := types.SendResult{
 		Status:   fmt.Sprintf("sent:%s", dbStatus),
 		ModCerts: modcerts,
+		Sign:     msgCert.Sign,
+		Ts:       msgCert.Msg.Ts,
+	}
+	b, _ := json.Marshal(result)
+	return string(b)
+}
+
+// ResendToDb re-attempts to store an already approved MsgCert to the DHT.
+func ResendToDb(msgCertJSON string) string {
+	var msgCert types.MsgCert
+	if err := json.Unmarshal([]byte(msgCertJSON), &msgCert); err != nil {
+		b, _ := json.Marshal(types.SendResult{Status: fmt.Sprintf("error:invalid_json:%v", err)})
+		return string(b)
+	}
+
+	tsMin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
+	key := util.GenerateNodeID(strconv.FormatInt(tsMin, 10))
+
+	dbErr := core.SendToDb(key, msgCert, "/route=store")
+	dbStatus := "stored"
+	if dbErr != nil {
+		dbStatus = fmt.Sprintf("db_error:%v", dbErr)
+	} else {
+		// Add to in-memory cache for immediate UI refresh
+		cache.AddToSentCache(msgCert)
+	}
+
+	result := types.SendResult{
+		Status:   fmt.Sprintf("sent:%s", dbStatus),
+		ModCerts: msgCert.ModCerts,
 		Sign:     msgCert.Sign,
 		Ts:       msgCert.Msg.Ts,
 	}
@@ -390,21 +433,35 @@ func ReportMessage(msgCertJSON string, reason string) string {
 		return "error:no online mods"
 	}
 
+	msgCert.Type = "report"
+	if reason != "" {
+		msgCert.Reason = reason
+	}
+
 	// firstTry = true to allow caching the new request
 	repModCerts := core.ManualSendToMods(msgCert, mods, reason, true)
-	repCert := core.CreateRepCert(msgCert, repModCerts, "report")
-
-	ts := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
-	key := util.GenerateNodeID(strconv.FormatInt(ts, 10))
-	if err := core.SendToDb(key, repCert, "/route=report"); err != nil {
-		return fmt.Sprintf("error:send to db: %v", err)
+	if repModCerts == nil {
+		return "error:no moderators reached"
 	}
+
+	return "ok"
+}
+
+// TickCron performs a moderation cron tick.
+func TickCron() string {
+	if peer.Peer == nil || peer.Peer.Host == nil {
+		return "skipped:node_not_initialized"
+	}
+	core.MaybeStartCron()
 	return "ok"
 }
 
 // StartCron initializes the moderation cron job to process pending reports.
 // Call this when the app comes to the foreground.
 func StartCron() string {
+	if peer.Peer == nil || peer.Peer.Host == nil {
+		return "skipped:node_not_initialized"
+	}
 	core.MaybeStartCron()
 	return "ok"
 }
@@ -418,9 +475,11 @@ func StopCron() string {
 
 // PendingReportStatus exposes the current moderation status to React Native
 type PendingReportStatus struct {
-	Total    int `json:"total"`
-	Approved int `json:"approved"`
-	Rejected int `json:"rejected"`
+	Total       int    `json:"total"`
+	Approved    int    `json:"approved"`
+	Rejected    int    `json:"rejected"`
+	FinalStatus string `json:"final_status,omitempty"`
+	Type        string `json:"type,omitempty"`
 }
 
 // GetPendingReports retrieves a map of msgSign -> status counts for all pending reports.
@@ -442,10 +501,30 @@ func GetPendingReports() string {
 			}
 		}
 
+		itemType := "report"
+		if p.MsgCert.Type == "manual_mod" || p.MsgCert.Reason == "Image attached" {
+			itemType = "manual_mod"
+		}
+
 		statusMap[p.MsgSign] = PendingReportStatus{
 			Total:    p.AckCount, // Total expected responses based on Acks
 			Approved: approved,
 			Rejected: rejected,
+			Type:     itemType,
+		}
+	}
+
+	// Merge finalized moderations so React Native gets final decisions
+	finalized, err := cache.GetAllFinalizedModerations()
+	if err == nil {
+		for _, f := range finalized {
+			statusMap[f.MsgSign] = PendingReportStatus{
+				Total:       f.Total,
+				Approved:    f.Approved,
+				Rejected:    f.Rejected,
+				FinalStatus: f.Status,
+				Type:        f.Type,
+			}
 		}
 	}
 
@@ -454,6 +533,14 @@ func GetPendingReports() string {
 		return fmt.Sprintf("error:%v", err)
 	}
 	return string(b)
+}
+
+// DismissReport deletes a finalized moderation from disk.
+func DismissReport(msgSign string) string {
+	if err := cache.DeleteFinalizedModeration(msgSign); err != nil {
+		return fmt.Sprintf("error:%v", err)
+	}
+	return "ok"
 }
 
 // FetchReports retrieves recent reported messages for moderation.
@@ -542,7 +629,23 @@ func GenerateAlias(key string) string {
 	if len(key) != 44 {
 		return "…"
 	}
-	return alias.GenerateAlias(key)
+
+	// 1. Check cache
+	if entry, err := cache.GetFromCache(key); err == nil && entry != nil && entry.Alias != "" {
+		return entry.Alias
+	}
+
+	// 2. Generate new
+	res := alias.GenerateAlias(key)
+
+	// 3. Save to cache (preserving existing avatar if any)
+	var existingAvatar string
+	if entry, err := cache.GetFromCache(key); err == nil && entry != nil {
+		existingAvatar = entry.AvatarSVG
+	}
+	_ = cache.AddToCache(key, existingAvatar, res)
+
+	return res
 }
 
 // GenerateAvatar returns a base64-encoded SVG avatar for a base64-encoded public key.
@@ -550,6 +653,21 @@ func GenerateAvatar(key string) string {
 	if len(key) != 44 {
 		return ""
 	}
+
+	// 1. Check cache
+	if entry, err := cache.GetFromCache(key); err == nil && entry != nil && entry.AvatarSVG != "" {
+		return base64.StdEncoding.EncodeToString([]byte(entry.AvatarSVG))
+	}
+
+	// 2. Generate new
 	svg := avatar.GenerateAvatar(key)
+
+	// 3. Save to cache (preserving existing alias if any)
+	var existingAlias string
+	if entry, err := cache.GetFromCache(key); err == nil && entry != nil {
+		existingAlias = entry.Alias
+	}
+	_ = cache.AddToCache(key, svg, existingAlias)
+
 	return base64.StdEncoding.EncodeToString([]byte(svg))
 }

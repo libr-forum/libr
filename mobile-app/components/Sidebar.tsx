@@ -126,7 +126,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const navItems = [
     { name: 'Home Feed', icon: <Hash size={20} color={colors.icon} />, route: '/(main)/' },
-    { name: 'Mod Queue', icon: <Clock3 size={20} color={colors.icon} />, route: '/(main)/my-reports' },
+    { name: 'Review Status', icon: <Clock3 size={20} color={colors.icon} />, route: '/(main)/my-reports' },
     ...(isModerator ? [
       { name: 'Moderation Logs', icon: <Shield size={20} color={colors.icon} />, route: '/(main)/moderation' },
       { name: 'Moderation Config', icon: <Wrench size={20} color={colors.icon} />, route: '/(main)/config' },

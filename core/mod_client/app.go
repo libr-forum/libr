@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
@@ -211,9 +215,11 @@ func (a *App) Connect(relayAdds []string) error {
 	})
 	if err != nil {
 		a.relayStatus = "offline"
+		runtime.EventsEmit(a.ctx, "relay_status_changed", "offline")
 		return err
 	}
 	a.relayStatus = "online"
+	runtime.EventsEmit(a.ctx, "relay_status_changed", "online")
 
 	if a.isMod && Peers.Peer != nil {
 		peerId := Peers.Peer.Host.ID().String()
@@ -296,11 +302,46 @@ func (a *App) SendInput(input string) (types.SendResult, error) {
 	msgCert := core.CreateMsgCert(input, ts, modcertlist)
 	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	core.SendToDb(key, msgCert, "/route=store")
+	err = core.SendToDb(key, msgCert, "/route=store")
+	if err != nil {
+		return types.SendResult{
+			Status:   "storage_failed",
+			ModCerts: modcertlist,
+			Sign:     msgCert.Sign,
+			Ts:       msgCert.Msg.Ts,
+		}, nil
+	}
+
+	// Add to in-memory cache for immediate UI refresh
+	cache.AddToSentCache(msgCert)
 
 	return types.SendResult{
 		Status:   "sent",
 		ModCerts: modcertlist,
+		Sign:     msgCert.Sign,
+		Ts:       msgCert.Msg.Ts,
+	}, nil
+}
+
+func (a *App) ResendToDb(msgCert types.MsgCert) (types.SendResult, error) {
+	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
+	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
+	err := core.SendToDb(key, msgCert, "/route=store")
+	if err != nil {
+		return types.SendResult{
+			Status:   "storage_failed",
+			ModCerts: msgCert.ModCerts,
+			Sign:     msgCert.Sign,
+			Ts:       msgCert.Msg.Ts,
+		}, nil
+	}
+
+	// Add to in-memory cache for immediate UI refresh
+	cache.AddToSentCache(msgCert)
+
+	return types.SendResult{
+		Status:   "sent",
+		ModCerts: msgCert.ModCerts,
 		Sign:     msgCert.Sign,
 		Ts:       msgCert.Msg.Ts,
 	}, nil
@@ -628,29 +669,91 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 }
 
 func (a *App) SaveGoogleApiKey(key string) error {
-	path := service.GetModKeysPath()
+	return service.WriteModKey("GOOGLE_NLP_API_KEY", key)
+}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("failed to create modkeys directory: %w", err)
-	}
-
-	data := map[string]string{
-		"GOOGLE_NLP_API_KEY": key,
-	}
-
-	content, err := json.MarshalIndent(data, "", "  ")
+func (a *App) GetModKeys() (map[string]string, error) {
+	keys, err := service.ReadModKeys()
 	if err != nil {
-		return fmt.Errorf("failed to encode API key as JSON: %w", err)
+		return nil, err
 	}
-
-	err = os.WriteFile(path, content, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write modkeys.json: %w", err)
+	masked := make(map[string]string)
+	for k, v := range keys {
+		if len(v) > 8 {
+			masked[k] = v[:4] + "..." + v[len(v)-4:]
+		} else if len(v) > 0 {
+			masked[k] = "********"
+		} else {
+			masked[k] = ""
+		}
 	}
+	return masked, nil
+}
 
-	return nil
+func (a *App) SaveModKey(keyName, keyValue string) error {
+	return service.WriteModKey(keyName, keyValue)
+}
+
+func (a *App) TestLLMConnection(provider, model, apiKey string) (string, error) {
+	return a.TestDirectCloudConnection(provider, model, apiKey)
 }
 
 func (a *App) LogToFile(msg string) {
 	logger.LogToFile(msg)
+}
+
+func (a *App) TestDirectCloudConnection(provider, model, apiKey string) (string, error) {
+	if apiKey == "" {
+		keys, _ := service.ReadModKeys()
+		if keys != nil {
+			providerKeyName := strings.ToUpper(provider) + "_API_KEY"
+		if k, ok := keys[providerKeyName]; ok && k != "" {
+				apiKey = k
+			} else if k, ok := keys["LLM_API_KEY"]; ok && k != "" {
+				apiKey = k
+			} else if k, ok := keys["GOOGLE_NLP_API_KEY"]; ok && (provider == "gemini" || provider == "google") {
+				apiKey = k
+			}
+		}
+	}
+
+	url, reqModel := service.ResolveCloudEndpoint(provider, model)
+	if url == "" {
+		return "", fmt.Errorf("direct cloud endpoint for provider '%s' is not mapped (supported: groq, gemini, openai, deepseek)", provider)
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("missing API key for %s", provider)
+	}
+
+	payload := map[string]interface{}{
+		"model": reqModel,
+		"messages": []map[string]string{
+			{"role": "user", "content": "ping"},
+		},
+		"max_tokens": 5,
+	}
+	jsonBody, _ := json.Marshal(payload)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("direct cloud connection error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	elapsed := time.Since(start).Milliseconds()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("cloud provider returned %d: %s", resp.StatusCode, string(b))
+	}
+
+	return fmt.Sprintf("Direct connection verified! %s responded in %dms", reqModel, elapsed), nil
 }

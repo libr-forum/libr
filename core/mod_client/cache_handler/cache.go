@@ -24,12 +24,28 @@ type CacheEntry struct {
 type CacheData map[string]*CacheEntry
 
 var (
-	cacheData CacheData
-	cachePath string
-	cacheMu   sync.Mutex
+	cacheData       CacheData
+	cachePath       string
+	customCachePath string
+	cacheMu         sync.Mutex
 )
 
+// SetCacheDir allows overriding the default cache storage location.
+func SetCacheDir(path string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	customCachePath = path
+	// Reset cachePath so it's recomputed using the new base
+	cachePath = ""
+}
+
 func GetCacheDir() string {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if customCachePath != "" {
+		return customCachePath
+	}
+
 	switch runtime.GOOS {
 	case "windows":
 		appData := os.Getenv("APPDATA")
@@ -144,6 +160,44 @@ func SavePendingModeration(pending types.PendingModeration) error {
 	}
 
 	return nil
+}
+
+// ── Moderator List Cache ──────────────────────────────────────────────────────
+
+const modsCacheFileName = "mods_cache.json"
+
+func getModsCachePath() string {
+	return filepath.Join(GetCacheDir(), modsCacheFileName)
+}
+
+// SaveModsCache persists the list of online moderators to disk.
+func SaveModsCache(mods []types.Mod) error {
+	dir := GetCacheDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(mods, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(getModsCachePath(), data, 0644)
+}
+
+// GetModsCache retrieves the last known list of online moderators from disk.
+func GetModsCache() ([]types.Mod, error) {
+	data, err := os.ReadFile(getModsCachePath())
+	if err != nil {
+		return nil, err
+	}
+
+	var mods []types.Mod
+	if err := json.Unmarshal(data, &mods); err != nil {
+		return nil, err
+	}
+
+	return mods, nil
 }
 
 func LoadPendingModeration(path string) (types.PendingModeration, error) {

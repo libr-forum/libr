@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import LibrCore, { LibrCoreEvents, RetMsgCert, MsgCert } from '@/modules/LibrCore';
 import { useAppStore } from '@/store/useAppStore';
 import { useSidebar } from './_layout';
-import { Menu, Plus, Check, Clock, Shield, Trash2, Flag, X, AlertTriangle, Hash } from 'lucide-react-native';
+import { Menu, Plus, Check, Clock, Shield, Trash2, Flag, X, AlertTriangle, Hash, RotateCcw } from 'lucide-react-native';
 import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { AnimatedHamburger } from '@/components/AnimatedHamburger';
 import { Colors, Fonts, getAppColors } from '@/constants/theme';
@@ -209,14 +209,20 @@ interface MessageDetailModalProps {
   isMine: boolean;
   onDelete: (c: RetMsgCert) => void;
   onReport: (c: RetMsgCert) => void;
+  onRetry: (c: RetMsgCert) => void;
 }
 
-function MessageDetailModal({ visible, onClose, cert, isMine, onDelete, onReport }: MessageDetailModalProps) {
+function MessageDetailModal({ visible, onClose, cert, isMine, onDelete, onReport, onRetry }: MessageDetailModalProps) {
   const { state } = useAppStore();
   if (!cert) return null;
   const fullTs = new Date(cert.msg.ts * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'medium' });
   const isReported = state.reportedSigns.has(cert.sign);
   const reportingDisabled = isReported || state.isIncognito;
+
+  const isPending = cert.sign.startsWith('temp-');
+  const isTimeout = (Date.now() / 1000 - cert.msg.ts) > 15;
+  const hasAttachments = /<img/i.test(cert.msg.content);
+  const canRetry = isMine && isPending && !hasAttachments && isTimeout;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -249,12 +255,24 @@ function MessageDetailModal({ visible, onClose, cert, isMine, onDelete, onReport
           </ScrollView>
 
           <View style={styles.modalActions}>
-            {isMine ? (
-              <TouchableOpacity style={styles.actionBtn} onPress={() => { onClose(); onDelete(cert); }}>
-                <Trash2 size={18} color={C.red} />
-                <Text style={[styles.actionBtnText, { color: C.red }]}>Delete</Text>
-              </TouchableOpacity>
-            ) : (
+            {isMine && (
+              <>
+                {canRetry && (
+                  <TouchableOpacity 
+                    style={styles.actionBtn} 
+                    onPress={() => { onClose(); onRetry(cert); }}
+                  >
+                    <RotateCcw size={18} color={C.teal} />
+                    <Text style={[styles.actionBtnText, { color: C.teal }]}>Retry Send</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.actionBtn} onPress={() => { onClose(); onDelete(cert); }}>
+                  <Trash2 size={18} color={C.red} />
+                  <Text style={[styles.actionBtnText, { color: C.red }]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {!isMine && (
               <TouchableOpacity
                 style={[styles.actionBtn, reportingDisabled && { opacity: 0.5 }]}
                 disabled={reportingDisabled}
@@ -374,19 +392,32 @@ function ActionSuccessModal({
   visible,
   title,
   message,
+  icon,
   onClose
 }: {
   visible: boolean;
   title: string;
   message: string;
+  icon?: 'check' | 'clock' | 'info';
   onClose: () => void;
 }) {
+  const isClock = icon === 'clock';
+  const isInfo = icon === 'info';
+  const iconColor = isClock ? C.amber : isInfo ? C.teal : C.green;
+  const iconBg = isClock ? C.amber + '20' : isInfo ? C.teal + '20' : C.green + '20';
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
         <View style={styles.successModalContainer} onStartShouldSetResponder={() => true}>
-          <View style={styles.successIconWrap}>
-            <Check size={32} color={C.green} />
+          <View style={[styles.successIconWrap, { backgroundColor: iconBg }]}>
+            {isClock ? (
+              <Clock size={32} color={iconColor} />
+            ) : isInfo ? (
+              <Flag size={28} color={iconColor} />
+            ) : (
+              <Check size={32} color={iconColor} />
+            )}
           </View>
           <Text style={styles.successTitle}>{title}</Text>
           <Text style={styles.successMessage}>{message}</Text>
@@ -447,7 +478,7 @@ function ActionConfirmModal({
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { state, setPublicKey, setPeerId, setConnectionStatus, setModerator, setError, setMessages, setFetching, removeMessage, addReportedSign } = useAppStore();
+  const { state, setPublicKey, setPeerId, setConnectionStatus, setModerator, setError, setMessages, setFetching, removeMessage, addReportedSign, showNotice, hideNotice } = useAppStore();
   const colors = getAppColors(state.isIncognito);
   const { toggleSidebar, isOpen } = useSidebar();
   const [input, setInput] = useState('');
@@ -642,7 +673,7 @@ export default function ChatScreen() {
       const result: string = await (LibrCore as any).reportMessage(JSON.stringify(msgCert), reason);
       if (result === 'ok') {
         addReportedSign(reportMessageCert.sign, reportMessageCert);
-        setSuccessModalConfig({ visible: true, title: 'Reported', message: 'Message has been flagged for review.' });
+        showNotice('Reported', 'Message has been flagged for review.', 'check');
       } else {
         Alert.alert('Report failed', result);
       }
@@ -651,6 +682,48 @@ export default function ChatScreen() {
     }
   };
 
+
+  const handleRetry = useCallback(async (cert: RetMsgCert) => {
+    // 1. Remove the old temporary/failed message
+    removeMessage(cert.sign);
+    
+    setSending(true);
+    try {
+      let raw: string;
+      
+      // OPTIMIZATION: If the message is already signed by mods, only retry the storage (DB) part.
+      if (cert.mod_certs && cert.mod_certs.length > 0) {
+        console.log('[Chat] Retrying storage only for signed message:', cert.sign);
+        // Map RetMsgCert back to MsgCert for the Go backend
+        const msgCert: MsgCert = {
+          public_key: cert.public_key,
+          msg: cert.msg,
+          mod_certs: cert.mod_certs,
+          sign: cert.sign
+        };
+        raw = await LibrCore.resendToDb(JSON.stringify(msgCert));
+      } else {
+        // FULL RETRY: Redo the moderation flow from scratch
+        console.log('[Chat] Retrying full moderation flow for unsigned message');
+        let rawContent = cert.msg.content;
+        const matchBody = rawContent.match(/<BODY>(.*?)<\/BODY>/s);
+        const plainText = (matchBody ? matchBody[1].trim() : rawContent).replace(/<\/?[^>]+(>|$)/g, '').trim();
+        raw = await (LibrCore as any).sendTextMessage(plainText);
+      }
+
+      const result = JSON.parse(raw);
+      const status: string = result.status ?? '';
+      if (status === 'sent' || status.startsWith('sent:')) {
+        setTimeout(() => doFetch(), 1500);
+      } else {
+        Alert.alert('Retry failed', status || 'Unknown error');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Unknown error');
+    } finally {
+      setSending(false);
+    }
+  }, [removeMessage, doFetch]);
 
   const handleDelete = useCallback(async (cert: RetMsgCert) => {
     if (typeof (LibrCore as any).deleteMessage !== 'function') {
@@ -795,6 +868,7 @@ export default function ChatScreen() {
         isMine={selectedMessage?.public_key === state.publicKey}
         onDelete={handleDelete}
         onReport={handleReport}
+        onRetry={handleRetry}
       />
 
       <ReportReasonModal
@@ -804,10 +878,11 @@ export default function ChatScreen() {
       />
 
       <ActionSuccessModal
-        visible={successModalConfig.visible}
-        title={successModalConfig.title}
-        message={successModalConfig.message}
-        onClose={() => setSuccessModalConfig(prev => ({ ...prev, visible: false }))}
+        visible={!!state.noticeModal?.visible}
+        title={state.noticeModal?.title ?? ''}
+        message={state.noticeModal?.message ?? ''}
+        icon={state.noticeModal?.icon}
+        onClose={hideNotice}
       />
 
       <ActionConfirmModal

@@ -14,6 +14,7 @@ Thumbs.db
 *.dll
 *.so
 *.dylib
+*.syso
 # *.sh
 !scripts/*
 
@@ -117,11 +118,14 @@ temp/
 .history
 .svn/
 
-# IntelliJ related
+# IntelliJ / Eclipse related
 *.iml
 *.ipr
 *.iws
 .idea/
+.settings/
+.project
+.classpath
 
 # Visual Studio Code related
 .vscode/
@@ -149,6 +153,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+*.apk
+*.aab
 
 # Solidity
 # Hardhat files

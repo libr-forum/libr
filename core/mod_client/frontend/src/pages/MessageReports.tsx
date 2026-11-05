@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ReportedMessage, useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/api';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Check, X, AlertTriangle, MessageSquare, ImageIcon } from 'lucide-react';
+import { Check, X, AlertTriangle, MessageSquare, ImageIcon, Flag, Trash2, ShieldCheck, RotateCcw } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 // Parse <HEAD>title</HEAD><BODY>body</BODY> format
@@ -38,6 +38,7 @@ export const MsgReports: React.FC = () => {
   const { user } = useAppStore();
   const [reports, setReports] = useState<ReportedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'reports' | 'manual_mod'>('all');
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,15 +57,11 @@ export const MsgReports: React.FC = () => {
     }
   };
 
-  const handleModerate = async (sign: string, action: 'approve' | 'reject') => {
+  const handleModerate = async (sign: string, value: number) => {
     try {
-      // Use moderateBySign to pass the sign string directly, avoiding
-      // JS→Go MsgCert struct mapping issues where sign could arrive empty.
-      const report = reports.find(r => r.sign === sign);
-      const isManualMod = report?.type === 'manual_mod';
-      const baseValue = action === 'approve' ? 0 : 1;
-      const moderationValue = isManualMod ? (baseValue === 0 ? 1 : 0) : baseValue;
-      await apiService.moderateBySign(sign, moderationValue);
+      // value: 1 = proceed (allow image / remove reported message)
+      // value: 0 = halt (block image / keep reported message)
+      await apiService.moderateBySign(sign, value);
       setReports(prev => prev.filter(r => r.sign !== sign));
     } catch (error) {
       console.error('Failed to moderate message:', error);
@@ -88,6 +85,15 @@ export const MsgReports: React.FC = () => {
     );
   }
 
+  const reportCount = reports.filter(r => r.type !== 'manual_mod').length;
+  const imageCount = reports.filter(r => r.type === 'manual_mod').length;
+
+  const filteredReports = reports.filter(r => {
+    if (filter === 'reports') return r.type !== 'manual_mod';
+    if (filter === 'manual_mod') return r.type === 'manual_mod';
+    return true;
+  });
+
   return (
     <>
       <div className='flex flex-row'>
@@ -98,21 +104,59 @@ export const MsgReports: React.FC = () => {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-4">
 
                 {/* Header */}
-                <div className="mb-8 w-full">
-                  <div className="flex items-center space-x-3 mb-4">
+                <div className="mb-6 w-full flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-libr-accent2/20 rounded-xl flex items-center justify-center">
                       <MessageSquare className="w-6 h-6 text-libr-accent2" />
                     </div>
                     <div>
-                      <h1 className="text-2xl font-bold text-foreground">Message Reports</h1>
-                      <p className="text-muted-foreground">These messages have been reported by users and require moderation.</p>
+                      <h1 className="text-2xl font-bold text-foreground">Moderation Queue</h1>
+                      <p className="text-muted-foreground">Review incoming images and user-reported live messages.</p>
                     </div>
                   </div>
                   <button
                     onClick={loadReports}
-                    className="px-3 py-2 bg-muted/30 border border-border/50 text-base rounded-lg text-foreground hover:bg-muted/40 transition-colors"
+                    disabled={isLoading}
+                    className={`px-3 py-2 bg-muted/30 border border-border/50 text-sm rounded-lg text-foreground hover:bg-muted/40 transition-colors flex items-center gap-2 ${
+                      isLoading ? 'opacity-80 cursor-not-allowed' : ''
+                    }`}
                   >
-                    Refresh
+                    <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin text-libr-accent2' : ''}`} />
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-2 mb-6">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition ${
+                      filter === 'all'
+                        ? 'bg-libr-accent2 text-white shadow-sm'
+                        : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    All ({reports.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('reports')}
+                    className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition ${
+                      filter === 'reports'
+                        ? 'bg-rose-500 text-white shadow-sm'
+                        : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    Reports ({reportCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter('manual_mod')}
+                    className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition ${
+                      filter === 'manual_mod'
+                        ? 'bg-sky-500 text-white shadow-sm'
+                        : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    Image Reviews ({imageCount})
                   </button>
                 </div>
 
@@ -125,19 +169,21 @@ export const MsgReports: React.FC = () => {
                       className="w-8 h-8 border-2 border-libr-accent2 border-t-transparent rounded-full"
                     />
                   </div>
-                ) : reports.length === 0 ? (
+                ) : filteredReports.length === 0 ? (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-12">
                     <div className="w-16 h-16 bg-libr-accent2/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <AlertTriangle className="w-8 h-8 text-libr-accent2" />
                     </div>
-                    <h3 className="text-lg font-medium text-foreground mb-2">No reports found</h3>
-                    <p className="text-muted-foreground">No message reports available</p>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Queue is clear</h3>
+                    <p className="text-muted-foreground">No pending items to review</p>
                   </motion.div>
                 ) : (
-                  <div className="grid gap-3">
-                    {reports.map((report, index) => {
+                  <div className="grid gap-4">
+                    {filteredReports.map((report, index) => {
                       const { title, body } = parseContent(report.content);
                       const { textHtml, imgSrcs } = extractImages(body);
+                      const isManualMod = report.type === 'manual_mod';
+
                       return (
                         <motion.div
                           key={report.sign}
@@ -147,6 +193,19 @@ export const MsgReports: React.FC = () => {
                           className="bg-card border border-border/20 rounded-3xl space-y-4 p-5 shadow-md"
                         >
                           <div className="rounded-2xl bg-background/30 border border-border/20 p-4">
+                            {/* Type Badge */}
+                            <div className="flex items-center justify-between mb-3">
+                              {isManualMod ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                  <ImageIcon className="w-3.5 h-3.5" /> Image Review (Pre-publish)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                  <Flag className="w-3.5 h-3.5" /> User Report (Live Message)
+                                </span>
+                              )}
+                            </div>
+
                             {/* Title */}
                             {title && (
                               <div className="text-sm font-semibold text-foreground mb-1">{title}</div>
@@ -183,27 +242,49 @@ export const MsgReports: React.FC = () => {
 
                             {/* Reason */}
                             <div className="text-sm text-foreground leading-snug whitespace-pre-wrap mt-2">
-                              <span className="font-semibold text-libr-secondary">Reason:</span>
-                              <span className="ml-2">{report.note || "—"}</span>
+                              <span className="font-semibold text-libr-secondary">
+                                {isManualMod ? 'Trigger:' : 'Reason:'}
+                              </span>
+                              <span className="ml-2">{report.note || (isManualMod ? 'Image attached' : '—')}</span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-end gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                              onClick={() => handleModerate(report.sign, 'approve')}
-                              className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
-                            >
-                              <Check className="w-4 h-4" /><span>Approve</span>
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                              onClick={() => handleModerate(report.sign, 'reject')}
-                              className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
-                            >
-                              <X className="w-4 h-4" /><span>Reject</span>
-                            </motion.button>
-                          </div>
+                          {/* Action Buttons: 1-word clear labels */}
+                          {isManualMod ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(report.sign, 1)}
+                                className="libr-button bg-green-500 hover:bg-green-600 text-white flex items-center space-x-1"
+                              >
+                                <Check className="w-4 h-4" /><span>Allow</span>
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(report.sign, 0)}
+                                className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
+                              >
+                                <X className="w-4 h-4" /><span>Block</span>
+                              </motion.button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(report.sign, 0)}
+                                className="libr-button bg-muted/60 hover:bg-muted text-foreground border border-border/50 flex items-center space-x-1"
+                              >
+                                <ShieldCheck className="w-4 h-4 text-emerald-400" /><span>Keep</span>
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                onClick={() => handleModerate(report.sign, 1)}
+                                className="libr-button bg-red-500 hover:bg-red-600 text-white flex items-center space-x-1"
+                              >
+                                <Trash2 className="w-4 h-4" /><span>Remove</span>
+                              </motion.button>
+                            </div>
+                          )}
                         </motion.div>
                       );
                     })}

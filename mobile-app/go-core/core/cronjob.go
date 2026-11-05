@@ -12,6 +12,7 @@ import (
 	cache "github.com/libr-forum/Libr/core/mod_client/core/cache_handler"
 	"github.com/libr-forum/Libr/core/mod_client/identity"
 	"github.com/libr-forum/Libr/core/mod_client/logger"
+	peer "github.com/libr-forum/Libr/core/mod_client/peers"
 	"github.com/libr-forum/Libr/core/mod_client/types"
 	util "github.com/libr-forum/Libr/core/mod_client/util"
 )
@@ -19,7 +20,29 @@ import (
 var (
 	modCronMu     sync.Mutex
 	modCronCancel context.CancelFunc
+
+	notifHandler   NotificationHandler
+	notifHandlerMu sync.Mutex
 )
+
+type NotificationHandler interface {
+	OnNotification(title string, message string)
+}
+
+func SetNotificationHandler(h NotificationHandler) {
+	notifHandlerMu.Lock()
+	defer notifHandlerMu.Unlock()
+	notifHandler = h
+}
+
+func TriggerNotification(title, message string) {
+	notifHandlerMu.Lock()
+	h := notifHandler
+	notifHandlerMu.Unlock()
+	if h != nil {
+		h.OnNotification(title, message)
+	}
+}
 
 func MaybeStartCron() {
 	pattern := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
@@ -90,6 +113,11 @@ func IsModerationCronRunning() bool {
 }
 
 func RetryPendingModerations() {
+	if peer.Peer == nil || peer.Peer.Host == nil {
+		log.Println("[Cron] Libp2p node not initialized yet, skipping moderation retry tick")
+		return
+	}
+
 	pattern := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
 	files, err := filepath.Glob(pattern)
 	if err != nil {
@@ -163,16 +191,41 @@ func RetryPendingModerations() {
 
 		switch {
 		case totalDecisions > 0 && rejCount > totalDecisions/2:
-			log.Printf("Majority rejected - deleting %s", pending.MsgSign)
+			log.Printf("Majority rejected - finalizing %s", pending.MsgSign)
+			itemType := "report"
+			if pending.MsgCert.Type == "manual_mod" || pending.MsgCert.Reason == "Image attached" {
+				itemType = "manual_mod"
+			}
+			tot := pending.AckCount
+			if tot < totalDecisions {
+				tot = totalDecisions
+			}
+			_ = cache.SaveFinalizedModeration(types.FinalizedModeration{
+				MsgSign:     pending.MsgSign,
+				Type:        itemType,
+				Status:      "rejected",
+				Approved:    accCount,
+				Rejected:    rejCount,
+				Total:       tot,
+				FinalizedAt: time.Now(),
+			})
 			cache.DeletePendingModeration(pending.MsgSign)
 			maybeCleanupIdentity(pending.SignerIdentityID)
+
+			if itemType == "manual_mod" {
+				TriggerNotification("Image Rejected", "Your image was rejected by moderators.")
+			} else {
+				TriggerNotification("Report Dismissed", "A reported message was reviewed and dismissed.")
+			}
 
 		case totalDecisions > 0 && accCount > totalDecisions/2:
 			log.Printf("Majority approved - processing %s", pending.MsgSign)
 			tsMin := pending.MsgCert.Msg.Ts - (pending.MsgCert.Msg.Ts % 60)
 			key := util.GenerateNodeID(strconv.FormatInt(tsMin, 10))
 
+			itemType := "report"
 			if pending.MsgCert.Type == "manual_mod" || pending.MsgCert.Reason == "Image attached" {
+				itemType = "manual_mod"
 				privKey, err := identity.LoadPrivateKey(pending.SignerIdentityID)
 				if err != nil {
 					log.Printf("Failed to load signer identity %s for %s: %v", pending.SignerIdentityID, pending.MsgSign, err)
@@ -184,8 +237,27 @@ func RetryPendingModerations() {
 				repCert := CreateRepCert(pending.MsgCert, allCerts, "report")
 				SendToDb(key, repCert, "/route=delete")
 			}
+			tot := pending.AckCount
+			if tot < totalDecisions {
+				tot = totalDecisions
+			}
+			_ = cache.SaveFinalizedModeration(types.FinalizedModeration{
+				MsgSign:     pending.MsgSign,
+				Type:        itemType,
+				Status:      "approved",
+				Approved:    accCount,
+				Rejected:    rejCount,
+				Total:       tot,
+				FinalizedAt: time.Now(),
+			})
 			cache.DeletePendingModeration(pending.MsgSign)
 			maybeCleanupIdentity(pending.SignerIdentityID)
+
+			if itemType == "manual_mod" {
+				TriggerNotification("Image Approved", "Your image was approved by moderators and published to the feed.")
+			} else {
+				TriggerNotification("Report Upheld", "A reported message was verified as a violation and removed.")
+			}
 
 		default:
 			log.Printf("Awaiting more responses for %s", pending.MsgSign)

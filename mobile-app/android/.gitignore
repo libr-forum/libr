@@ -2,14 +2,19 @@
 #
 .DS_Store
 
-# Android/IntelliJ
+# Android/IntelliJ/Eclipse
 #
 build/
 .idea
+.settings/
+.project
+.classpath
 .gradle
 local.properties
 *.iml
 *.hprof
+*.apk
+*.aab
 .cxx/
 
 # Bundle artifacts
