@@ -1,12 +1,8 @@
 package util
 
+// AmIMod checks whether myKey is in the admin-controlled mod allowlist.
+// This intentionally checks the allowlist (mods collection), not the live
+// registry (onlinemods), so it works correctly at startup before registration.
 func AmIMod(myKey string) (bool, error) {
-	mods, _ := GetOnlineMods()
-	for _, mod := range mods {
-		if len(mod.PublicKey) > 0 && mod.PublicKey == myKey {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return IsModAllowed(myKey)
 }

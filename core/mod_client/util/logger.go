@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 func CanonicalizeMsg(msg types.Msg) (string, error) {

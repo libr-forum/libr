@@ -1,21 +1,25 @@
 package core
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
 
-	"github.com/devlup-labs/Libr/core/mod_client/keycache"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/keycache"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
 )
 
 func CreateMsgCert(message string, ts int64, modcertList []types.ModCert) types.MsgCert {
-	_, privKey := keycache.PubKey, keycache.PrivKey
+	return CreateMsgCertWithPrivateKey(message, ts, modcertList, keycache.PrivKey)
+}
+
+func CreateMsgCertWithPrivateKey(message string, ts int64, modcertList []types.ModCert, privKey ed25519.PrivateKey) types.MsgCert {
 
 	sort.SliceStable(modcertList, func(i, j int) bool {
 		return modcertList[i].PublicKey < modcertList[j].PublicKey

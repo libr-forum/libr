@@ -5,10 +5,10 @@ import (
 	"errors"
 	"log"
 
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	Peers "github.com/devlup-labs/Libr/core/mod_client/peers"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	Peers "github.com/libr-forum/Libr/core/mod_client/peers"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 )
 
 type BaseResponse struct {

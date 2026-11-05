@@ -7,9 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/node"
 )
 
 // Pinger interface allows us to inject ping logic from the network package.

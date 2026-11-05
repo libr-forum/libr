@@ -1,3 +1,66 @@
+export namespace main {
+	
+	export class PendingItemStat {
+	    msg_sign: string;
+	    ts: number;
+	    content: string;
+	    reason: string;
+	    approved: number;
+	    rejected: number;
+	    awaiting: number;
+	    is_image: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PendingItemStat(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.msg_sign = source["msg_sign"];
+	        this.ts = source["ts"];
+	        this.content = source["content"];
+	        this.reason = source["reason"];
+	        this.approved = source["approved"];
+	        this.rejected = source["rejected"];
+	        this.awaiting = source["awaiting"];
+	        this.is_image = source["is_image"];
+	    }
+	}
+	export class PendingModerationStats {
+	    items: PendingItemStat[];
+	    cron_active: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PendingModerationStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], PendingItemStat);
+	        this.cron_active = source["cron_active"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace models {
 	
 	export class ModCert {
@@ -19,6 +82,10 @@ export namespace models {
 	export class ModConfig {
 	    forbidden: string[];
 	    thresholds: string;
+	    image_auto_mod?: boolean;
+	    llm_enabled: boolean;
+	    llm_provider: string;
+	    llm_model: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModConfig(source);
@@ -28,6 +95,10 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.forbidden = source["forbidden"];
 	        this.thresholds = source["thresholds"];
+	        this.image_auto_mod = source["image_auto_mod"];
+	        this.llm_enabled = source["llm_enabled"];
+	        this.llm_provider = source["llm_provider"];
+	        this.llm_model = source["llm_model"];
 	    }
 	}
 	export class ModLogEntry {
@@ -68,6 +139,7 @@ export namespace models {
 	    mod_certs: ModCert[];
 	    sign: string;
 	    reason?: string;
+	    type?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new MsgCert(source);
@@ -80,6 +152,7 @@ export namespace models {
 	        this.mod_certs = this.convertValues(source["mod_certs"], ModCert);
 	        this.sign = source["sign"];
 	        this.reason = source["reason"];
+	        this.type = source["type"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -99,23 +172,6 @@ export namespace models {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace time {
-	
-	export class Time {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new Time(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
 	}
 
 }
@@ -158,6 +214,7 @@ export namespace types {
 	    mod_certs: ModCert[];
 	    sign: string;
 	    reason?: string;
+	    type?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new MsgCert(source);
@@ -170,6 +227,7 @@ export namespace types {
 	        this.mod_certs = this.convertValues(source["mod_certs"], ModCert);
 	        this.sign = source["sign"];
 	        this.reason = source["reason"];
+	        this.type = source["type"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -208,6 +266,42 @@ export namespace types {
 	        this.mod_certs = this.convertValues(source["mod_certs"], ModCert);
 	        this.sign = source["sign"];
 	        this.deleted = source["deleted"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SendResult {
+	    status: string;
+	    mod_certs: ModCert[];
+	    sign: string;
+	    ts: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.mod_certs = this.convertValues(source["mod_certs"], ModCert);
+	        this.sign = source["sign"];
+	        this.ts = source["ts"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

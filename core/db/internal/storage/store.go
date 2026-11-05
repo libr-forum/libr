@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/models"
 )
 
 func StoreMsgCert(msgcert *models.MsgCert) (string, error) {

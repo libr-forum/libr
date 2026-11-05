@@ -1,4 +1,4 @@
-package peers
+package peer
 
 import (
 	"bufio"
@@ -6,11 +6,8 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"io"
 	"log"
 	"math/big"
-	"net/http"
-	"os"
 	"sort"
 
 	"context"
@@ -23,9 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/mod_client/internal/service"
-	"github.com/devlup-labs/Libr/core/mod_client/keycache"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -35,6 +29,8 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
@@ -47,16 +43,13 @@ import (
 const ChatProtocol = protocol.ID("/chat/1.0.0")
 
 var OwnPubIP string
-var PeerID string
-var PubKey string
-var JS_ServerURL string
-var JS_API_key string
 
 type ChatPeer struct {
-	Host      host.Host
-	relayAddr multiaddr.Multiaddr
-	relayID   peer.ID
-	peers     map[peer.ID]string // peer ID to nickname mapping
+	Host           host.Host
+	relayAddr      multiaddr.Multiaddr
+	relayID        peer.ID
+	peers          map[peer.ID]string // peer ID to nickname mapping
+	OnStatusChange func(string)
 }
 
 type reqFormat struct {
@@ -66,35 +59,10 @@ type reqFormat struct {
 	Body      json.RawMessage `json:"body,omitempty"`
 }
 
-var Cp *ChatPeer
-
 // type RelayDist struct {
 // 	relayID string
 // 	dist    *big.Int
 // }
-
-type Config struct {
-	JS_ServerURL string `json:"JS_ServerURL"`
-	JS_API_key   string `json:"JS_API_key"`
-	Client_type  string `json:"Client_type"`
-}
-
-func LoadConfig() (*Config, error) {
-	ModJSPath := service.GetModJSPath()
-	file, err := os.Open(ModJSPath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-	config := &Config{}
-	if err := decoder.Decode(config); err != nil {
-		return nil, err
-	}
-
-	return config, nil
-}
 
 func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 
@@ -119,11 +87,8 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		// Other TLS configurations like ClientAuth, InsecureSkipVerify, etc.
 	}
 
-	PrivKey := keycache.LoadPrivKey()
-
 	fmt.Println("[DEBUG] Creating libp2p Host")
-	h, _ := libp2p.New(
-		libp2p.Identity(PrivKey),
+	h, err := libp2p.New(
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0/ws"), // WebSocket
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.ConnectionManager(connMgr),
@@ -135,28 +100,9 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 		// libp2p.Transport(websocket.New),
 	)
 
-	PubKey = keycache.LoadPubKey()
-	PeerID = h.ID().String()
-
-	config, err := LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("fatal error: could not load config file: %w", err)
-	}
-
-	JS_ServerURL = config.JS_ServerURL
-	JS_API_key = config.JS_API_key
-	Client_type := config.Client_type
-
-	if Client_type == "mod" {
-		fmt.Println("Running in moderation mode")
-		if JS_API_key == "" {
-			fmt.Println("[DEBUG] Missing JS API key")
-			return nil, fmt.Errorf("missing JS_API_key")
-		}
-		err = connectJSServer()
-		if err != nil {
-			fmt.Println("[DEBUG] Failed to connect to JS server:", err)
-		}
+		fmt.Println("[DEBUG] Failed to create Host:", err)
+		return nil, err
 	}
 
 	fmt.Println("[DEBUG] Creating identify service")
@@ -235,19 +181,21 @@ func NewChatPeer(relayMultiAddrList []string) (*ChatPeer, error) {
 	fmt.Println("[DEBUG] Creating circuit relay client")
 	// _ = client // Import for reservation function
 
-	Cp = &ChatPeer{
+	cp := &ChatPeer{
 		Host:      h,
 		relayAddr: relayMA,
 		relayID:   relayInfo.ID,
 		peers:     make(map[peer.ID]string),
 	}
+	// Protect relay connection from connection manager pruning
+	h.ConnManager().Protect(relayInfo.ID, "relay")
 
 	fmt.Println(h.ID().String())
 
 	fmt.Println("[DEBUG] Setting stream handler for chat protocol")
-	h.SetStreamHandler(ChatProtocol, Cp.handleChatStream)
+	h.SetStreamHandler(ChatProtocol, cp.handleChatStream)
 
-	return Cp, nil
+	return cp, nil
 }
 
 func isPrivateAddr(addr multiaddr.Multiaddr) bool {
@@ -265,51 +213,18 @@ func isPrivateAddr(addr multiaddr.Multiaddr) bool {
 }
 
 // why????
-func connectJSServer() error {
-	postData := map[string]string{
-		"peer_id":    PeerID,
-		"public_key": PubKey,
-	}
 
-	jsonData, err := json.Marshal(postData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", JS_ServerURL+"/api/postmod", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-Key", JS_API_key)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned non-200 status code: %d", resp.StatusCode)
-	}
-
-	fmt.Printf("Successfully connected to JS server:")
-	return nil
-}
-
-func (Cp *ChatPeer) Start(ctx context.Context) error {
-	fmt.Println("[DEBUG] Connecting to relay:", Cp.relayAddr)
-	relayInfo, _ := peer.AddrInfoFromP2pAddr(Cp.relayAddr)
-	if err := Cp.Host.Connect(ctx, *relayInfo); err != nil {
+func (cp *ChatPeer) Start(ctx context.Context) error {
+	fmt.Println("[DEBUG] Connecting to relay:", cp.relayAddr)
+	relayInfo, _ := peer.AddrInfoFromP2pAddr(cp.relayAddr)
+	if err := cp.Host.Connect(ctx, *relayInfo); err != nil {
 		fmt.Println("[DEBUG] Failed to connect to relay:", err)
 		return fmt.Errorf("failed to connect to relay: %w", err)
 	}
 
 	// Make reservation with the relay
 	fmt.Println("[DEBUG] Making reservation with relay...")
-	reservation, err := client.Reserve(ctx, Cp.Host, *relayInfo)
+	reservation, err := client.Reserve(ctx, cp.Host, *relayInfo)
 	if err != nil {
 		fmt.Printf("[DEBUG] Failed to make reservation: %v\n", err)
 		return fmt.Errorf("failed to make reservation: %w", err)
@@ -317,53 +232,86 @@ func (Cp *ChatPeer) Start(ctx context.Context) error {
 	fmt.Printf("[DEBUG] Reservation successful! Expiry: %v\n", reservation.Expiration)
 
 	fmt.Printf("[DEBUG] Peer started!\n")
-	fmt.Printf("[DEBUG] Peer ID: %s\n", Cp.Host.ID())
+	fmt.Printf("[DEBUG] Peer ID: %s\n", cp.Host.ID())
 
-	for _, addr := range Cp.Host.Addrs() {
-		fmt.Printf("[DEBUG] Address: %s/p2p/%s\n", addr, Cp.Host.ID())
+	for _, addr := range cp.Host.Addrs() {
+		fmt.Printf("[DEBUG] Address: %s/p2p/%s\n", addr, cp.Host.ID())
 	}
 
-	circuitAddr := Cp.relayAddr.Encapsulate(
-		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", Cp.Host.ID())))
+	circuitAddr := cp.relayAddr.Encapsulate(
+		multiaddr.StringCast(fmt.Sprintf("/p2p-circuit/p2p/%s", cp.Host.ID())))
 
 	fmt.Printf("[INFO] Circuit Address (share this with other peers): %s\n", circuitAddr)
 
+	// Protect connection to relay from connection manager
+	cp.Host.ConnManager().Protect(relayInfo.ID, "relay")
+
 	// Start a goroutine to periodically refresh reservations
-	go Cp.refreshReservations(ctx, *relayInfo)
+	go cp.refreshReservations(ctx, *relayInfo)
+	go cp.keepAlive(ctx, *relayInfo)
 
-	var reqSent reqFormat
-	reqSent.Type = "register"
-	reqSent.PeerID = Cp.Host.ID().String() // now sending the the peerID in the req to registeer in the relay
-	//reqSent.PubIP = OwnPubIP // have too use a stun server to get public ip first and then send register command
-	fmt.Println(reqSent.PeerID)
-	logger.LogToFile("PeerID: " + reqSent.PeerID)
-	stream, err := Cp.Host.NewStream(context.Background(), relayInfo.ID, ChatProtocol)
-
-	if err != nil {
-		fmt.Println("[DEBUG]Error Opening stream to relay")
+	// Register with relay with immediate retries
+	for attempt := 1; attempt <= 3; attempt++ {
+	err = cp.registerWithRelay(relayInfo.ID)
+	if err == nil {
+		break
 	}
-	fmt.Println("[DEBUG]Opened atream to relay successsfully")
-	reqJson, err := json.Marshal(reqSent)
-	if err != nil {
-		fmt.Println("[DEBUG]Error marshalling the req to be sent")
-	}
-	stream.Write([]byte(reqJson))
-
+	fmt.Printf("[DEBUG] Register with relay attempt %d failed: %v\n", attempt, err)
 	time.Sleep(1 * time.Second)
+	}
 
-	stream.Close()
+	if cp.OnStatusChange != nil {
+		cp.OnStatusChange("online")
+	}
+
 	return nil
 }
 
-func (Cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.AddrInfo) {
-	ticker := time.NewTicker(5 * time.Minute) // Refresh every 5 minutes
+func (cp *ChatPeer) registerWithRelay(relayID peer.ID) error {
+	var reqSent reqFormat
+	reqSent.Type = "register"
+	reqSent.PeerID = cp.Host.ID().String()
+
+	fmt.Println(reqSent.PeerID)
+	logger.LogToFile("PeerID: " + reqSent.PeerID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	stream, err := cp.Host.NewStream(ctx, relayID, ChatProtocol)
+	if err != nil {
+		return fmt.Errorf("error opening register stream: %w", err)
+	}
+	defer stream.Close()
+
+	reqJson, err := json.Marshal(reqSent)
+	if err != nil {
+		return fmt.Errorf("error marshalling register req: %w", err)
+	}
+	_, err = stream.Write([]byte(reqJson))
+	if err != nil {
+		return fmt.Errorf("error writing to register stream: %w", err)
+	}
+	// Crucial: signal EOF immediately so the relay's io.ReadAll receives it without delay
+	_ = stream.CloseWrite()
+
+	fmt.Println("[DEBUG] Registered peer ID with relay successfully:", reqSent.PeerID)
+	return nil
+}
+
+func (cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.AddrInfo) {
+	ticker := time.NewTicker(4 * time.Minute) // Refresh every 4 minutes (slightly faster than 5m)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			fmt.Println("[DEBUG] Refreshing relay reservation...")
-			if reservation, err := client.Reserve(ctx, Cp.Host, relayInfo); err != nil {
+			// Ensuring we are registered just in case. It's idempotent and cheap.
+			// It handles the edge case where an implicit reconnection didn't trigger registration.
+			cp.registerWithRelay(relayInfo.ID)
+
+			if reservation, err := client.Reserve(ctx, cp.Host, relayInfo); err != nil {
 				fmt.Printf("[DEBUG] Failed to refresh reservation: %v\n", err)
 			} else {
 				fmt.Printf("[DEBUG] Reservation refreshed! Expiry: %v\n", reservation.Expiration)
@@ -374,62 +322,141 @@ func (Cp *ChatPeer) refreshReservations(ctx context.Context, relayInfo peer.Addr
 	}
 }
 
-func (Cp *ChatPeer) handleChatStream(s network.Stream) {
+func (cp *ChatPeer) keepAlive(ctx context.Context, relayInfo peer.AddrInfo) {
+	// Fast initial check after 2 seconds to ensure registration is cemented
+	select {
+	case <-time.After(2 * time.Second):
+		if cp.Host.Network().Connectedness(relayInfo.ID) != network.Connected {
+			fmt.Println("[DEBUG] Initial relay connection dropped! Reconnecting...")
+			_ = cp.Host.Connect(ctx, relayInfo)
+			_ = cp.registerWithRelay(relayInfo.ID)
+			_, _ = client.Reserve(ctx, cp.Host, relayInfo)
+		} else {
+			_ = cp.registerWithRelay(relayInfo.ID)
+		}
+		if cp.OnStatusChange != nil {
+			cp.OnStatusChange("online")
+		}
+	case <-ctx.Done():
+		return
+	}
+
+	ticker := time.NewTicker(20 * time.Second) // Ping every 20 seconds to prevent idle timeout
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			wasConnected := cp.Host.Network().Connectedness(relayInfo.ID) == network.Connected
+
+			pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			ch := ping.Ping(pingCtx, cp.Host, relayInfo.ID)
+			res := <-ch
+			cancel()
+			if res.Error != nil {
+				fmt.Println("[DEBUG] Relay ping failed:", res.Error)
+				// Close the existing, broken connection aggressively to force a new dial
+				cp.Host.Network().ClosePeer(relayInfo.ID)
+
+				for i := 0; i < 3; i++ {
+					connCtx, connCancel := context.WithTimeout(ctx, 10*time.Second)
+					err := cp.Host.Connect(connCtx, relayInfo)
+					connCancel()
+					if err == nil {
+						fmt.Println("[DEBUG] Reconnected transport to relay!")
+						cp.registerWithRelay(relayInfo.ID)
+						client.Reserve(ctx, cp.Host, relayInfo)
+						if cp.OnStatusChange != nil {
+							cp.OnStatusChange("online")
+						}
+						break
+					}
+					fmt.Println("[DEBUG] Failed to reconnect to relay, retrying in 2s...")
+					if i == 2 && cp.OnStatusChange != nil {
+						cp.OnStatusChange("offline")
+					}
+					time.Sleep(2 * time.Second)
+				}
+			} else {
+				// Ping succeeded! But what if the peer wasn't connected at the beginning of this tick?
+				// This means ping.Ping() automatically dialed and implicitly reconnected!
+				if !wasConnected {
+					fmt.Println("[DEBUG] Implicitly reconnected transport to relay!")
+					cp.registerWithRelay(relayInfo.ID)
+					client.Reserve(ctx, cp.Host, relayInfo)
+					if cp.OnStatusChange != nil {
+						cp.OnStatusChange("online")
+					}
+				}
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (cp *ChatPeer) handleChatStream(s network.Stream) {
 	fmt.Println("[DEBUG] Incoming chat stream from", s.Conn().RemotePeer())
 	defer s.Close()
 
 	reader := bufio.NewReader(s)
-	for {
+	line, err := reader.ReadBytes('\n')
+	if err != nil {
+		fmt.Println("[DEBUG]Error reading the bytes from the stream:", err)
+		return
+	}
+	line = bytes.TrimRight(line, "\n")
+	line = bytes.TrimRight(line, "\x00")
 
-		line, err := reader.ReadBytes('\n')
+	fmt.Println("[DEBUG] Raw input:", string(line))
+
+	var reqStruct reqFormat
+	err = json.Unmarshal(line, &reqStruct)
+	if err != nil {
+		fmt.Println("[DEBUG]Error unmarshalling to reqStruc:", err)
+		return
+	}
+
+	var reqData map[string]interface{}
+	reqStruct.ReqParams = bytes.TrimRight(reqStruct.ReqParams, "\x00")
+
+	if err := json.Unmarshal(reqStruct.ReqParams, &reqData); err != nil {
+		fmt.Printf("[ERROR] Failed to unmarshal incoming request: %v\n", err)
+		return
+	}
+
+	fmt.Printf("[DEBUG]ReqData is : %+v \n", reqData)
+
+	if reqData["Method"] == "GET" {
+		resp := ServeGetReq(reqStruct.ReqParams)
+		resp = bytes.TrimRight(resp, "\x00")
+		_, err = s.Write(resp)
 		if err != nil {
-			fmt.Println("[DEBUG]Error reading the bytes from the stream")
-		}
-		line = bytes.TrimRight(line, "\n")
-		line = bytes.TrimRight(line, "\x00")
-		var reqStruct reqFormat
-		err = json.Unmarshal(line, &reqStruct)
-
-		fmt.Println("[DEBUG] Raw input:", string(line))
-
-		if err != nil {
-			fmt.Println("[DEBUG]Error unmarshalling to reqStruc")
-		}
-
-		var reqData map[string]interface{}
-		reqStruct.ReqParams = bytes.TrimRight(reqStruct.ReqParams, "\x00")
-
-		if err := json.Unmarshal(reqStruct.ReqParams, &reqData); err != nil {
-			fmt.Printf("[ERROR] Failed to unmarshal incoming request: %v\n", err)
+			fmt.Println("[DEBUG]Error writing resp bytes to relay")
 			return
 		}
+	}
 
-		fmt.Printf("[DEBUG]ReqData is : %+v \n", reqData)
-
-		if reqData["Method"] == "GET" {
-			resp := ServeGetReq(reqStruct.ReqParams)
-			resp = bytes.TrimRight(resp, "\x00")
-			_, err = s.Write(resp)
-			if err != nil {
-				fmt.Println("[DEBUG]Error writing resp bytes to relay")
-				return
-			}
+	if reqData["Method"] == "POST" {
+		resp := ServePostReq(reqStruct.PeerID, reqStruct.ReqParams, reqStruct.Body) // have to set the new logic in serve post req now
+		resp = bytes.TrimRight(resp, "\x00")
+		fmt.Println("Response from ServePostReq:", string(resp))
+		_, err = s.Write(resp)
+		if err != nil {
+			fmt.Println("[DEBUG]Error writing resp bytes to relay")
+			return
 		}
-
-		if reqData["Method"] == "POST" {
-			resp := ServePostReq(reqStruct.PeerID, reqStruct.ReqParams, reqStruct.Body) // have to set the new logic in serve post req now
-			resp = bytes.TrimRight(resp, "\x00")
-			_, err = s.Write(resp)
-			if err != nil {
-				fmt.Println("[DEBUG]Error writing resp bytes to relay")
-				return
-			}
-		}
-
 	}
 }
 
-func (Cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byte, body []byte) ([]byte, error) {
+func (cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byte, body []byte) ([]byte, error) {
+	if cp == nil {
+		return nil, fmt.Errorf("chat peer is nil")
+	}
+	if cp.Host == nil {
+		return nil, fmt.Errorf("chat peer host is nil")
+	}
+
 	//completeIP := TargetIP + ":" + targetPort
 
 	var req reqFormat
@@ -438,7 +465,7 @@ func (Cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 	req.PeerID = targetPeerID
 	req.ReqParams = jsonReq
 	req.Body = body
-	stream, err := Cp.Host.NewStream(ctx, Cp.relayID, ChatProtocol)
+	stream, err := cp.Host.NewStream(ctx, cp.relayID, ChatProtocol)
 	if err != nil {
 		fmt.Println("[DEBUG]Error opneing a fetch ID stream to relay")
 		return nil, err
@@ -455,28 +482,32 @@ func (Cp *ChatPeer) Send(ctx context.Context, targetPeerID string, jsonReq []byt
 
 	fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
 
-	reader := bufio.NewReader(stream)
-	// ack, err := reader.ReadString('\n')
+	// Signal that we've finished writing the request
+	// (lets the relay/mod detect EOF on their reader)
+	stream.CloseWrite()
 
-	// if err != nil {
-	// 	fmt.Println("[DEBUG]Error getting the acknowledgement")
-	// 	return nil, err
-	// }
-	// _ = ack //can be used if required
+	fmt.Println("[DEBUG]Msg req sent to relay, waiting for ack")
 
-	var resp = make([]byte, 1024*50)
-	reader.Read(resp)
-	resp = bytes.TrimRight(resp, "\x00")
+	// Use json.NewDecoder so it reads exactly one JSON object
+	// and doesn't wait for EOF which hangs the stream.
+	var rawMsg json.RawMessage
+	err = json.NewDecoder(stream).Decode(&rawMsg)
+	if err != nil {
+		fmt.Println("[DEBUG] Error reading JSON response from relay:", err)
+		defer stream.Close()
+		return nil, err
+	}
+
 	defer stream.Close()
 
-	return resp, err
+	return []byte(rawMsg), nil
 }
 
-func (Cp *ChatPeer) GetConnectedPeers() []peer.ID {
+func (cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	var peers []peer.ID
-	for _, conn := range Cp.Host.Network().Conns() {
+	for _, conn := range cp.Host.Network().Conns() {
 		remotePeer := conn.RemotePeer()
-		if remotePeer != Cp.relayID {
+		if remotePeer != cp.relayID {
 			peers = append(peers, remotePeer)
 		}
 	}
@@ -484,56 +515,9 @@ func (Cp *ChatPeer) GetConnectedPeers() []peer.ID {
 	return peers
 }
 
-func (Cp *ChatPeer) Close() error {
+func (cp *ChatPeer) Close() error {
 	fmt.Println("[DEBUG] Closing Host")
-	err := deleteFromJSServer()
-	if err != nil {
-		return err
-	}
-	return Cp.Host.Close()
-}
-
-func deleteFromJSServer() error {
-	deleteData := map[string]string{
-		"public_key": PubKey,
-	}
-
-	jsonData, err := json.Marshal(deleteData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	req, err := http.NewRequest("DELETE", JS_ServerURL+"/api/deletemod", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", JS_API_key)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("server returned status %d, but failed to read response body", resp.StatusCode)
-		}
-		var errorResponse struct {
-			Message string `json:"message"`
-		}
-		if json.Unmarshal(body, &errorResponse) == nil && errorResponse.Message != "" {
-			return fmt.Errorf("server returned status %d: %s", resp.StatusCode, errorResponse.Message)
-		}
-		return fmt.Errorf("server returned status %d with response: %s", resp.StatusCode, string(body))
-	}
-
-	fmt.Printf("Successfully deleted node")
-	return nil
+	return cp.Host.Close()
 }
 
 // func GetPublicIP() string {

@@ -1,5 +1,6 @@
+
 import React, { useEffect, useRef,useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion ,AnimatePresence} from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import { MessageInput } from '../components/chat/MessageInput';
@@ -7,74 +8,97 @@ import { apiService } from '../services/api';
 import { TopBar } from '../components/layout/TopBar';
 import { Menubar } from '../components/layout/Menubar';
 import { Sidebar } from '../components/layout/Sidebar';
-import { ArrowDown, Clock, Calendar, RotateCcw, Plus } from 'lucide-react';
+import { ArrowDown, Clock, Calendar, RotateCcw, Plus, Check } from 'lucide-react';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
-import { useLocation } from 'react-router-dom';
 
 export const ChatRoom: React.FC = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.pathname === '/chat') {
-      setLastLoadedDate(new Date());
-    }
-  }, [location.pathname]);
   const { 
     currentCommunity, 
     messages, 
     setMessages, 
     setLoading, 
-    isLoading,
-    addMessage 
+    isLoading, 
   } = useAppStore();
   
   const [sortByNewest, setSortByNewest] = React.useState(true);
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [inputOpen, setInputOpen] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [justReloaded, setJustReloaded] = useState(false);
+  const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [lastLoadedDate, setLastLoadedDate] = useState<Date>(new Date());
-  const [isBottomLoading, setIsBottomLoading] = useState(false);
-  const [menubarLoaded, setMenubarLoaded] = useState(false);
-  
-  const reloadMessages=async() =>{
-    const now = new Date();
-    setLastLoadedDate(now);
-    loadMessages(now, true);
-  }
 
   useEffect(() => {
-    setLastLoadedDate(new Date());
-    //reloadMessages();
-    const fetchInitialMessages = async () => {
-      const now = new Date();
-      console.log('Fetching initial messages for:', currentCommunity?.id, now);
-      const initialFetch = await apiService.getMessages(currentCommunity.id, now);
-      setMessages([]);
-      setMessages(initialFetch);
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
     };
-    fetchInitialMessages();
+  }, []);
+  
+  useEffect(() => {
+    let cancelTimer = false;
+    if (currentCommunity) {
+      loadMessages().then((msgs) => {
+        // If initial load returned empty (e.g. peer circuit bootstrap right after DB start),
+        // automatically retry after 2 seconds
+        if (!cancelTimer && (!msgs || msgs.length === 0)) {
+          setTimeout(() => {
+            if (!cancelTimer) {
+              loadMessages(true);
+            }
+          }, 2000);
+        }
+      });
+    }
+    return () => {
+      cancelTimer = true;
+    };
   }, [currentCommunity]);
 
-  const loadMessages = async (curr: Date, replace = false) => {
+  const loadMessages = async (silent = false): Promise<any[]> => {
     if (!currentCommunity) return [];
-    setLoading(true);
+    
+    if (!silent) setLoading(true);
     try {
-      console.log('Fetching messages for:', currentCommunity.id, curr);
-      const fetchedMessages = await apiService.getMessages(currentCommunity.id, curr);
-      if (replace) {
-        setMessages([]);
+      const fetchedMessages = await apiService.getMessages(currentCommunity.id);
+      if (fetchedMessages && fetchedMessages.length > 0) {
         setMessages(fetchedMessages);
-      } else {
-        fetchedMessages.forEach(msg => addMessage(msg));
+      } else if (!silent) {
+        setMessages([]);
       }
-      return fetchedMessages;
+      return fetchedMessages || [];
     } catch (error) {
       console.error('Failed to load messages:', error);
       return [];
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleReload = async () => {
+    if (isReloading || !currentCommunity) return;
+    setIsReloading(true);
+    setJustReloaded(false);
+    const startTime = Date.now();
+    try {
+      const fetched = await loadMessages(true);
+      if (Array.isArray(fetched)) {
+        setMessages(fetched);
+      }
+    } catch (err) {
+      console.error('Failed to reload messages:', err);
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const minDelay = Math.max(0, 500 - elapsed);
+      setTimeout(() => {
+        setIsReloading(false);
+        setJustReloaded(true);
+        if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = setTimeout(() => {
+          setJustReloaded(false);
+        }, 1800);
+      }, minDelay);
     }
   };
 
@@ -82,15 +106,12 @@ export const ChatRoom: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault();
-        setMessages([]);
-        const now = new Date();
-        setLastLoadedDate(now);
-        loadMessages(now, true);
+        handleReload();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentCommunity]);
+  }, [currentCommunity, isReloading]);
 
   const sortedMessages = React.useMemo(() => {
     let filtered = [...messages];
@@ -124,53 +145,6 @@ export const ChatRoom: React.FC = () => {
     }
   }, [sortedMessages.length, sortByNewest]);
 
-  // Infinite scroll: load older messages when scrolled to bottom
-  useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = async () => {
-      if (
-        container.scrollHeight - container.scrollTop - container.clientHeight < 10 &&
-        !isLoading
-      ) {
-        setIsBottomLoading(true);
-        const oneHourAgo = new Date(lastLoadedDate.getTime() - 60 * 60 * 1000);
-        setLastLoadedDate(oneHourAgo);
-        await loadMessages(oneHourAgo, false); // append
-        setLastLoadedDate(oneHourAgo);
-        setIsBottomLoading(false);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [lastLoadedDate, isLoading, currentCommunity]);
-
-  const ensureScrollable = async () => {
-    const container = messagesContainerRef.current;
-    if (!container || isLoading) return;
-
-    let hoursFetched = 0;
-    let prevMessageCount = messages.length;
-
-    while (container.scrollHeight <= container.clientHeight && hoursFetched < 6) {
-      const oneHourAgo = new Date(lastLoadedDate.getTime() - 60 * 60 * 1000);
-      setLastLoadedDate(oneHourAgo);
-      await loadMessages(oneHourAgo, false);
-      hoursFetched += 1;
-
-      // If no new messages were loaded, break early
-      if (messages.length === prevMessageCount) break;
-      prevMessageCount = messages.length;
-    }
-  };
-
-  useEffect(() => {
-    ensureScrollable();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, currentCommunity]);
-
   if (!currentCommunity) {
     return (
       <div className="flex-1 flex items-center justify-center bg-libr-primary">
@@ -203,14 +177,14 @@ export const ChatRoom: React.FC = () => {
       <Sidebar />
       </div>
       <div className="flex flex-col w-full h-screen">
-        <div className='h-[8%] mt-4 mr-4 z-50'>
+        <div className='h-[7%] mt-4 mr-4 z-50'>
           <TopBar />
         </div>
-        <div className='flex h-[92%] flex-row'>
+        <div className='flex h-[93%] flex-row'>
           {/* Messages Area */}
-          <div className="flex-1 min-h-0 h-screen flex flex-col relative">
+          <div className="flex-1 min-h-0 flex flex-col relative mb-4 rounded-3xl overflow-hidden">
             {/* Toolbar */}
-            <div className=" h-[8%] rounded-2xl pt-4 pl-0 flex items-center justify-between">
+            <div className=" h-[8%] pt-4 px-2 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* <button
                   onClick={() => setSortByNewest(!sortByNewest)}
@@ -220,22 +194,45 @@ export const ChatRoom: React.FC = () => {
                   <span className='mt-0.5'>{sortByNewest ? 'Newest First' : 'Oldest First'}</span>
                 </button> */}
                 <button
-                  onClick={() => {
-                    reloadMessages();
-                  }}
-                  className="libr-button bg-libr-accent1/20 rounded-2xl hover:bg-muted flex items-center space-x-2 text-sm"
-                  title="Reload Messages"
-                  disabled={isLoading} // <-- disable when loading
-                  style={isLoading ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                  onClick={handleReload}
+                  disabled={isReloading}
+                  className={`libr-button rounded-2xl flex items-center space-x-2 text-sm transition-all duration-200 ${
+                    justReloaded
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                      : isReloading
+                      ? 'bg-libr-accent1/30 text-foreground cursor-not-allowed opacity-90'
+                      : 'bg-libr-accent1/20 hover:bg-muted text-foreground'
+                  }`}
+                  title={isReloading ? "Reloading messages..." : justReloaded ? "Messages up to date" : "Reload Messages"}
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  <span className='mt-0.5'>Reload</span>
+                  {justReloaded ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span className='mt-0.5 font-medium'>Updated</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className={`w-4 h-4 ${isReloading ? 'animate-spin text-libr-accent1' : ''}`} />
+                      <span className='mt-0.5'>{isReloading ? 'Reloading...' : 'Reload'}</span>
+                    </>
+                  )}
                 </button>
-                <span className="text-sm text-muted-foreground">
-                  {selectedDate 
-                    ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
-                    : `${messages.length} messages`
-                  }
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>
+                    {selectedDate 
+                      ? `${sortedMessages.length} messages on ${selectedDate.toLocaleDateString()}`
+                      : `${messages.length} messages`
+                    }
+                  </span>
+                  {justReloaded && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-xs text-emerald-400 font-medium"
+                    >
+                      • synced
+                    </motion.span>
+                  )}
                 </span>
               </div>
               
@@ -261,7 +258,6 @@ export const ChatRoom: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
                     className="absolute right-0 top-full mt-2 bg-card border border-border rounded-lg shadow-lg z-20 p-4"
                   >
                     <input
@@ -308,7 +304,21 @@ export const ChatRoom: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto pt-4 pl-0 space-y-2 h-full max-h-[83%] max-w-[975x]" ref={messagesContainerRef}>
+            <div 
+              className="flex-1 overflow-y-auto mt-2 pl-0 space-y-2 min-h-0 rounded-3xl relative" 
+              ref={messagesContainerRef}
+            >
+              {/* Subtle top progress bar when manually reloading */}
+              {isReloading && (
+                <div className="sticky top-0 left-0 right-0 z-10 h-0.5 w-full bg-libr-accent1/20 overflow-hidden rounded-full">
+                  <motion.div
+                    className="h-full bg-libr-accent1"
+                    initial={{ x: '-100%', width: '40%' }}
+                    animate={{ x: '350%' }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </div>
+              )}
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <motion.div
@@ -342,26 +352,18 @@ export const ChatRoom: React.FC = () => {
                   </div>
                 </motion.div>
               ) : (
-                <>
-                  {sortedMessages.map((message) => {
-                    const key = message.authorPublicKey + String(message.timestamp);
-                    //console.log('Rendering MessageBubble with key:', key);
-                    return (
-                      <MessageBubble
-                        key={key}
-                        message={message}
-                      />
-                    );
-                  })}
-                  {/* Add empty space at the end */}
-                  <div style={{ height: "256px" }} />
-                </>
+                sortedMessages.map((message) => (
+                  <MessageBubble
+                    key={message.authorPublicKey+String(message.timestamp)}
+                    message={message}
+                  />
+                ))
               )}
               <div ref={messagesEndRef} />
             </div>
           </div>
           <div className='flex justify-center p-4 h-full w-[22%]'>
-            <Menubar onLoaded={() => setMenubarLoaded(true)} />
+            <Menubar/>
           </div>
         </div>
       </div>

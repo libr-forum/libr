@@ -10,20 +10,16 @@ export function Delete(arg1) {
   return window['go']['main']['App']['Delete'](arg1);
 }
 
-export function EnterIncognito() {
-  return window['go']['main']['App']['EnterIncognito']();
+export function DisableIncognito() {
+  return window['go']['main']['App']['DisableIncognito']();
 }
 
-export function ExitIncognito() {
-  return window['go']['main']['App']['ExitIncognito']();
+export function EnableIncognito() {
+  return window['go']['main']['App']['EnableIncognito']();
 }
 
-export function FetchAll(arg1) {
-  return window['go']['main']['App']['FetchAll'](arg1);
-}
-
-export function FetchBatch(arg1) {
-  return window['go']['main']['App']['FetchBatch'](arg1);
+export function FetchAll() {
+  return window['go']['main']['App']['FetchAll']();
 }
 
 export function FetchMessageReports() {
@@ -46,6 +42,10 @@ export function GetModConfig() {
   return window['go']['main']['App']['GetModConfig']();
 }
 
+export function GetModKeys() {
+  return window['go']['main']['App']['GetModKeys']();
+}
+
 export function GetModerationLogs() {
   return window['go']['main']['App']['GetModerationLogs']();
 }
@@ -54,12 +54,24 @@ export function GetOnlineMods() {
   return window['go']['main']['App']['GetOnlineMods']();
 }
 
+export function GetPendingModerationStats() {
+  return window['go']['main']['App']['GetPendingModerationStats']();
+}
+
 export function GetRelayAddr() {
   return window['go']['main']['App']['GetRelayAddr']();
 }
 
 export function GetRelayStatus() {
   return window['go']['main']['App']['GetRelayStatus']();
+}
+
+export function IsIncognitoEnabled() {
+  return window['go']['main']['App']['IsIncognitoEnabled']();
+}
+
+export function IsModerationCronRunning() {
+  return window['go']['main']['App']['IsModerationCronRunning']();
 }
 
 export function LogToFile(arg1) {
@@ -74,12 +86,20 @@ export function ModAuthentication(arg1) {
   return window['go']['main']['App']['ModAuthentication'](arg1);
 }
 
+export function ModerateBySign(arg1, arg2) {
+  return window['go']['main']['App']['ModerateBySign'](arg1, arg2);
+}
+
 export function RegenKeys() {
   return window['go']['main']['App']['RegenKeys']();
 }
 
 export function Report(arg1, arg2) {
   return window['go']['main']['App']['Report'](arg1, arg2);
+}
+
+export function ResendToDb(arg1) {
+  return window['go']['main']['App']['ResendToDb'](arg1);
 }
 
 export function SaveGoogleApiKey(arg1) {
@@ -90,8 +110,24 @@ export function SaveModConfig(arg1) {
   return window['go']['main']['App']['SaveModConfig'](arg1);
 }
 
+export function SaveModKey(arg1, arg2) {
+  return window['go']['main']['App']['SaveModKey'](arg1, arg2);
+}
+
+export function SendImageInput(arg1) {
+  return window['go']['main']['App']['SendImageInput'](arg1);
+}
+
 export function SendInput(arg1) {
   return window['go']['main']['App']['SendInput'](arg1);
+}
+
+export function TestDirectCloudConnection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestDirectCloudConnection'](arg1, arg2, arg3);
+}
+
+export function TestLLMConnection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestLLMConnection'](arg1, arg2, arg3);
 }
 
 export function TitleBarTheme(arg1) {

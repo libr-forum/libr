@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 func IsValidMessage(content string) bool {
-	if len(content) == 0 || len(content) > 500 {
+	if len(content) == 0 || len(content) > 2000000 {
 		return false
 	}
 	if strings.ContainsAny(content, "<>{}") {

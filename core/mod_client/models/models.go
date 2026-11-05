@@ -25,8 +25,12 @@ type ModLogEntry struct {
 }
 
 type ModConfig struct {
-	Forbidden  []string `json:"forbidden"`
-	Thresholds string   `json:"thresholds"`
+	Forbidden    []string `json:"forbidden"`
+	Thresholds   string   `json:"thresholds"`
+	ImageAutoMod *bool    `json:"image_auto_mod"` // Use pointer to handle missing keys gracefully default true
+	LLMEnabled   bool     `json:"llm_enabled"`
+	LLMProvider  string   `json:"llm_provider"`
+	LLMModel     string   `json:"llm_model"`
 }
 
 type Category struct {
@@ -40,6 +44,7 @@ type MsgCert struct {
 	ModCerts  []ModCert `json:"mod_certs"`
 	Sign      string    `json:"sign"`
 	Reason    string    `json:"reason,omitempty"`
+	Type      string    `json:"type,omitempty"`
 }
 
 type Msg struct {

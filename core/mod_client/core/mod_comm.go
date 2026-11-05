@@ -2,17 +2,20 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
 	"time"
 
-	cache "github.com/devlup-labs/Libr/core/mod_client/cache_handler"
-	"github.com/devlup-labs/Libr/core/mod_client/network"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
+	"github.com/libr-forum/Libr/core/mod_client/identity"
+	"github.com/libr-forum/Libr/core/mod_client/network"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, firstTry bool) []types.ModCert {
@@ -27,6 +30,10 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, first
 		mu          sync.Mutex
 		wg          sync.WaitGroup
 	)
+
+	if len(mods) == 0 {
+		return nil
+	}
 
 	// Attach the reason (first try may have a reason, retries usually "")
 	if reason != "" {
@@ -80,20 +87,28 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, first
 					mu.Unlock()
 					log.Printf("Mod %s acknowledged", mod.PeerId)
 					return
-				}
-
-				// Verify signature for non-acknowledgement
-				msgHash := cert.Sign + modcert.Status
-				if cryptoutils.VerifySignature(modcert.PublicKey, msgHash, modcert.Sign) {
-					log.Printf("Received valid modcert from %s", mod.PeerId)
-					mu.Lock()
-					modcertList = append(modcertList, modcert)
-					if modcert.Status != "1" {
-						rejCount++
-					}
-					mu.Unlock()
 				} else {
-					log.Printf("Invalid signature from mod %s", mod.PeerId)
+					// Verify signature for non-acknowledgement.
+					// manual_mod (image messages) are signed over content+ts+status,
+					// matching the auto-mod structure. All other manual types (e.g. report)
+					// use sign+status.
+					var msgHash string
+					if cert.Type == "manual_mod" {
+						msgHash = cert.Msg.Content + strconv.FormatInt(cert.Msg.Ts, 10) + modcert.Status
+					} else {
+						msgHash = cert.Sign + modcert.Status
+					}
+					if cryptoutils.VerifySignature(modcert.PublicKey, msgHash, modcert.Sign) {
+						log.Printf("Received valid modcert from %s", mod.PeerId)
+						mu.Lock()
+						modcertList = append(modcertList, modcert)
+						if modcert.Status != "1" {
+							rejCount++
+						}
+						mu.Unlock()
+					} else {
+						log.Printf("Invalid signature from mod %s", mod.PeerId)
+					}
 				}
 			}
 		}(mod)
@@ -106,23 +121,42 @@ func ManualSendToMods(cert types.MsgCert, mods []types.Mod, reason string, first
 			cert.Sign, len(modcertList), ackCount, unresponsive, totalMods)
 	}
 
-	// Save pending state only if there are ACKs
-	if len(ackMods) > 0 {
+	// Save pending state only on first try — retries are persisted by the cron after
+	// merging results, preserving the original AckCount.
+	if len(ackMods) > 0 && firstTry {
 		log.Printf("🔄 Saving %d ACK mods for retry", len(ackMods))
+		signerIdentityID, err := identity.GetActiveIdentityID()
+		if err != nil {
+			log.Printf("Failed to read active identity for pending moderation: %v", err)
+		}
 		pending := types.PendingModeration{
-			MsgSign:      cert.Sign,
-			MsgCert:      cert,
-			PartialCerts: modcertList,
-			AwaitingMods: ackMods,
-			CreatedAt:    time.Now(),
+			MsgSign:          cert.Sign,
+			MsgCert:          cert,
+			PartialCerts:     modcertList,
+			AwaitingMods:     ackMods,
+			AckCount:         len(ackMods), // needed by cron for approval ratio; prevents float div-by-zero
+			SignerIdentityID: signerIdentityID,
+			CreatedAt:        time.Now(),
 		}
 
+		fmt.Printf("saving pending moderation")
 		if err := cache.SavePendingModeration(pending); err != nil {
 			log.Printf("❌ Failed to save pending moderation: %v", err)
-		} else if !CronRunning {
-			// Start cron only on first try
-			go StartModerationCron()
+		} else {
+			if WailsCtx != nil {
+				if _, pendingQueue, err := buildPendingQueueSnapshot(); err == nil {
+					runtime.EventsEmit(WailsCtx, "cron_status_update", pendingQueue)
+				} else {
+					log.Printf("Failed to emit pending moderation snapshot: %v", err)
+				}
+			}
+			// StartModerationCron is idempotent — safe to call every time.
+			StartModerationCron()
 		}
+	}
+
+	if len(modcertList) == 0 && len(ackMods) > 0 {
+		return []types.ModCert{}
 	}
 
 	return modcertList
@@ -137,7 +171,10 @@ func AutoSendToMods(message string, ts int64) ([]types.ModCert, error) {
 
 	onlineMods, err := util.GetOnlineMods()
 	if err != nil {
-		log.Fatalf("failed to get online mods: %v", err)
+		return nil, fmt.Errorf("failed to get online mods: %w", err)
+	}
+	if len(onlineMods) == 0 {
+		return nil, fmt.Errorf("no online moderators available")
 	}
 	noOfMods := len(onlineMods)
 

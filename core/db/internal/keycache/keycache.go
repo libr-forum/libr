@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
 )
 
 var (

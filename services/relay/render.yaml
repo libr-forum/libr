@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: libr-relay007
+    env: go
+    plan: free
+    buildCommand: go build -o relay .
+    startCommand: ./relay
+    healthCheckPath: /health
+    envVars:
+      - key: SERVER_URL
+        value: https://libr-relay007-1.onrender.com  # URL of your librserver (Node.js discovery server)

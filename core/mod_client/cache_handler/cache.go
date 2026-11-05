@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 const cacheFileName = "alias_cache.json"
@@ -24,12 +24,28 @@ type CacheEntry struct {
 type CacheData map[string]*CacheEntry
 
 var (
-	cacheData CacheData
-	cachePath string
-	cacheMu   sync.Mutex
+	cacheData       CacheData
+	cachePath       string
+	customCachePath string
+	cacheMu         sync.Mutex
 )
 
+// SetCacheDir allows overriding the default cache storage location.
+func SetCacheDir(path string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	customCachePath = path
+	// Reset cachePath so it's recomputed using the new base
+	cachePath = ""
+}
+
 func GetCacheDir() string {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if customCachePath != "" {
+		return customCachePath
+	}
+
 	switch runtime.GOOS {
 	case "windows":
 		appData := os.Getenv("APPDATA")
@@ -146,6 +162,44 @@ func SavePendingModeration(pending types.PendingModeration) error {
 	return nil
 }
 
+// ── Moderator List Cache ──────────────────────────────────────────────────────
+
+const modsCacheFileName = "mods_cache.json"
+
+func getModsCachePath() string {
+	return filepath.Join(GetCacheDir(), modsCacheFileName)
+}
+
+// SaveModsCache persists the list of online moderators to disk.
+func SaveModsCache(mods []types.Mod) error {
+	dir := GetCacheDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(mods, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(getModsCachePath(), data, 0644)
+}
+
+// GetModsCache retrieves the last known list of online moderators from disk.
+func GetModsCache() ([]types.Mod, error) {
+	data, err := os.ReadFile(getModsCachePath())
+	if err != nil {
+		return nil, err
+	}
+
+	var mods []types.Mod
+	if err := json.Unmarshal(data, &mods); err != nil {
+		return nil, err
+	}
+
+	return mods, nil
+}
+
 func LoadPendingModeration(path string) (types.PendingModeration, error) {
 	filePath := filepath.Join(path)
 	data, err := os.ReadFile(filePath)
@@ -168,6 +222,40 @@ func DeletePendingModeration(msgSign string) error {
 		return fmt.Errorf("failed to delete pending moderation file: %w", err)
 	}
 	return nil
+}
+
+func GetAllPendingModerations() ([]types.PendingModeration, error) {
+	pattern := filepath.Join(GetCacheDir(), "pending_mods", "*.json")
+	files, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pending files: %w", err)
+	}
+
+	var results []types.PendingModeration
+	for _, filePath := range files {
+		if pending, err := LoadPendingModeration(filePath); err == nil {
+			results = append(results, pending)
+		}
+	}
+	return results, nil
+}
+
+func HasPendingModerationForIdentity(identityID string) bool {
+	if identityID == "" {
+		return false
+	}
+
+	pendings, err := GetAllPendingModerations()
+	if err != nil {
+		return false
+	}
+
+	for _, pending := range pendings {
+		if pending.SignerIdentityID == identityID {
+			return true
+		}
+	}
+	return false
 }
 
 func sanitizeFileName(msgSign string) string {

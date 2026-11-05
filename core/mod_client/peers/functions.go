@@ -1,4 +1,4 @@
-package peers
+package peer
 
 import (
 	"bytes"
@@ -6,22 +6,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/mod_client/internal/handlers"
+	"github.com/libr-forum/Libr/core/mod_client/internal/handlers"
 )
 
 var Peer *ChatPeer
-var relayMultiAddrList []string
 
 type RelayDist struct {
 	relayID string
 	dist    *big.Int
 }
 
-func StartNode(relayMultiAddrList []string) error {
+func StartNode(relayMultiAddrList []string, onStatusChange func(string)) error {
 
 	fmt.Println("Starting Node...")
 	var err error
@@ -31,34 +31,20 @@ func StartNode(relayMultiAddrList []string) error {
 		return err
 	}
 
-	go func() {
-		for {
-			fmt.Println("[RESTART] Restarting peer triggered")
-			if Peer != nil && Peer.Host != nil {
-				if err := Peer.Host.Close(); err != nil {
-					fmt.Println("Error closing host: %v", err)
-				}
+	ctx := context.Background()
 
-				var err error
-				Peer, err = NewChatPeer(relayMultiAddrList)
-				if err != nil {
-					fmt.Println("[RESTART] Error creating new peer after reset: %v", err)
-				}
-
-				ctx := context.Background()
-				if err := Peer.Start(ctx); err != nil {
-					fmt.Println("[RESTART] Error starting peer after reset: %v", err)
-				}
-			}
-
-			time.Sleep(time.Minute * 2)
-		}
-	}()
-
+	Peer.OnStatusChange = onStatusChange
+	if err := Peer.Start(ctx); err != nil {
+		log.Printf("[ERROR] Peer.Start failed: %v", err)
+		return err
+	}
 	return nil
 }
 
 func GET(targetPeerID string, route string) ([]byte, error) { //"/ts=123&&id=123"
+	if Peer == nil || Peer.Host == nil {
+		return nil, errors.New("chat peer is not initialized")
+	}
 
 	reqparams := make(map[string]string)
 	parts := strings.Split(route, "/")
@@ -89,6 +75,9 @@ func GET(targetPeerID string, route string) ([]byte, error) { //"/ts=123&&id=123
 }
 
 func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
+	if Peer == nil || Peer.Host == nil {
+		return nil, errors.New("chat peer is not initialized")
+	}
 
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -115,9 +104,9 @@ func POST(targetPeerID string, route string, body []byte) ([]byte, error) {
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Println("POST request timed out after 5s")
+			fmt.Println("⏳ POST request timed out after 5s")
 		} else {
-			fmt.Println("POST request failed:", err)
+			fmt.Println("❌ POST request failed:", err)
 		}
 		return nil, err
 	}
@@ -161,10 +150,18 @@ func ServePostReq(addr string, paramsBytes []byte, bodyBytes []byte) []byte {
 	fmt.Println("Body:", body)
 	switch route {
 	case "auto":
-		return handlers.MsgIN(bodyBytes)
+		resp := handlers.MsgIN(bodyBytes)
+		if resp == nil {
+			fmt.Println("[ERROR] MsgIN returned nil — moderation failed (check API key / logs)")
+		}
+		return resp
 
 	case "manual":
-		return handlers.MsgReport(bodyBytes)
+		resp := handlers.MsgReport(bodyBytes)
+		if resp == nil {
+			fmt.Println("[ERROR] MsgReport returned nil — moderation failed")
+		}
+		return resp
 
 	default:
 		fmt.Println("Unknown POST route:", route)

@@ -3,11 +3,11 @@ package keycache
 import (
 	"crypto/ed25519"
 	"encoding/base64"
+	"fmt"
 	"log"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/mod_client/logger"
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/mod_client/logger"
 )
 
 var (
@@ -19,18 +19,10 @@ func InitKeys() {
 	var err error
 	PubKey, PrivKey, err = cryptoutils.LoadKeys()
 	if err != nil {
-		log.Fatalf("Failed to load keys: %v", err)
+		log.Printf("Failed to load keys: %v", err)
 	}
-	logger.LogToFile("private key: " + base64.StdEncoding.EncodeToString(PrivKey))
-	logger.LogToFile("public key: " + base64.StdEncoding.EncodeToString(PubKey))
-}
-
-func InitTempKeys() {
-	var err error
-	PubKey, PrivKey, err = cryptoutils.LoadTempKeys()
-	if err != nil {
-		log.Fatalf("Failed to load keys: %v", err)
-	}
+	fmt.Println("private:", base64.StdEncoding.EncodeToString(PrivKey))
+	fmt.Println("public:", base64.StdEncoding.EncodeToString(PubKey))
 	logger.LogToFile("private key: " + base64.StdEncoding.EncodeToString(PrivKey))
 	logger.LogToFile("public key: " + base64.StdEncoding.EncodeToString(PubKey))
 }
@@ -38,19 +30,4 @@ func InitTempKeys() {
 func LoadPubKey() string {
 	pub, _, _ := cryptoutils.LoadKeys()
 	return base64.StdEncoding.EncodeToString(pub)
-}
-
-func LoadTempPubKey() string {
-	pub, _, _ := cryptoutils.LoadTempKeys()
-	return base64.StdEncoding.EncodeToString(pub)
-}
-
-func LoadPrivKey() crypto.PrivKey {
-	_, priv, _ := cryptoutils.LoadKeys() // priv is ed25519.PrivateKey (a []byte)
-
-	libp2pPriv, err := crypto.UnmarshalEd25519PrivateKey(priv)
-	if err != nil {
-		panic(err)
-	}
-	return libp2pPriv
 }

@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
-	"github.com/devlup-labs/Libr/core/db/internal/routing"
-	"github.com/devlup-labs/Libr/core/db/internal/storage"
-	"github.com/devlup-labs/Libr/core/db/internal/utils"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
+	"github.com/libr-forum/Libr/core/db/internal/storage"
+	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 var GlobalPinger Pinger

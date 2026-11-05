@@ -7,15 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"strconv"
-	"time"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/mod_client/config"
-	"github.com/devlup-labs/Libr/core/mod_client/keycache"
-	"github.com/devlup-labs/Libr/core/mod_client/models"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/mod_client/config"
+	"github.com/libr-forum/Libr/core/mod_client/keycache"
+	"github.com/libr-forum/Libr/core/mod_client/models"
+	"github.com/libr-forum/Libr/core/mod_client/types"
 )
 
 // func StoreMsgResult(cert models.MsgCert) ([]byte, string, error) {
@@ -70,37 +68,31 @@ import (
 func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 	fmt.Println("Trying to store message result:")
 	insertQuery := `
-    INSERT INTO msgresult (sign, content, reason)
-    VALUES (?, ?, ?);`
+    INSERT INTO msgresult (sign, content, reason, ts, type)
+    VALUES (?, ?, ?, ?, ?);`
 
-	_, err := config.DB.Exec(insertQuery, cert.Sign, cert.Msg.Content, cert.Reason)
+	_, err := config.DB.Exec(insertQuery, cert.Sign, cert.Msg.Content, cert.Reason, cert.Msg.Ts, cert.Type)
 	if err == nil {
 		fmt.Println("Message result stored successfully")
 		return &models.ModResponse{
 			Sign:      cert.Sign,
-			PublicKey: "",
+			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
 			Status:    "acknowledged",
 		}, nil
 	}
-	log.Printf("Insert failed")
+	log.Printf("Insert failed: %v", err)
 	var moderated sql.NullInt64
 	var modsign sql.NullString
 	var sign string
-
-	if rand.Intn(2) == 0 {
-		fmt.Println("Running the Test logic...")
-		TestManModerateMsg(cert)
-		// Put your actual code here
-	} else {
-		fmt.Println("Skipping this time.")
-	}
+	var ts int64
+	var existingType sql.NullString
 
 	row := config.DB.QueryRow(`
-    SELECT sign, moderated, modsign
+    SELECT sign, moderated, modsign, ts, type
     FROM msgresult
     WHERE sign = ?;`, cert.Sign)
 
-	err = row.Scan(&sign, &moderated, &modsign)
+	err = row.Scan(&sign, &moderated, &modsign, &ts, &existingType)
 	if err != nil {
 		fmt.Println("Error scanning row:", err)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -109,23 +101,50 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 		return nil, fmt.Errorf("failed to scan existing record: %w", err)
 	}
 
-	fmt.Println("Fetching existing record:", sign, moderated, modsign)
+	fmt.Println("Fetching existing record:", sign, moderated, modsign, existingType)
 
-	// Only proceed if moderated is non-NULL and equals 1
-	if moderated.Valid && moderated.Int64 == 1 && modsign.Valid && modsign.String != "" {
-		// payload := fmt.Sprintf("%d", moderated.Int64) + modsign.String
+	// If this is an incoming report:
+	if cert.Type == "report" {
+		// If the existing record was an approved manual_mod message (or if re-reporting an approved message):
+		// Reset it back to unmoderated report state so moderators can review it.
+		if existingType.String != "report" {
+			updateQuery := `
+            UPDATE msgresult
+            SET type = 'report',
+                reason = ?,
+                moderated = NULL,
+                modsign = NULL
+            WHERE sign = ?;`
+			if _, err := config.DB.Exec(updateQuery, cert.Reason, cert.Sign); err != nil {
+				return nil, fmt.Errorf("failed to update record to report: %w", err)
+			}
+			fmt.Println("Updated existing message to report successfully")
+			return &models.ModResponse{
+				Sign:      cert.Sign,
+				PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+				Status:    "acknowledged",
+			}, nil
+		}
 
-		// pub, priv, err := cryptoutils.LoadKeys()
-		// if err != nil {
-		// 	log.Printf("Key load error: %v", err)
-		// 	return nil, fmt.Errorf("failed to load keys: %w", err)
-		// }
+		// If it's already a report and this mod has already made a decision:
+		if moderated.Valid && modsign.Valid && modsign.String != "" {
+			return &models.ModResponse{
+				Sign:      modsign.String,
+				PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+				Status:    strconv.FormatInt(moderated.Int64, 10),
+			}, nil
+		}
 
-		// _, signed, err := cryptoutils.SignMessage(priv, payload)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("signing sign-moderated: %w", err)
-		// }
+		// Still unmoderated report awaiting review:
+		return &models.ModResponse{
+			Sign:      cert.Sign,
+			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
+			Status:    "acknowledged",
+		}, nil
+	}
 
+	// For non-report types (e.g. manual_mod image submissions):
+	if moderated.Valid && modsign.Valid && modsign.String != "" {
 		return &models.ModResponse{
 			Sign:      modsign.String,
 			PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
@@ -135,7 +154,7 @@ func StoreMsgResult(cert types.MsgCert) (*models.ModResponse, error) {
 
 	return &models.ModResponse{
 		Sign:      cert.Sign,
-		PublicKey: cert.PublicKey,
+		PublicKey: base64.StdEncoding.EncodeToString(keycache.PubKey),
 		Status:    "acknowledged",
 	}, nil
 }
@@ -164,7 +183,7 @@ func UpdateModerationStatus(sign string, modsign string, moderated int) (*models
 // GetUnmoderatedMsgs returns all messages from msgresult where moderated and modsign are NULL
 func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 	query := `
-        SELECT sign, content, reason
+        SELECT sign, content, reason, ts, type
         FROM msgresult
         WHERE moderated IS NULL AND modsign IS NULL;`
 
@@ -178,12 +197,15 @@ func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 	var msgs []models.MsgCert
 	for rows.Next() {
 		var cert models.MsgCert
-		var content, reason string
-		if err := rows.Scan(&cert.Sign, &content, &reason); err != nil {
+		var content, reason, msgType string
+		var ts int64
+		if err := rows.Scan(&cert.Sign, &content, &reason, &ts, &msgType); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 		cert.Msg.Content = content
 		cert.Reason = reason
+		cert.Msg.Ts = ts
+		cert.Type = msgType
 		fmt.Println("cert", cert)
 		msgs = append(msgs, cert)
 	}
@@ -193,22 +215,28 @@ func GetUnmoderatedMsgs() ([]models.MsgCert, error) {
 	return msgs, nil
 }
 
-func TestManModerateMsg(cert types.MsgCert) {
-	fmt.Println("Testing manual moderation for message:", cert.Sign)
-	rand.Seed(time.Now().UnixNano()) // seed with current time
-	status := rand.Intn(2)
-	modsign, _ := ReportModSign(&cert, strconv.Itoa(status), keycache.PrivKey, keycache.PubKey)
-	fmt.Println("Mod signature:", modsign)
-	UpdateModerationStatus(cert.Sign, modsign, status)
+// GetMsgBySign fetches content, ts, and type for a message from the DB by its sign.
+func GetMsgBySign(sign string) (content string, ts int64, msgType string, err error) {
+	row := config.DB.QueryRow(`
+		SELECT content, ts, COALESCE(type, '') FROM msgresult WHERE sign = ?;`, sign)
+	err = row.Scan(&content, &ts, &msgType)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("GetMsgBySign: %w", err)
+	}
+	return content, ts, msgType, nil
 }
 
 func ReportModSign(cert *types.MsgCert, status string, privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey) (string, error) {
-
-	payload := cert.Sign + status
+	var payload string
+	if cert.Type == "manual_mod" {
+		// Image messages follow the same structure as auto-mod: content + timestamp + status
+		payload = cert.Msg.Content + strconv.FormatInt(cert.Msg.Ts, 10) + status
+	} else {
+		payload = cert.Sign + status
+	}
 	_, sign, err := cryptoutils.SignMessage(privateKey, payload)
 	if err != nil {
 		return "", err
 	}
-
 	return sign, nil
 }

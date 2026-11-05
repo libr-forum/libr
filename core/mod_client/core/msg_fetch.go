@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-	"github.com/devlup-labs/Libr/core/mod_client/config"
-	"github.com/devlup-labs/Libr/core/mod_client/network"
-	"github.com/devlup-labs/Libr/core/mod_client/types"
-	util "github.com/devlup-labs/Libr/core/mod_client/util"
+	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
+	"github.com/libr-forum/Libr/core/mod_client/config"
+	"github.com/libr-forum/Libr/core/mod_client/network"
+	"github.com/libr-forum/Libr/core/mod_client/types"
+	util "github.com/libr-forum/Libr/core/mod_client/util"
 )
-
-var MsgBatch = 5
 
 func Fetch(ts int64) []types.RetMsgCert {
 	key := strconv.FormatInt(ts, 10)
@@ -72,7 +72,26 @@ func Fetch(ts int64) []types.RetMsgCert {
 			wg.Add(1)
 			go func(n *types.Node) {
 				defer wg.Done()
-				rawResp, err := network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+				var rawResp interface{}
+				var err error
+				for attempt := 0; attempt < 3; attempt++ {
+					rawResp, err = network.GetFrom(n.PeerId, fmt.Sprintf("/route=find_value&&ts=%d", ts), key)
+					if err == nil {
+						if b, ok := rawResp.([]byte); ok {
+							// If relay returned a transient connection/offline error, wait and retry
+							if strings.Contains(string(b), `"error"`) {
+								if attempt < 2 {
+									time.Sleep(500 * time.Millisecond)
+									continue
+								}
+							}
+						}
+						break
+					}
+					if attempt < 2 {
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
 				if err != nil {
 					return
 				}
@@ -80,11 +99,15 @@ func Fetch(ts int64) []types.RetMsgCert {
 				if !ok {
 					return
 				}
-				fmt.Println("Received response from:", n.PeerId)
 				var base BaseResponse
 				if err := json.Unmarshal(respBytes, &base); err != nil {
 					return
 				}
+				if base.Type == "" {
+					fmt.Printf("[DEBUG] Response from %s for ts=%d is not a find_value response: %s\n", n.PeerId, ts, string(respBytes))
+					return
+				}
+				fmt.Println("Received response from:", n.PeerId)
 
 				switch base.Type {
 				case "found":
@@ -167,20 +190,22 @@ func Fetch(ts int64) []types.RetMsgCert {
 		}
 	}
 
-	var results []types.RetMsgCert
+	var messages []types.RetMsgCert
 	for _, cert := range unique {
-		results = append(results, cert)
+		messages = append(messages, cert)
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Msg.Ts > results[j].Msg.Ts
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Msg.Ts > messages[j].Msg.Ts
 	})
-	return results
+
+
+	return messages
 }
 
-func FetchRecent(ctx context.Context, curr time.Time) []types.RetMsgCert {
+func FetchRecent(ctx context.Context) []types.RetMsgCert {
 	deleteThreshold := config.DeleteThreshold
-	now := curr.Truncate(time.Minute).Unix()
+	now := time.Now().Truncate(time.Minute).Unix()
 	start := now - 3600
 
 	tsChan := make(chan int64, 100)
@@ -227,7 +252,6 @@ func FetchRecent(ctx context.Context, curr time.Time) []types.RetMsgCert {
 				}
 			}
 		}()
-		fmt.Println(rawCerts)
 	}
 
 	wg.Wait()
@@ -251,44 +275,31 @@ func FetchRecent(ctx context.Context, curr time.Time) []types.RetMsgCert {
 	sort.Slice(filtered, func(i, j int) bool {
 		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
 	})
-	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
-	fmt.Println(filtered)
-	return filtered
-}
+		// Merge with recently sent messages that might not have propagated through DHT yet
+	sentCerts := cache.GetRecentSentMessages()
+	seenSigns := make(map[string]struct{})
+	for _, m := range filtered {
+		seenSigns[m.Sign] = struct{}{}
+	}
 
-func FetchBatch(ctx context.Context, curr time.Time) (lastTs int64, certs []types.RetMsgCert) {
-	start := curr.Truncate(time.Minute).Unix()
-	var results []types.RetMsgCert
-	var mu sync.Mutex
-
-	ts := start
-	for {
-		select {
-		case <-ctx.Done():
-			return ts, results
-		default:
-			// Fetch messages for this minute
-			fetched := Fetch(ts)
-			mu.Lock()
-			results = append(results, fetched...)
-			mu.Unlock()
-			lastTs = ts
-
-			// Stop if we have enough messages
-			if len(results) >= MsgBatch {
-				break
-			}
-			ts -= 60 // Go to previous minute
-		}
-		if len(results) >= MsgBatch {
-			break
+	for _, sc := range sentCerts {
+		if _, seen := seenSigns[sc.Sign]; !seen {
+			filtered = append(filtered, types.RetMsgCert{
+				PublicKey: sc.PublicKey,
+				Msg:       sc.Msg,
+				ModCerts:  sc.ModCerts,
+				Sign:      sc.Sign,
+				Deleted:   "",
+			})
 		}
 	}
 
-	// Sort results by timestamp descending
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Msg.Ts > results[j].Msg.Ts
+	// Sort again after merging
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].Msg.Ts > filtered[j].Msg.Ts
 	})
 
-	return lastTs, results
+	fmt.Printf("[FetchRecent] collected: %d certs after filtering\n", len(filtered))
+	fmt.Println(filtered)
+	return filtered
 }

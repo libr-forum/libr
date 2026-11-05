@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TitleBarTheme } from 'wailsjs/go/main/App';
@@ -37,6 +38,7 @@ export interface ReportedMessage {
   communityId: string;
   sign:string;
   note:string;
+  type?: string;
 }
 
 export interface ModLogEntry {
@@ -45,28 +47,44 @@ export interface ModLogEntry {
   status: string;
 }
 
+export interface PendingModeration {
+  id: string;
+  ts: number;
+  content: string;
+  reason: string;
+  approved: number;
+  rejected: number;
+  totalMods: number;
+  ackCount: number;
+  awaitingMods: number;
+}
 
 interface AppState {
   // User state
   user: User | null;
   isAuthenticated: boolean;
-
+  isIncognito: boolean;
+  
   // Theme state
   isDarkMode: boolean;
-
-  // Incognito state
-  isIncognito: boolean;
-
+  
   // Community state
   communities: Community[];
   currentCommunity: Community | null;
-
+  
   // Messages state
   messages: Message[];
   isLoading: boolean;
 
+  // Pending moderation queue (persists across tab switches)
+  pendingQueue: PendingModeration[];
+
+  // Network state
+  relayStatus: string;
+
   // Actions
   setUser: (user: User) => void;
+  setIncognito: (value: boolean) => void;
   logout: () => void;
   toggleTheme: () => void;
   setCommunities: (communities: Community[]) => void;
@@ -75,7 +93,8 @@ interface AppState {
   addMessage: (message: Message) => void;
   setLoading: (loading: boolean) => void;
   joinCommunity: (communityId: string) => void;
-  setIncognito: (incognito: boolean) => void;
+  setPendingQueue: (queue: PendingModeration[]) => void;
+  setRelayStatus: (status: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -84,60 +103,62 @@ export const useAppStore = create<AppState>()(
       // Initial state
       user: null,
       isAuthenticated: false,
-      isDarkMode: true,
       isIncognito: false,
+      isDarkMode: true,
       communities: [],
       currentCommunity: null,
       messages: [],
       isLoading: false,
+      pendingQueue: [],
+      relayStatus: 'offline',
 
       // Actions
       setUser: (user) => set({ user, isAuthenticated: true }),
+      setIncognito: (value) => set({ isIncognito: value }),
+      
       logout: () => set({ 
         user: null, 
         isAuthenticated: false,
+        isIncognito: false,
         currentCommunity: null,
         messages: [] 
       }),
+      
       toggleTheme: () => {
         const newTheme = !get().isDarkMode;
         set({ isDarkMode: newTheme });
         document.documentElement.classList.toggle('dark', newTheme);
         TitleBarTheme(newTheme);
       },
+      
       setCommunities: (communities) => set({ communities }),
+      
       setCurrentCommunity: (community) => set({ 
         currentCommunity: community,
         messages: [] // Clear messages when switching communities
       }),
+      
       setMessages: (messages) => set({ messages }),
+      
       addMessage: (message) => set((state) => ({ 
         messages: [message, ...state.messages] 
       })),
+      
       setLoading: (loading) => set({ isLoading: loading }),
+      
       joinCommunity: (communityId) => set((state) => ({
         communities: state.communities.map(c => 
           c.id === communityId ? { ...c, isJoined: true } : c
         )
       })),
-      setIncognito: (incognito) => {
-        set({ isIncognito: incognito });
-        if (incognito) {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.classList.add('incognito');
-        } else {
-          document.documentElement.classList.remove('incognito');
-          // Restore previous theme
-          const isDark = get().isDarkMode;
-          document.documentElement.classList.toggle('dark', isDark);
-        }
-      },
+
+      setPendingQueue: (queue) => set({ pendingQueue: queue }),
+      setRelayStatus: (status) => set({ relayStatus: status }),
     }),
     {
       name: 'libr-storage',
       partialize: (state) => ({ 
-        isDarkMode: state.isDarkMode,
-        isIncognito: state.isIncognito
+        isDarkMode: state.isDarkMode 
       }),
     }
   )

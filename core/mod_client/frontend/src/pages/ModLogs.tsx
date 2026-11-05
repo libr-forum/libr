@@ -4,7 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/api';
 import { Message,ModLogEntry } from '../store/useAppStore';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Shield, Check, X, Filter, Search, Clock, MessageSquare } from 'lucide-react';
+import { Shield, Check, X, Filter, Search, Clock, MessageSquare, RotateCcw } from 'lucide-react';
 
 export const ModLogs: React.FC = () => {
   const { user } = useAppStore();
@@ -13,21 +13,26 @@ export const ModLogs: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    loadModerationLogs();
-  }, []);
-
-  const loadModerationLogs = async () => {
-    setIsLoading(true);
+  const loadModerationLogs = async (background: boolean = false) => {
+    if (!background) setIsLoading(true);
     try {
       const moderationLogs = await apiService.getModerationLogs();
       setLogs(moderationLogs);
     } catch (error) {
       console.error('Failed to load moderation logs:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadModerationLogs(false);
+    const intervalId = setInterval(() => {
+      loadModerationLogs(true);
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const filteredLogs = logs.filter(log => {
     const matchesFilter =
@@ -81,43 +86,47 @@ export const ModLogs: React.FC = () => {
               className="max-w-7xl mx-4"
             >
               {/* Header */}
-              <div className="mb-8 w-full">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-libr-accent2/20 rounded-xl flex items-center justify-center">
+              <div className="mb-6 w-full flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-libr-accent2/20 rounded-2xl flex items-center justify-center">
                     <Shield className="w-6 h-6 text-libr-accent2" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-foreground">Moderation Logs</h1>
-                    <p className="text-muted-foreground">
-                      Automatically recorded logs from your moderation
+                    <h1 className="text-xl font-bold text-foreground">Moderation Logs</h1>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically recorded logs
                     </p>
                   </div>
                 </div>
 
                 {/* Controls */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 relative">
+                <div className="flex flex-row gap-3 items-center">
+                  <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search messages..."
+                      placeholder="Search logs..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-muted/30 border border-border/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-libr-accent1/50"
+                      className="w-full pl-9 pr-4 h-9 bg-muted/50 hover:bg-muted border-none rounded-2xl text-sm focus:outline-none focus:ring-1 focus:ring-libr-accent1/50 transition-all text-foreground"
                     />
                   </div>
                   <button
-                    onClick={loadModerationLogs}
-                    className="px-3 py-2 bg-muted/30 border border-border/50 text-base rounded-lg text-foreground hover:bg-muted/40 transition-colors"
+                    onClick={() => loadModerationLogs(false)}
+                    disabled={isLoading}
+                    className={`libr-button bg-libr-accent1/20 hover:bg-muted rounded-2xl flex items-center justify-center space-x-2 text-sm px-4 h-9 ${
+                      isLoading ? 'opacity-80 cursor-not-allowed' : ''
+                    }`}
                   >
-                    Refresh
+                    <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin text-libr-accent1' : ''}`} />
+                    <span className="mt-0.5">{isLoading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
-                  <div className="flex items-center space-x-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex items-center relative">
+                    <Filter className="w-4 h-4 text-muted-foreground absolute left-3 pointer-events-none" />
                     <select
                       value={filter}
                       onChange={(e) => setFilter(e.target.value as any)}
-                      className="px-3 py-2 bg-muted/30 border border-border/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-libr-accent1/50"
+                      className="libr-button appearance-none bg-libr-accent1/20 hover:bg-muted rounded-2xl text-sm focus:outline-none pl-9 pr-4 h-9 cursor-pointer transition-colors"
                     >
                       <option value="all">All Messages</option>
                       <option value="approved">Approved</option>
@@ -155,61 +164,71 @@ export const ModLogs: React.FC = () => {
                   </p>
                 </motion.div>
               ) : (
-                <div className="grid gap-3">
+                <div className="space-y-2 mt-2">
                   {filteredLogs.map((log, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      className="bg-muted/30 border border-border/40 rounded-xl p-4"
+                      className="flex w-full box-border"
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center text-xs text-muted-foreground space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{new Date(log.timestamp * 1000).toLocaleString()}</span>
+                      <div className="w-full relative rounded-2xl px-6 py-4 bg-card hover:bg-muted/30 transition-colors border border-border/20 break-words overflow-hidden box-border">
+                        <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${
+                          log.status === '1' ? 'bg-libr-accent1' : log.status === '0' ? 'bg-red-500' : 'bg-amber-400'
+                        }`} />
+
+                        <div className="flex w-full justify-between items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            {(() => {
+                              const titleMatch = log.content.match(/<HEAD>(.*?)<\/HEAD>/s);
+                              const bodyMatch = log.content.match(/<BODY>(.*?)<\/BODY>/s);
+                              const title = titleMatch?.[1]?.trim() || '';
+                              const rawBody = bodyMatch?.[1]?.trim() || '';
+
+                              const cleanBody = rawBody
+                                .replace(/<\/p>\s*<p>/g, '<br><br>') // Convert paragraphs to double line break
+                                .replace(/^<p>/, '')
+                                .replace(/<\/p>$/, '');
+
+                              return (
+                                <>
+                                  {title && (
+                                    <h4 className="text-sm font-semibold text-foreground mb-1">
+                                      {title}
+                                    </h4>
+                                  )}
+                                  <div
+                                    className="text-sm text-foreground leading-snug whitespace-pre-wrap [&_strong]:font-semibold [&_u]:underline [&_em]:italic [&_img]:w-48 [&_img]:h-auto [&_img]:rounded-lg [&_img]:mt-2 modlog-body-content"
+                                    dangerouslySetInnerHTML={{ __html: cleanBody }}
+                                  />
+                                </>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="flex items-center gap-3 flex-shrink-0 mt-0.5">
+                            <div className="flex items-center text-[10px] opacity-45 text-muted-foreground space-x-1.5 font-mono">
+                              <Clock className="w-3 h-3" />
+                              <span>{new Date(log.timestamp * 1000).toLocaleString()}</span>
+                            </div>
+                            <div>
+                              {log.status === '1' ? (
+                                <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-full border border-current text-teal-400">
+                                  Approved
+                                </span>
+                              ) : log.status === '0' ? (
+                                <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-full border border-current text-rose-500">
+                                  Rejected
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-full border border-current text-amber-400">
+                                  Pending
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          {log.status === '1' ? (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-600">
-                              Approved
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-red-500/20 text-red-600">
-                              Rejected
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 bg-background/50 p-3 rounded-md">
-                        {(() => {
-                          const titleMatch = log.content.match(/<HEAD>(.*?)<\/HEAD>/s);
-                          const bodyMatch = log.content.match(/<BODY>(.*?)<\/BODY>/s);
-                          const title = titleMatch?.[1]?.trim() || '';
-                          const rawBody = bodyMatch?.[1]?.trim() || '';
-
-                          const cleanBody = rawBody
-                            .replace(/<\/p>\s*<p>/g, '<br><br>') // Convert paragraphs to double line break
-                            .replace(/^<p>/, '')
-                            .replace(/<\/p>$/, '');
-
-                          return (
-                            <>
-                              {title && (
-                                <h4 className="text-sm font-semibold text-foreground mb-1">
-                                  {title}
-                                </h4>
-                              )}
-                              <div
-                                className="text-sm text-foreground leading-snug whitespace-pre-wrap [&_strong]:font-semibold [&_u]:underline [&_em]:italic modlog-body-content"
-                                dangerouslySetInnerHTML={{ __html: cleanBody }}
-                              />
-                            </>
-                          );
-                        })()}
                       </div>
                       {/* Add bullet styling for modlog content */}
                       <style>

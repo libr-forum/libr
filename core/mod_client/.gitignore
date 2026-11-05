@@ -1,4 +1,17 @@
 build/bin
+build/
 node_modules
+frontend/node_modules
 frontend/dist
+DEBUG_LOGS.log
+*.log
+*.exe
+*.syso
+.env
+.env.*
+*.key
+keys/
 modconfig.json
+modkeys.json
+data/
+cache/

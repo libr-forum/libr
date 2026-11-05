@@ -21,9 +21,9 @@ The LIBR protocol is currently implemented as a working prototype, with core
 components—clients, database nodes, and moderators—communicating over a
 custom decentralized protocol. The system simulates blockchain-backed global
 state resolution, and the full implementation can be found here:
-GitHub Repository: github.com/devlup-labs/libr
+GitHub Repository: github.com/libr-forum/libr
 Concept Document:
-github.com/devlup-labs/libr/blob/main/concept_document.pdf
+github.com/libr-forum/libr/blob/main/concept_document.pdf
 
 Development Plan under Devlup Labs Summer of
 Code

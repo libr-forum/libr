@@ -3,7 +3,7 @@ package node
 import (
 	"math/big"
 
-	"github.com/devlup-labs/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/models"
 )
 
 type DistanceNode struct {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Message,User,useAppStore } from '../../store/useAppStore';
-import { Clock, Check, AlertCircle, MoreVertical, Cross } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Message, User, useAppStore } from '../../store/useAppStore';
+import { Clock, Check, AlertCircle, MoreVertical, Cross, X, ImageIcon } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import {
   DropdownMenu,
@@ -9,12 +9,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {emojify} from 'node-emoji';
-import { Delete, Report,GenerateAlias } from 'wailsjs/go/main/App';
+import { emojify } from 'node-emoji';
+import { Delete, Report, GenerateAlias } from 'wailsjs/go/main/App';
 import { types } from 'wailsjs/go/models';
-import { parseFormatting,apiService } from '@/services/api';
+import { parseFormatting, apiService } from '@/services/api';
 import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { TooltipContent } from '@radix-ui/react-tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface MessageBubbleProps {
   message: Message;
@@ -34,8 +46,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       day: '2-digit',
     }).format(date);
   };
-  
-  const{setMessages}=useAppStore();
+
+  const { setMessages } = useAppStore();
 
   const getStatus = () => {
     switch (message.status) {
@@ -61,11 +73,62 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   };
 
   const { title, body } = parseMessage(message.content);
-  const safeHtml = DOMPurify.sanitize(parseFormatting(body));
-  const status = getStatus();
-  const user=useAppStore.getState().user;
 
-  const [showReportPopup, setShowReportPopup] = useState(false);
+  // Allow DOMPurify to pass through img tags with data: src for base64 images
+  const safeHtml = DOMPurify.sanitize(parseFormatting(body), {
+    ADD_TAGS: ['img'],
+    ADD_ATTR: ['src', 'alt', 'class', 'style'],
+    ALLOW_DATA_ATTR: true,
+    FORCE_BODY: true,
+  });
+
+  // Extract image srcs for separate, richer rendering
+  const imgSrcList: string[] = [];
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = safeHtml;
+  tempDiv.querySelectorAll('img').forEach(img => {
+    imgSrcList.push(img.src);
+    img.remove();
+  });
+  const safeTextHtml = tempDiv.innerHTML;
+
+  const status = getStatus();
+  const { user, isIncognito } = useAppStore();
+
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+
+  const handleReportSubmit = async () => {
+    if (isIncognito) {
+      setIsReportDialogOpen(false);
+      setReportReason("");
+      toast.error("Reporting disabled", {
+        description: "Turn off incognito before sending reports.",
+      });
+      return;
+    }
+
+    const msg: types.Msg = {
+      content: message.content,
+      ts: Number(message.timestamp),
+    };
+    const msgcert = new types.MsgCert({
+      public_key: message.authorPublicKey,
+      msg: msg,
+      mod_certs: message.moderationNote,
+      sign: message.sign,
+    });
+
+    const result = await Report(msgcert, reportReason || "No reason provided");
+    setIsReportDialogOpen(false);
+    setReportReason("");
+    toast.message("Report submitted", {
+      description: typeof result === 'string' && result.length > 0
+        ? result.replace(/:[^ ]+:/g, '').trim()
+        : "Your report has been sent to moderators for review.",
+    });
+  };
 
   return (
     <>
@@ -73,10 +136,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="flex w-full mb-4"
+        className="flex w-full px-4 mb-3 box-border"
       >
-        <div className="w-[99%]">
-          <div className="relative rounded-3xl px-4 py-3 bg-card shadow-md border-b max-w-[80vw] break-words">
+        <div className="w-full relative rounded-3xl px-5 py-4 bg-card shadow-md border border-border/20 break-words overflow-hidden box-border">
+            {message.authorPublicKey === user.publicKey && (
+              <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-libr-accent1 rounded-l-3xl" />
+            )}
             <div className="absolute top-3 right-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -90,13 +155,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   sideOffset={8}
                   className="z-50 bg-popover border border-border rounded-md shadow-lg p-2 text-sm w-64"
                 >
-                  {/* Only show time if status is not pending */}
-                  {message.status !== 'pending' && (
-                    <DropdownMenuItem disabled className="flex items-center justify-between">
-                      <span className="text-foreground">Time</span>
-                      <span>{formatTime(message.timestamp)}</span>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem disabled className="flex items-center justify-between">
+                    <span className="text-foreground">Time</span>
+                    <span>{formatTime(message.timestamp)}</span>
+                  </DropdownMenuItem>
 
                   {status && (
                     <DropdownMenuItem disabled className="flex items-center justify-between">
@@ -109,10 +171,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   {message.status === 'pending' && (
                     <DropdownMenuItem
                       onClick={async () => {
-                        setMessages([]);
-                        const retried = await apiService.sendMessage(message.communityId, message.content);
-                        // Replace all messages with only the retried message
-                        setMessages([retried]);
+                        let retried: Message;
+                        const { messages, setMessages } = useAppStore.getState();
+                        if (message.moderationNote && message.moderationNote.length > 0) {
+                          // Resend only to DB
+                          retried = await apiService.resendToDb(message);
+                        } else {
+                          // Full moderation resend
+                          retried = await apiService.sendMessage(message.communityId, message.content);
+                        }
+                        setMessages(messages.map(m => m.id === message.id ? retried : m));
                       }}
                       className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
                     >
@@ -128,22 +196,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                               <TooltipTrigger className="cursor-pointer text-muted-foreground">
                                 <CertAlias publicKey={cert.public_key} />
                               </TooltipTrigger>
-                              <TooltipContent className='bg-muted'>
+                              <TooltipContent>
                                 <span className="break-all">{cert.public_key}</span>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <p>
                             {cert.status === "1"
-                              ? <Check className="w-3 h-3 text-green-500"/>
-                              : <Cross className="w-3 h-3 text-red-500"/>}
+                              ? <Check className="w-3 h-3 text-green-500" />
+                              : <Cross className="w-3 h-3 text-red-500" />}
                           </p>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger className="cursor-pointer text-muted-foreground">
                                 sign
                               </TooltipTrigger>
-                              <TooltipContent className='bg-muted'>
+                              <TooltipContent>
                                 <span className="break-all">{cert.sign}</span>
                               </TooltipContent>
                             </Tooltip>
@@ -155,19 +223,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
                   {message.authorPublicKey === user.publicKey ? (
                     <DropdownMenuItem
-                      onClick={() =>{
-                        const msg:types.Msg={
-                          content:message.content,
-                          ts:Number(message.timestamp),
+                      onClick={async () => {
+                        const msg: types.Msg = {
+                          content: message.content,
+                          ts: Number(message.timestamp),
                         }
-                        const msgcert=new types.MsgCert({
-                          public_key:message.authorPublicKey,
-                          msg:msg,
-                          mod_certs:message.moderationNote,
-                          sign:message.sign,
-                          
+                        const msgcert = new types.MsgCert({
+                          public_key: message.authorPublicKey,
+                          msg: msg,
+                          mod_certs: message.moderationNote,
+                          sign: message.sign,
+
                         });
-                        Delete(msgcert);
+                        const result = await Delete(msgcert);
+                        toast.message("Delete requested", {
+                          description: typeof result === 'string' && result.length > 0
+                            ? result.replace(/:[^ ]+:/g, '').trim()
+                            : "Your delete request has been sent.",
+                        });
                       }}
                       className="text-destructive cursor-pointer hover:bg-destructive/10"
                     >
@@ -175,30 +248,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                     </DropdownMenuItem>
                   ) : (
                     <DropdownMenuItem
-                      onClick={() =>{
-                        const msg:types.Msg={
-                          content:message.content,
-                          ts:Number(message.timestamp),
+                      onClick={() => {
+                        if (isIncognito) {
+                          toast.error("Reporting disabled", {
+                            description: "Turn off incognito before sending reports.",
+                          });
+                          return;
                         }
-                        const msgcert=new types.MsgCert({
-                          public_key:message.authorPublicKey,
-                          msg:msg,
-                          mod_certs:message.moderationNote,
-                          sign:message.sign,
-                          
-                        });
-                        Report(msgcert,"report reason");
-                        setShowReportPopup(true);
-                        setTimeout(() => setShowReportPopup(false), 2500);
+                        setIsReportDialogOpen(true);
                       }}
                       className="text-destructive cursor-pointer hover:bg-destructive/10"
                     >
-                      Report
+                      {isIncognito ? 'Blocked In Incognito' : 'Report'}
                     </DropdownMenuItem>
                   )}
 
                 </DropdownMenuContent>
-
               </DropdownMenu>
             </div>
 
@@ -230,8 +295,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
                 <div
                   className="text-sm leading-relaxed text-foreground mt-1 break-words max-w-[55vw] whitespace-pre-wrap message-bubble-content"
-                  dangerouslySetInnerHTML={{ __html: safeHtml }}
+                  dangerouslySetInnerHTML={{ __html: safeTextHtml }}
                 />
+
+                {/* Image gallery */}
+                {imgSrcList.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {imgSrcList.map((src, idx) => (
+                      <div key={idx} className="relative group cursor-pointer" onClick={() => setLightboxSrc(src)}>
+                        <img
+                          src={src}
+                          alt={`image-${idx + 1}`}
+                          className="max-h-48 max-w-xs rounded-2xl object-cover border border-border/40 shadow-md group-hover:opacity-90 transition-opacity"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="bg-black/50 rounded-full p-2">
+                            <ImageIcon className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -253,14 +338,67 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               }
             `}
           </style>
-        </div>
       </motion.div>
-      {showReportPopup && (
-        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 libr-card text-libr-secondary px-6 py-3 rounded-xl shadow-lg font-semibold text-center">
-          Your report has been received.<br />
-          It will be acted upon soon.
-        </div>
-      )}
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxSrc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="relative max-w-[90vw] max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={lightboxSrc}
+                alt="Full size"
+                className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+              />
+              <button
+                onClick={() => setLightboxSrc(null)}
+                className="absolute -top-3 -right-3 bg-card border border-border rounded-full p-1 shadow-lg hover:bg-muted transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Report Message</DialogTitle>
+            <DialogDescription>
+              Why are you reporting this message? This will be sent to moderators for review.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="reason">Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Spam, harassment, hate speech, etc."
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsReportDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReportSubmit}>Submit Report</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

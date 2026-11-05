@@ -15,14 +15,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/devlup-labs/Libr/core/db/config"
-	"github.com/devlup-labs/Libr/core/db/internal/keycache"
-	"github.com/devlup-labs/Libr/core/db/internal/models"
-	"github.com/devlup-labs/Libr/core/db/internal/network"
-	"github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
-	"github.com/devlup-labs/Libr/core/db/internal/node"
-	"github.com/devlup-labs/Libr/core/db/internal/routing"
-	"github.com/devlup-labs/Libr/core/db/internal/utils"
+	"github.com/libr-forum/Libr/core/db/config"
+	"github.com/libr-forum/Libr/core/db/internal/keycache"
+	"github.com/libr-forum/Libr/core/db/internal/models"
+	"github.com/libr-forum/Libr/core/db/internal/network"
+	"github.com/libr-forum/Libr/core/db/internal/network/bootstrap"
+	"github.com/libr-forum/Libr/core/db/internal/node"
+	"github.com/libr-forum/Libr/core/db/internal/routing"
+	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 var Peer *ChatPeer
@@ -99,6 +99,26 @@ func StartNode(relayMultiAddrList []string) {
 	}
 
 	initDHT()
+
+	// Register this node with the discovery server so clients can find it.
+	pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
+	nodeIdB64 := base64.StdEncoding.EncodeToString(globalLocalNode.NodeId[:])
+	if err := utils.RegisterAsNode(nodeIdB64, PeerID, pubKeyB64, keycache.PrivKey); err != nil {
+		fmt.Println("⚠️  Failed to register node with server:", err)
+	} else {
+		fmt.Println("✅ Registered node with discovery server")
+	}
+
+	// Periodically refresh presence so the server doesn't expire this entry.
+	go func() {
+		ticker := time.NewTicker(90 * time.Second) // half of default 180 s TTL
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := utils.RefreshNodePresence(pubKeyB64, keycache.PrivKey); err != nil {
+				fmt.Println("⚠️  Node refresh failed:", err)
+			}
+		}
+	}()
 }
 
 func GET(targetPeerID string, route string) ([]byte, error) { //"/ts=123&&id=123"
@@ -262,14 +282,14 @@ func ServePostReq(peerId string, paramsBytes []byte, bodyBytes []byte) []byte {
 // 	"strings"
 // 	"time"
 
-// 	"github.com/devlup-labs/Libr/core/crypto/cryptoutils"
-// 	"github.com/devlup-labs/Libr/core/db/config"
-// 	"github.com/devlup-labs/Libr/core/db/internal/models"
-// 	"github.com/devlup-labs/Libr/core/db/internal/network"
-// 	"github.com/devlup-labs/Libr/core/db/internal/network/bootstrap"
-// 	"github.com/devlup-labs/Libr/core/db/internal/node"
-// 	"github.com/devlup-labs/Libr/core/db/internal/routing"
-// 	"github.com/devlup-labs/Libr/core/db/internal/utils"
+// 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+// 	"github.com/libr-forum/Libr/core/db/config"
+// 	"github.com/libr-forum/Libr/core/db/internal/models"
+// 	"github.com/libr-forum/Libr/core/db/internal/network"
+// 	"github.com/libr-forum/Libr/core/db/internal/network/bootstrap"
+// 	"github.com/libr-forum/Libr/core/db/internal/node"
+// 	"github.com/libr-forum/Libr/core/db/internal/routing"
+// 	"github.com/libr-forum/Libr/core/db/internal/utils"
 // )
 
 // var Peer *ChatPeer

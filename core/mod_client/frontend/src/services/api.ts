@@ -1,8 +1,8 @@
-import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey,ManualModerate,FetchMessageReports,FetchBatch } from "../../wailsjs/go/main/App"; 
+import { SendInput, SendImageInput, FetchAll, GenerateAvatar, GenerateAlias, GetModerationLogs, GetModConfig, SaveModConfig, ModAuthentication, SaveGoogleApiKey, ManualModerate, FetchMessageReports, ModerateBySign, IsModerationCronRunning, GetPendingModerationStats, ResendToDb, GetModKeys, SaveModKey, TestLLMConnection } from "../../wailsjs/go/main/App";
 import axios from 'axios';
-import { Community, Message, User, ModLogEntry, useAppStore,ReportedMessage } from '../store/useAppStore';
-import {types} from '../../wailsjs/go/models'
-import {emojify} from 'node-emoji';
+import { Community, Message, User, ModLogEntry, useAppStore, ReportedMessage } from '../store/useAppStore';
+import { types } from '../../wailsjs/go/models'
+import { emojify } from 'node-emoji';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -147,9 +147,9 @@ export const apiService = {
   },
 
   // Messages
-  async getMessages(_communityId: string, curr: Date): Promise<Message[]> {
+  async getMessages(_communityId: string): Promise<Message[]> {
     try {
-      const fetched = await FetchAll(curr);
+      const fetched = await FetchAll();
       // No caching: always return fresh mapped messages
       return await Promise.all(
         fetched.map(async (message: any) => {
@@ -174,18 +174,6 @@ export const apiService = {
     }
   },
 
-  // async getMessageBatch(_communityId: string, curr: Date): Promise<{ lastTs: bigint, messages: Message[] }> {
-  //   try {
-  //     // Call Go backend FetchBatch via Wails
-  //     const batch = await FetchBatch(curr);
-
-  //     return { lastTs, messages };
-  //   } catch (err) {
-  //     console.error("Failed to fetch message batch:", err);
-  //     return { lastTs: BigInt(0), messages: [] };
-  //   }
-  // },
-
   async getMessageReports(_communityId: string): Promise<ReportedMessage[]> {
     try {
       const reports = await FetchMessageReports();
@@ -193,6 +181,7 @@ export const apiService = {
         sign: msg.sign,
         content: msg.msg.content,
         note: msg.reason || '',
+        type: msg.type,
         communityId: _communityId,
       }));
     } catch (err) {
@@ -205,41 +194,52 @@ export const apiService = {
     try {
       await ManualModerate(cert, moderated);
     } catch (err) {
-      console.error("Failed to fetch messages:", err);
+      console.error("manualModerate error:", err);
+      throw err;
     }
   },
 
+  async moderateBySign(sign: string, moderated: number): Promise<void> {
+    await ModerateBySign(sign, moderated);
+  },
+
+  async isModerationCronRunning(): Promise<boolean> {
+    return await IsModerationCronRunning();
+  },
+
+  async getPendingModerationStats(): Promise<{
+    items: { msg_sign: string; ts: number; content: string; reason: string; approved: number; rejected: number; awaiting: number; is_image: boolean }[];
+    cron_active: boolean;
+  }> {
+    return await GetPendingModerationStats();
+  },
+
   async sendMessage(communityId: string, content: string): Promise<Message> {
-    let response: string = '';
-    let modcerts: types.ModCert[] = [];
+    const isImage = /<img\s+[^>]*src="data:image/i.test(content);
+    const result = isImage ? await SendImageInput(content) : await SendInput(content);
 
-    const result = await SendInput(content);
-
-    if (typeof result === 'string') {
-      response = result;
-    } else if (Array.isArray(result)) {
-      modcerts = result;
-    }
-
-    const approved = response.includes("Sent");
-    const rejected = response.includes("rejected");
-    const timeout = response.includes("timeout");
+    const approved = result.status === 'sent';
+    // For image messages: ANY non-rejected outcome should be treated as pending.
+    // This covers: 'pending_manual', 'timeout', 'No online moderators available', 'No moderators available'
+    // The pending_mods cron will track it and complete it once a mod comes online.
+    const storageFailed = result.status === 'storage_failed';
+    const isImagePending = isImage && result.status !== 'error' && result.status !== 'offline';
+    const timeout = result.status === 'timeout';
+    const modcerts: types.ModCert[] = result.mod_certs ?? [];
 
     const user = useAppStore.getState().user;
-    const signMatch = response.match(/Sign:\s*(\S+)/);
-    const tsMatch = response.match(/Time:\s*(\d+)/);
 
     // No caching: just return the new message object
     const newMessage: Message = {
       content,
       authorPublicKey: user.publicKey,
       authorAlias: user.alias,
-      timestamp: BigInt(tsMatch?.[1] ?? Date.now()),
+      timestamp: BigInt(result.ts > 0 ? result.ts : Math.floor(Date.now() / 1000)),
       communityId,
-      status: approved ? 'approved' : timeout ? 'pending' : 'rejected',
+      status: approved ? 'approved' : (timeout || isImagePending || storageFailed) ? 'pending' : 'rejected',
       avatarSvg: user.avatarSvg,
       moderationNote: modcerts,
-      sign: signMatch?.[1] ?? '',
+      sign: result.sign ?? '',
     };
 
     return newMessage;
@@ -256,16 +256,66 @@ export const apiService = {
     console.log(`Message ${action}ed with note: ${note}`);
   },
 
-  async GetModConfig(): Promise<{ forbidden: string[]; thresholds: string }> {
+  async GetModConfig(): Promise<{
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }> {
     return await GetModConfig();
   },
 
-  async SaveModConfig(data: { forbidden: string[]; thresholds: string }): Promise<void> {
-    await SaveModConfig(data)
+  async SaveModConfig(data: {
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }): Promise<void> {
+    await SaveModConfig(data as any);
   },
 
   async SaveGoogleApiKey(key: string) {
-    await SaveGoogleApiKey(key)
+    await SaveGoogleApiKey(key);
+  },
+
+  async GetModKeys(): Promise<Record<string, string>> {
+    return await GetModKeys();
+  },
+
+  async SaveModKey(keyName: string, keyValue: string): Promise<void> {
+    await SaveModKey(keyName, keyValue);
+  },
+
+  async TestLLMConnection(provider: string, model: string, apiKey: string): Promise<string> {
+    return await TestLLMConnection(provider, model, apiKey);
+  },
+
+  async resendToDb(message: Message): Promise<Message> {
+    const msg: types.Msg = {
+      content: message.content,
+      ts: Number(message.timestamp),
+    };
+    const msgcert = new types.MsgCert({
+      public_key: message.authorPublicKey,
+      msg: msg,
+      mod_certs: message.moderationNote,
+      sign: message.sign,
+    });
+
+    const result = await ResendToDb(msgcert);
+    const approved = result.status === 'sent';
+    const storageFailed = result.status === 'storage_failed';
+
+    const user = useAppStore.getState().user;
+
+    return {
+      ...message,
+      status: approved ? 'approved' : storageFailed ? 'pending' : 'rejected',
+    };
   }
 };
 
@@ -273,8 +323,8 @@ export function parseFormatting(text: string): string {
   // Escape HTML to prevent injection
   const escapeHTML = (str: string) =>
     str.replace(/&/g, '&amp;')
-       .replace(/</g, '&lt;')
-       .replace(/>/g, '&gt;');
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
 
   // Apply emoji replacements first
   let formatted = emojify(text);
