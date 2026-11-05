@@ -1,6 +1,7 @@
 import React,{useState,useEffect} from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Globe, Users, Lock, Code, ShieldCheck, Monitor, Database,KeyRound, Download, Play } from 'lucide-react';
+import { FaApple, FaLinux, FaTools, FaWindows } from 'react-icons/fa';
 const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
 const TechModules: React.FC = () => {
   const [marginTop, setMarginTop] = useState(0);
@@ -469,7 +470,7 @@ const HowToUse: React.FC = () => {
                 viewport={{ once: false }}
                 onClick={() => {
                   if (isFirst) {
-                    window.location.href = "#join-beta";
+                    window.location.href = "#welcome";
                   }
                 }}
               >
@@ -489,5 +490,225 @@ const HowToUse: React.FC = () => {
   );
 };
 
+const CollapsibleSection: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}> = ({ title, icon, children, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <motion.div
+      className="libr-card p-6 mb-6 bg-libr-card rounded-lg shadow"
+      initial={{ y: 20, opacity: 0.8, scale: 0.98 }}
+      whileInView={{ y: 0, opacity: 1, scale: 1 }}
+      transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+      viewport={{ once: false }}
+    >
+      <button
+        className="w-full flex items-center justify-between text-left focus:outline-none"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="flex items-center gap-2 text-2xl font-bold text-libr-secondary">
+          <span className="w-10 h-10 bg-libr-secondary rounded-lg flex items-center justify-center">
+            {/* Icon with libr-primary color */}
+            {React.isValidElement(icon)
+              ? React.cloneElement(icon as React.ReactElement, { className: "w-6 h-6 text-libr-primary" })
+              : icon}
+          </span>
+          {title}
+        </span>
+        <span className="ml-2 text-libr-accent1">{open ? '−' : '+'}</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, y: 10 }}
+            animate={{ height: 'auto', opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: 10 }}
+            transition={{ duration: 0.4 }}
+            className="mt-4"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
-export { TechModules, SecuritySection, CallToActionSection, HowToUse };
+const InstallGuide: React.FC = () => {
+  return (
+    <section id='installation-guide' className='py-20 section-padding'>
+      <div className="container mx-auto max-w-5xl">
+        <motion.div
+          className="text-center mb-12"
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+          viewport={{ once: false }}
+        >
+          <h2 className="text-4xl lg:text-5xl font-bold text-libr-secondary mb-4">
+            Installation Guide
+          </h2>
+        </motion.div>
+
+        <CollapsibleSection
+          title="Linux Installation"
+          icon={<div className='bg-libr-secondary p-1 rounded-lg'><FaLinux/></div>}
+          defaultOpen={false}
+        >
+          <div className="mb-4">
+            <span className="font-semibold text-libr-accent1">Option 1: APT Repository (Ubuntu/Debian) - Recommended</span>
+            <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`wget -qO- https://libr-forum.github.io/libr-apt-repo/libr-repo-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/libr-repo-key.gpg
+echo "deb [signed-by=/usr/share/keyrings/libr-repo-key.gpg] https://libr-forum.github.io/libr-apt-repo/ ./" | sudo tee /etc/apt/sources.list.d/libr.list
+sudo apt update
+sudo apt install libr`}
+            </pre>
+          </div>
+          <div className="mb-4">
+            <span className="font-semibold text-libr-accent1">Option 2: Direct Download - All Distributions</span>
+            <div className="mt-2">
+              <span className="font-semibold">Ubuntu/Debian (.deb package):</span>
+              <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr_1.0.0-beta_amd64.deb
+sudo dpkg -i libr_1.0.0-beta_amd64.deb
+sudo apt-get install -f`}
+              </pre>
+              <span className="font-semibold">Fedora/RHEL/CentOS (.rpm package):</span>
+              <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1.x86_64.rpm
+sudo dnf install ./libr-1.0.0-beta-1.x86_64.rpm
+# or on older systems: sudo yum install ./libr-1.0.0-beta-1.x86_64.rpm`}
+              </pre>
+              <span className="font-semibold">Arch Linux (.pkg.tar.zst package):</span>
+              <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1-x86_64.pkg.tar.zst
+sudo pacman -U libr-1.0.0-beta-1-x86_64.pkg.tar.zst`}
+              </pre>
+            </div>
+          </div>
+          <div className="mb-4">
+            <span className="font-semibold text-libr-accent1">Option 3: Binary Installation</span>
+            <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-linux-amd64
+chmod +x libr-linux-amd64
+sudo mv libr-linux-amd64 /usr/local/bin/libr`}
+            </pre>
+          </div>
+          <div className="mb-4">
+            <span className="font-semibold text-libr-accent1">Solving WebKit Library Issues</span>
+            <p className="text-muted-foreground text-sm mt-2">Libr uses WebKitGTK for its UI, which may require specific library versions on different distributions:</p>
+            <pre className="bg-muted/30 rounded-lg p-4 text-xs text-left mt-2 overflow-x-auto">
+{`# Ubuntu 24.04 (Noble) and newer:
+sudo apt update
+sudo apt install -y libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so.0 /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18
+
+# Fedora 35+ and newer RHEL/CentOS:
+sudo dnf install webkit2gtk4.1-devel
+sudo ln -sf /usr/lib64/libwebkit2gtk-4.1.so.0 /usr/lib64/libwebkit2gtk-4.0.so.37
+sudo ln -sf /usr/lib64/libjavascriptcoregtk-4.1.so.0 /usr/lib64/libjavascriptcoregtk-4.0.so.18
+
+# Arch Linux:
+sudo pacman -S webkit2gtk-4.1
+sudo ln -sf /usr/lib/libwebkit2gtk-4.1.so.0 /usr/lib/libwebkit2gtk-4.0.so.37
+sudo ln -sf /usr/lib/libjavascriptcoregtk-4.1.so.0 /usr/lib/libjavascriptcoregtk-4.0.so.18
+
+# Generic Linux (if above don't work):
+sudo apt install libwebkit2gtk-4.0-dev
+sudo dnf install webkit2gtk3-devel
+sudo zypper install webkit2gtk3-devel
+sudo pacman -S webkit2gtk`}
+            </pre>
+          </div>
+          <div className="mb-4">
+            <span className="font-semibold text-libr-accent1">Alternative: Automated Installation Script</span>
+            <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`curl -fsSL https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh | bash
+# Or inspect the script first (recommended for security)
+wget https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh
+chmod +x install-libr.sh
+./install-libr.sh`}
+            </pre>
+            <p className="text-muted-foreground text-xs mt-2">
+              The script automatically detects your distribution and handles package installation and library dependencies.
+            </p>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Windows Installation"
+          icon={<span><FaWindows/></span>}
+        >
+          <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`Download the latest Windows release (libr-win-amd64.exe) from the Releases page
+Double-click to run it
+If the app doesn't start, try right-click → Run as administrator`}
+          </pre>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="macOS Installation"
+          icon={<span><FaApple/></span>}
+        >
+          <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`Download the macOS release (libr-darwin-amd64.out) from Releases
+On first run, macOS may block the app. To fix this:
+Go to System Settings → Privacy & Security
+Allow the app under the "Security" section
+Make executable and run:
+chmod +x ./libr-darwin-amd64.out
+./libr-darwin-amd64.out`}
+          </pre>
+          <h3 className="text-2xl font-bold text-libr-secondary mb-4 flex items-center gap-2 mt-8">
+            📋 Verification
+          </h3>
+          <pre className="bg-muted/30 rounded-lg p-4 text-sm text-left mt-2 overflow-x-auto">
+{`libr --version
+libr`}
+          </pre>
+          <p className="text-muted-foreground text-xs mt-2">
+            After installation, you can find Libr in your applications menu under "Network" → "Libr" or run <code>libr</code> from any terminal.
+          </p>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Troubleshooting"
+          icon={<span><FaTools/></span>}
+        >
+          <ul className="list-disc pl-6 text-left text-muted-foreground space-y-2">
+            <li>
+              <strong>Command not found:</strong> Make sure the binary is in your PATH or use the full path to the executable.
+            </li>
+            <li>
+              <strong>Permission denied:</strong> Run <code>chmod +x</code> on the downloaded binary.
+            </li>
+            <li>
+              <strong>WebKit library errors on Linux:</strong> Install the WebKitGTK packages for your distribution as shown above. The error typically looks like: <code>libwebkit2gtk-4.0.so.37: cannot open shared object file</code>. The symlink solutions above resolve compatibility issues.
+            </li>
+            <li>
+              <strong>Package installation fails:</strong> On Debian/Ubuntu: Run <code>sudo apt-get install -f</code> to fix dependencies. On Fedora/RHEL: Ensure EPEL repository is enabled for additional packages. On Arch Linux: Update system with <code>sudo pacman -Syu</code> before installing.
+            </li>
+            <li>
+              <strong>macOS security warnings:</strong> Allow the app in System Settings → Privacy & Security.
+            </li>
+            <li>
+              <strong>Distribution-specific Notes:</strong>
+              <ul className="list-disc pl-6">
+                <li>Ubuntu 24.04+ (Noble): Requires WebKit 4.1 packages and compatibility symlinks.</li>
+                <li>Fedora 35+: May need <code>webkit2gtk4.1-devel</code> package.</li>
+                <li>Arch Linux: Install <code>webkit2gtk-4.1</code> or <code>webkit2gtk</code> packages.</li>
+                <li>RHEL/CentOS 8+: Enable PowerTools/CRB repository for WebKit packages.</li>
+              </ul>
+            </li>
+          </ul>
+        </CollapsibleSection>
+      </div>
+    </section>
+  );
+};
+
+export { TechModules, SecuritySection, CallToActionSection, HowToUse, InstallGuide };

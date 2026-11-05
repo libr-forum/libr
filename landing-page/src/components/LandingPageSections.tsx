@@ -16,10 +16,10 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isLegalPage = ['/privacy-policy', '/terms-and-conditions', '/eula'].includes(location.pathname);
+  const isOtherPage = ['/privacy-policy', '/terms-and-conditions', '/eula', '/install'].includes(location.pathname);
 
   const handleSectionNavigation = (href: string) => {
-    if (isLegalPage && href.startsWith('#')) {
+    if (isOtherPage && href.startsWith('#')) {
       // Navigate to home page and then scroll to section
       navigate('/');
       setTimeout(() => {
@@ -69,27 +69,18 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
       <nav className="container mx-auto section-padding py-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          {isLegalPage ? (
-            <Link to="/" className="flex items-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-                <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
-              </div>
-              <span className="text-2xl font-bold text-libr-secondary">libr</span>
-            </Link>
-          ) : (
-            <a href="#welcome" className="flex items-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-                <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
-              </div>
-              <span className="text-2xl font-bold text-libr-secondary">libr</span>
-            </a>
-          )}
+          <Link to="/" className="flex items-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <img src={icon_transparent} className="w-8 h-8 rounded-lg" />
+            </div>
+            <span className="text-2xl font-bold text-libr-secondary">libr</span>
+          </Link>
         </div>
 
         {/* Desktop Nav Links */}
         <div className="hidden 980:flex items-center space-x-8">
           {navLinks.map(({ href, label, external }) => {
-            if (isLegalPage && !external && href.startsWith('#')) {
+            if (isOtherPage && !external && href.startsWith('#')) {
               return (
                 <button
                   key={href}
@@ -114,7 +105,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
           })}
         </div>
 
-        {/* Mobile Menu Toggle + Theme Toggle */}
+        {/* Mobile Menu Toggle */}
         <div className="flex items-center gap-4 980:gap-2">
           {/* Hamburger Menu (mobile only) */}
           <motion.button
@@ -124,11 +115,22 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             {isMenuOpen ? <X className="w-5 h-5 text-libr-secondary" /> : <Menu className="w-5 h-5 text-libr-secondary" />}
           </motion.button>
 
+          {/* Install Button (desktop only) */}
+          <motion.button
+            onClick={() => navigate('/install')}
+            className="hidden 980:flex w-10 h-10 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md items-center justify-center transition-all duration-200 backdrop-blur-sm hover:border-libr-accent1/30 ml-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title="Install libr"
+          >
+            <Download className="w-5 h-5 text-libr-secondary" />
+          </motion.button>
+
           {/* Theme Toggle */}
           {toggleTheme && (
             <motion.button
               onClick={toggleTheme}
-              className="w-10 h-10 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm hover:border-libr-accent1/30"
+              className="w-10 h-10 rounded-lg bg-card border border-border/50 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 backdrop-blur-sm hover:border-libr-accent1/30 ml-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               title={isDark ? "Switch to light mode (Ctrl+Shift+T)" : "Switch to dark mode (Ctrl+Shift+T)"}
@@ -165,7 +167,7 @@ const Header: React.FC<HeaderProps> = ({ isDark = false, toggleTheme }) => {
             className="980:hidden bg-libr-primary/90 backdrop-blur-xl border-t border-border/50 px-6 pb-4 pt-2 flex flex-col space-y-3"
           >
             {navLinks.map(({ href, label, external }) => {
-              if (isLegalPage && !external && href.startsWith('#')) {
+              if (isOtherPage && !external && href.startsWith('#')) {
                 return (
                   <button
                     key={href}
@@ -347,7 +349,7 @@ const Hero:React.FC = () => {
               </div>
               <div className="flex flex-row justify-start mb-4 items-center md:justify-end md:p-8 w-full min-w-0">
                 <p
-                  className="text-muted-foreground opacity-50 md:blur-sm whitespace-nowrap text-[clamp(2rem,8vw,8rem)] pr-0 980:pr-10 text-center 980:text-left"
+                  className="text-muted-foreground opacity-50 whitespace-nowrap text-[clamp(2rem,8vw,8rem)] pr-0 980:pr-10 text-center 980:text-left"
                   style={{
                     lineHeight: 1.1,
                     textAlign: 'left',
@@ -360,11 +362,11 @@ const Hero:React.FC = () => {
               </div>
             </div>
             <div id="join-beta" className="flex flex-col gap-4 w-full items-center justify-center sm:flex-row sm:gap-4 sm:items-center sm:justify-center">
-              <JoinBetaDropdown />
-              {/* <button onClick={() => window.open("https://forms.gle/udt5zATFogCGQtUTA", '_blank')} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
+              {/* <JoinBetaDropdown /> */}
+              <button onClick={()=>window.location.href='/install'} className="libr-button bg-libr-secondary text-libr-primary flex flex-row items-center w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Download className="w-5 h-5 mr-3" />
-                Join Beta
-              </button> */}
+                Install libr
+              </button>
               <button onClick={() => window.open("https://medium.com/@libr.forum/libr-a-moderated-censorship-resilient-social-network-framework-ecfcffb3fdae", '_blank')} className="flex flex-row items-center libr-button-secondary text-libr-secondary border-xl border-libr-secondary w-full max-w-xs mx-auto sm:w-full sm:max-w-xs sm:mx-auto md:w-auto md:max-w-none md:mx-0">
                 <Users className="w-5 h-5 mr-3" />
                 View Docs

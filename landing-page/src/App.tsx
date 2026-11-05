@@ -8,6 +8,7 @@ import LandingPage from './components/LandingPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import EULA from './pages/EULA';
+import Install from './pages/Install';
 
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -144,6 +145,7 @@ const App: React.FC = () => {
             <Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
             <Route path="/eula" element={<EULA isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+            <Route path="/install" element={<Install isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
           </Routes>
         </main>
       </div>

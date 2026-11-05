@@ -1,0 +1,10 @@
+# Ignore the log file
+DEBUG_LOGS.log
+
+# Ignore any build artifacts
+/build/
+
+# You might also want to ignore key files if they are generated
+# For example:
+*.key
+# /keys/
