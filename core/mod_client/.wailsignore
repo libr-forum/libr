@@ -64,3 +64,15 @@ bun.lockb
 .DS_Store
 Thumbs.db
 ehthumbs.db
+
+# ── Non-Desktop Subprojects & External Services ───────────────────────────────
+mobile-app/
+services/
+services/librserver/
+services/relay/
+core/db/
+landing-page/
+packaging/
+scripts/
+docs/
+
