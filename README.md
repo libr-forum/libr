@@ -1,351 +1,289 @@
 # LIBR
 
-A Moderated, Censorship-Resilient Social Network Framework
-
-## Overview
-
-LIBR is a protocol for building digital public forums and social networks that are both provably censorship-resilient and safeguarded against harmful or illegal content.
-
-Traditional centralized platforms (Facebook, Reddit, Twitter, etc.) control their own databases, which lets them remove or block content at will—undermining free expression. Fully decentralized networks avoid that single point of control, but without any moderation they may become overrun by offensive or malicious posts, turning communities chaotic rather than constructive.
-
-LIBR strikes a balance by using a replicated DHT (Distributed Hash Table) setting for partial immutability—cheaper and faster than storing every message on a full blockchain—while storing necessary global configuration on a public Blockchain (eg., Ethereum). At the same time, content, for each community, is vetted (or approved) by a decentralized moderation quorum (a majority of moderators), so that no single moderator can decide the fate of a message. Only when a majority of moderators approve does a message get stored and shared, keeping the forum both open and safe.
-
-## 🚀 New Contributors Welcome!
-
-**First time contributing to open source?** We're here to help! 
-
-👉 **Start with our [Beginner Guide](docs/BEGINNER_GUIDE.md)** - it has everything you need to get started, explained in simple terms.
-
-💬 **Questions?** Don't hesitate to ask! Create a new issue or contact our mentors.
-
-## Architecture
-
-LIBR is built with the following components:
-
-1. **Protocol and Networking Layer (Go)**: The backbone of the system, implementing the DHT, cryptographic operations, moderation quorum mechanisms, and peer-to-peer communication.
-2. **Blockchain Layer (Solidity)**: Smart contracts that manage global state, moderator registry, and community governance and incentivization.
-3. **Web Client (React)**: User-friendly interface for interacting with LIBR communities.
-4. **Mobile Client (Flutter)**: Native mobile experience for broader accessibility.
-
-## Tech Stack
-
-- **Smart Contracts**: Solidity
-- **Blockchain Interface**: Go Ethereum
-- **Protocol and Networking Logic**: Go Lang
-- **Web Client**: React
-- **Mobile Client**: Flutter
-
-## Getting Started
-
-### Installation
-
-Choose your installation method based on your operating system:
-
-#### 🐧 Linux Installation
-
-**Option 1: APT Repository (Ubuntu/Debian) - Recommended**
-```bash
-# Add GPG key for repository verification
-wget -qO- https://libr-forum.github.io/libr-apt-repo/libr-repo-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/libr-repo-key.gpg
-
-# Add APT repository to sources
-echo "deb [signed-by=/usr/share/keyrings/libr-repo-key.gpg] https://libr-forum.github.io/libr-apt-repo/ ./" | sudo tee /etc/apt/sources.list.d/libr.list
-
-# Update package index and install
-sudo apt update
-sudo apt install libr
-```
-
-**Option 2: Direct Download - All Distributions**
-
-*Ubuntu/Debian (.deb package):*
-```bash
-# Download the latest Debian package
-wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr_1.0.0-beta_amd64.deb
-
-# Install the package
-sudo dpkg -i libr_1.0.0-beta_amd64.deb
-
-# Fix any missing dependencies
-sudo apt-get install -f
-```
-
-*Fedora/RHEL/CentOS (.rpm package):*
-```bash
-# Download the latest RPM package
-wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1.x86_64.rpm
-
-# Install the package
-sudo dnf install ./libr-1.0.0-beta-1.x86_64.rpm
-# or on older systems: sudo yum install ./libr-1.0.0-beta-1.x86_64.rpm
-```
-
-*Arch Linux (.pkg.tar.zst package):*
-```bash
-# Download the latest Arch package
-wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-1.0.0-beta-1-x86_64.pkg.tar.zst
-
-# Install the package
-sudo pacman -U libr-1.0.0-beta-1-x86_64.pkg.tar.zst
-```
-
-**Option 3: Binary Installation**
-
-If packages aren't available for your distribution:
-```bash
-# Download the binary
-wget https://github.com/libr-forum/Libr/releases/download/v1.0.0-beta/libr-linux-amd64
-
-# Make executable and install
-chmod +x libr-linux-amd64
-sudo mv libr-linux-amd64 /usr/local/bin/libr
-```
-
-**🔧 Solving WebKit Library Issues**
-
-Libr uses WebKitGTK for its UI, which may require specific library versions on different distributions:
-
-*Ubuntu 24.04 (Noble) and newer:*
-```bash
-# Install newer WebKitGTK packages
-sudo apt update
-sudo apt install -y libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
-
-# Create compatibility symlinks
-sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 \
-            /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37
-
-sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so.0 \
-            /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18
-```
-
-*Fedora 35+ and newer RHEL/CentOS:*
-```bash
-# Install WebKitGTK packages
-sudo dnf install webkit2gtk4.1-devel
-
-# Create compatibility symlinks if needed
-sudo ln -sf /usr/lib64/libwebkit2gtk-4.1.so.0 \
-            /usr/lib64/libwebkit2gtk-4.0.so.37
-
-sudo ln -sf /usr/lib64/libjavascriptcoregtk-4.1.so.0 \
-            /usr/lib64/libjavascriptcoregtk-4.0.so.18
-```
-
-*Arch Linux:*
-```bash
-# Install WebKitGTK package
-sudo pacman -S webkit2gtk-4.1
-
-# Create compatibility symlinks
-sudo ln -sf /usr/lib/libwebkit2gtk-4.1.so.0 \
-            /usr/lib/libwebkit2gtk-4.0.so.37
-
-sudo ln -sf /usr/lib/libjavascriptcoregtk-4.1.so.0 \
-            /usr/lib/libjavascriptcoregtk-4.0.so.18
-```
-
-*Generic Linux (if above don't work):*
-```bash
-# Try installing WebKit development packages
-# Ubuntu/Debian:
-sudo apt install libwebkit2gtk-4.0-dev
-
-# Fedora/RHEL/CentOS:
-sudo dnf install webkit2gtk3-devel
-
-# OpenSUSE:
-sudo zypper install webkit2gtk3-devel
-
-# Arch Linux:
-sudo pacman -S webkit2gtk
-```
-
-**Alternative: Automated Installation Script**
-
-If you prefer automatic detection and installation:
-```bash
-# Download and run the installation script
-curl -fsSL https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh | bash
-
-# Or inspect the script first (recommended for security)
-wget https://raw.githubusercontent.com/libr-forum/Libr/main/scripts/install-libr.sh
-chmod +x install-libr.sh
-./install-libr.sh
-```
-
-The script automatically detects your distribution and handles package installation and library dependencies.
-
-#### 🪟 Windows
-
-1. Download the latest **Windows release** (`libr-win-amd64.exe`) from the [Releases](../../releases) page
-2. Double-click to run it
-   - If the app doesn't start, try **right-click → Run as administrator**
-
-#### 🍎 macOS
-
-1. Download the **macOS release** (`libr-darwin-amd64.out`) from [Releases](../../releases)
-2. On first run, macOS may block the app. To fix this:
-   - Go to **System Settings → Privacy & Security**
-   - Allow the app under the "Security" section
-3. Make executable and run:
-   ```bash
-   chmod +x ./libr-darwin-amd64.out
-   ./libr-darwin-amd64.out
-   ```
-
-#### 📋 Verification
-
-After installation, verify that LIBR is working:
-```bash
-# Check if libr is installed
-libr --version
-
-# Launch the application
-libr
-```
-
-**After installation, you can:**
-- Find Libr in your applications menu under "Network" → "Libr"
-- Run `libr` from any terminal
-- The application includes desktop integration with proper icons and shortcuts
-
-The application should appear in your applications menu under "Network" → "Libr".
-
-#### 🔧 Troubleshooting
-
-**Common Issues:**
-
-- **"Command not found" error**: Make sure the binary is in your PATH or use the full path to the executable
-- **Permission denied**: Run `chmod +x` on the downloaded binary
-- **WebKit library errors on Linux**: 
-  - Install the WebKitGTK packages for your distribution as shown above
-  - The error typically looks like: `libwebkit2gtk-4.0.so.37: cannot open shared object file`
-  - This affects Ubuntu 24.04+, modern Fedora, and Arch Linux due to library version changes
-  - The symlink solutions above resolve compatibility issues
-- **Package installation fails**: 
-  - On Debian/Ubuntu: Run `sudo apt-get install -f` to fix dependencies
-  - On Fedora/RHEL: Ensure EPEL repository is enabled for additional packages
-  - On Arch Linux: Update system with `sudo pacman -Syu` before installing
-- **macOS security warnings**: Allow the app in System Settings → Privacy & Security
-
-**Distribution-specific Notes:**
-
-- **Ubuntu 24.04+ (Noble)**: Requires WebKit 4.1 packages and compatibility symlinks
-- **Fedora 35+**: May need `webkit2gtk4.1-devel` package
-- **Arch Linux**: Install `webkit2gtk-4.1` or `webkit2gtk` packages
-- **RHEL/CentOS 8+**: Enable PowerTools/CRB repository for WebKit packages
-
-**Need help?** 
-- 📋 [Submit feedback](https://docs.google.com/forms/d/e/1FAIpQLSdOnq6uPpLYEQIueuHtvydMI8q1CMHC_TJzDkUDUU8UCGo4ew/viewform)
-- 🐛 [Report issues](https://github.com/libr-forum/Libr/issues)
+> A Moderated, Censorship-Resilient Decentralized Social Network Framework.
 
 ---
 
+## 📖 Overview
 
+**LIBR** is a decentralized protocol and application framework designed for digital public forums that are both **provably censorship-resilient** and **protected against harmful content**.
 
-## Project Structure
+Traditional centralized social platforms exercise unilateral control over their databases, enabling arbitrary censorship and shadowbanning. Purely unmoderated decentralized networks, on the other hand, often devolve into spam and harassment.
 
-All source code is organized under the `src/` directory:
+LIBR balances free speech and community safety through:
+1. **Decentralized Storage (DHT)**: Messages are stored across a replicated Distributed Hash Table rather than a single corporate server.
+2. **Multi-Moderator Quorum Consensus**: Content requiring review (e.g. image attachments or reported posts) is submitted to an open quorum of independent moderators. A message is only approved or deleted when a majority threshold of cryptographic moderator signatures is reached.
+3. **Decoupled Architecture**: Discovery, circuit relays, storage nodes, desktop clients, and mobile clients interact seamlessly over libp2p.
+
+---
+
+## 🏛️ System Architecture
 
 ```
-src/
-├── core-protocol/  # Go - Core LIBR protocol and moderation logic
-├── network/        # Go - P2P networking and DHT operations
-├── web-client/     # React/TypeScript - Web interface
-├── mobile-client/  # Flutter/Dart - Mobile application
-├── contracts/      # Solidity - Smart contracts
-└── tests/          # Integration and end-to-end tests
+                  ┌─────────────────────────────────────────┐
+                  │        services/librserver              │
+                  │   (Discovery, Auth & Node Registry)     │
+                  └───────────────────▲─────────────────────┘
+                                      │ HTTP / REST
+         ┌────────────────────────────┼────────────────────────────┐
+         │                            │                            │
+┌────────┴────────┐          ┌────────┴────────┐          ┌────────┴────────┐
+│ services/relay  │          │    core/db      │          │ core/mod_client │
+│ (Circuit Relay) │          │  (Storage Node) │          │ (Desktop & Mod) │
+└────────┬────────┘          └────────┬────────┘          └────────┬────────┘
+         │ libp2p                     │ libp2p                     │ libp2p
+         └────────────────────────────┼────────────────────────────┘
+                                      │
+                             ┌────────┴────────┐
+                             │   mobile-app    │
+                             │ (React Native)  │
+                             └─────────────────┘
 ```
 
-### Language Guidelines by Directory
+The system consists of 5 main components:
+1. **`services/librserver`**: Node.js & MongoDB discovery service. Manages active nodes, online moderators, relays, and Ed25519 authentication.
+2. **`services/relay`**: Standalone libp2p Circuit Relay (v2) for NAT traversal and peer routing.
+3. **`core/mod_client`**: Wails v2 Desktop application for users and moderators with multi-provider LLM auto-moderation (Groq, Gemini, OpenAI, DeepSeek).
+4. **`core/db`**: Distributed Hash Table (DHT) storage node that persists message certificates and report certificates.
+5. **`mobile-app`**: Cross-platform mobile client (React Native / Expo) embedding a compiled Go Mobile libp2p runtime (`go-core`).
 
-- **`src/core-protocol/`**: Go (1.21+) - Core LIBR protocol implementation, moderation logic, and data structures
-- **`src/network/`**: Go (1.21+) - Peer-to-peer networking, DHT operations, and node discovery
-- **`src/web-client/`**: React with TypeScript - User-facing web application with modern UI/UX
-- **`src/mobile-client/`**: Flutter/Dart - Cross-platform mobile application
-- **`src/contracts/`**: Solidity - Ethereum smart contracts for global state management
-- **`src/tests/`**: Mixed (Go/JS/Dart) - Integration tests and test utilities
+---
 
-### Running the Components
+## 📋 Prerequisites
 
-```bash
-# Core protocol
-cd src/core-protocol
-go run main.go
+Ensure your development environment has the following installed:
 
-# Network layer
-cd src/network
-go run main.go
+* **Go**: `1.21+` (Go 1.23+ recommended) — [Download](https://go.dev/dl/)
+* **Node.js**: `18.x` or `20.x` LTS & **npm** — [Download](https://nodejs.org/)
+* **MongoDB**: Local MongoDB instance or free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
+* **Wails CLI** (for Desktop client):
+  ```bash
+  go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  ```
+* **For Mobile Development (Android)**:
+  * Android Studio, Android SDK (API 34/35), Android NDK (r27+), and JDK 17
+  * `gomobile`:
+    ```bash
+    go install golang.org/x/mobile/cmd/gomobile@latest
+    gomobile init
+    ```
 
-# Web client
-cd src/web-client
-npm start
+---
 
-# Mobile client
-cd src/mobile-client
-flutter run
+## 🚀 Setup & Execution Guide
 
-# Smart contracts (local development)
-cd src/contracts
-npx hardhat node
+Follow these steps to run each component locally or in a distributed environment.
+
+```
+Recommended Startup Order:
+1. services/librserver  ──►  2. services/relay  ──►  3. core/db  ──►  4. core/mod_client  ──►  5. mobile-app
 ```
 
-## 🛠️ Helpful Tools for Contributors
+---
 
-We've created some tools to make contributing easier:
+### 1. Discovery Server (`services/librserver`)
 
-```bash
-# 🚀 Quick project setup
-./scripts/setup.sh
+The discovery server maintains the active directory of online moderators, storage nodes, and relays.
 
-# 🔍 Check if your commit message is correct
-./scripts/validate-commit.sh "feat: add new feature"
+1. **Navigate to directory**:
+   ```bash
+   cd services/librserver
+   ```
 
-# 📦 Build all package types (Debian, RPM, Arch)
-./scripts/build-packages.sh
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-# 📦 Build specific package type
-./scripts/build-deb.sh        # Debian package only
-nfpm pkg --packager rpm --config packaging/nfpm-rpm.yaml --target dist/  # RPM
-nfpm pkg --packager archlinux --config packaging/nfpm-arch.yaml --target dist/  # Arch
+3. **Configure environment variables**:
+   Create a `.env` file (refer to `.env.example`):
+   ```env
+   PORT=3000
+   MONGO_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/
+   ENTRY_TTL_SECONDS=180
+   EXPIRY_JOB_INTERVAL_SECONDS=90
+   LOG_LEVEL=info
+   ```
 
-# 🧪 Test installation instructions
-./scripts/test-readme-validation.sh    # Validate README instructions
-./scripts/test-installation.sh         # Test with Docker containers
+4. **Start the server**:
+   ```bash
+   npm start
+   # or for development:
+   node src/index.js
+   ```
+   *Health Check*: Verify at `http://localhost:3000/health`.
 
-# 🗃️ Create APT repository
-./scripts/create-apt-repo.sh
+---
 
-# 🧪 Test APT repository
-./scripts/test-repository.sh
+### 2. Circuit Relay Server (`services/relay`)
 
-# Examples:
-./scripts/validate-commit.sh "feat: add dark mode"        # ✅ Good
-./scripts/validate-commit.sh "fix: button not working"    # ✅ Good  
-./scripts/validate-commit.sh "added new stuff"            # ❌ Bad format
-```
+The relay facilitates peer-to-peer connectivity for clients and nodes located behind NATs and firewalls.
 
-## Development Roadmap
+1. **Navigate to directory**:
+   ```bash
+   cd services/relay
+   ```
 
-- [x] Prototype implementation
-- [ ] Blockchain integration with Ethereum
-- [ ] Complete web client implementation
-- [ ] Mobile client development
-- [ ] Governance model implementation
-- [ ] Core protocol optimization
-- [ ] Comprehensive testing and security audits
-- [ ] Public beta launch
+2. **Install Go dependencies**:
+   ```bash
+   go mod tidy
+   ```
 
-## Contributing
+3. **Set environment variables**:
+   * **Linux / macOS**:
+     ```bash
+     export SERVER_URL="http://localhost:3000"
+     export RELAY_DOMAIN="localhost"   # or public domain/IP in production
+     export PORT="10000"
+     ```
+   * **Windows (PowerShell)**:
+     ```powershell
+     $env:SERVER_URL = "http://localhost:3000"
+     $env:RELAY_DOMAIN = "localhost"
+     $env:PORT = "10000"
+     ```
 
-We welcome contributions from the community! Please check out our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get involved.
+4. **Run the relay**:
+   ```bash
+   go run relay.go
+   ```
+   The relay will generate its cryptographic identity, start listening on `/ip4/0.0.0.0/tcp/10000/ws`, and automatically register its multiaddress with `librserver`.
 
-## Documentation
+---
 
-For more detailed information about the LIBR protocol and its implementation, check out:
+### 3. Storage / DHT Node (`core/db`)
 
-## License
+Storage nodes listen on libp2p, replicate the DHT routing table, validate moderator certificates, and persist messages.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+1. **Navigate to directory**:
+   ```bash
+   cd core/db
+   ```
 
+2. **Configure environment**:
+   Create a `core/db/.env` file or export the variables:
+   ```env
+   SERVER_URL=http://localhost:3000
+   DB_PATH=data/libr.db
+   ```
+
+3. **Run the node**:
+   ```bash
+   go run main.go
+   ```
+   The storage node will query `librserver` for active relays, establish libp2p connections, register itself, and begin serving DHT requests.
+
+---
+
+### 4. Moderator & Desktop Client (`core/mod_client`)
+
+The Desktop application functions both as a client for regular messaging and as a full moderation workstation with automated AI review.
+
+1. **Navigate to directory**:
+   ```bash
+   cd core/mod_client
+   ```
+
+2. **Install frontend dependencies**:
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+3. **Configure discovery server (optional)**:
+   * Defaults to production or can be overridden via environment:
+     ```bash
+     # Linux / macOS
+     export SERVER_URL="http://localhost:3000"
+     # Windows (PowerShell)
+     $env:SERVER_URL="http://localhost:3000"
+     ```
+
+4. **Run in development mode (with Hot Reload)**:
+   ```bash
+   wails dev
+   ```
+
+5. **Build standalone binary**:
+   ```bash
+   wails build
+   ```
+   The compiled executable will be created in `core/mod_client/build/bin/`.
+
+6. **Configuring AI Auto-Moderation**:
+   * Open the app and navigate to **Mod Config**.
+   * Select your preferred LLM provider (**Groq**, **Gemini / Google NLP**, **OpenAI**, or **DeepSeek**).
+   * Enter your API key and save. Keys are securely stored locally on your device in `%APPDATA%\libr\modconfig\modkeys.json` (Windows) or `~/.config/libr/` (Linux/macOS).
+
+---
+
+### 5. Mobile Client (`mobile-app`)
+
+The mobile client is an Expo React Native application backed by a compiled Go library (`gomobile`) for decentralized networking and background moderation.
+
+1. **Compile Go Core for Android**:
+   * **Windows (PowerShell)**:
+     ```powershell
+     cd mobile-app/go-core
+     .\build-android.ps1
+     cd ../..
+     ```
+   * **Linux / macOS**:
+     ```bash
+     cd mobile-app/go-core
+     chmod +x build-android.sh
+     ./build-android.sh
+     cd ../..
+     ```
+   *This compiles `libr-core.aar` into `mobile-app/android/app/libs/libr-core.aar`.*
+
+2. **Install mobile dependencies**:
+   ```bash
+   cd mobile-app
+   npm install
+   ```
+
+3. **Run on Android device or emulator**:
+   Ensure an Android emulator is running or a physical device is connected with USB debugging enabled (`adb devices`).
+   ```bash
+   npx expo run:android
+   ```
+
+4. **Start Metro bundler (if not started automatically)**:
+   ```bash
+   npx expo start
+   ```
+
+---
+
+## 🔒 Security & Privacy Architecture
+
+* **Decentralized Identities**: Ed25519 keypairs are generated and stored exclusively on each user's local hardware (`context.filesDir` on Android, `%APPDATA%\libr` on desktop). No private keys ever leave the client.
+* **Incognito Mode**: Allows switching between persistent identity and disposable anonymous identities on demand.
+* **Moderation Threshold**: Messages with media attachments require consensus from multiple independent moderators before being committed to the public feed.
+* **Zero Secrets in Repository**: Database connection strings, API keys, and environment variables are excluded via `.gitignore`.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions across all layers of the LIBR stack!
+
+1. Fork the repository and create your branch from `main`:
+   ```bash
+   git checkout -b feat/your-feature-name
+   ```
+2. Ensure commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
+   ```
+   feat: add support for custom relays
+   fix: handle websocket reconnection timeout
+   ```
+3. Test all modified components locally before opening a pull request.
+4. Submit a Pull Request targeting `main`.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
