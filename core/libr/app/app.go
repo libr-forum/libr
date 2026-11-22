@@ -333,6 +333,9 @@ func (a *App) cert(ctx context.Context, hash string) (proto.MsgCert, error) {
 	return a.client.Get(ctx, h)
 }
 
+// PeerID is this node's libp2p peer ID.
+func (a *App) PeerID() string { return a.host.ID().String() }
+
 // Status is the network state for the UI.
 type Status struct {
 	Online       bool `json:"online"`

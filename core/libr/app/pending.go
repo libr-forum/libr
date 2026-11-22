@@ -22,7 +22,10 @@ const Expiry = 7 * 24 * time.Hour
 // PendingInfo is a post or report of the user's that is waiting for moderators, or
 // (in OnFinalized) how it ended.
 type PendingInfo struct {
-	ID        string `json:"id"`
+	ID string `json:"id"`
+	// Key is what the UI tracks the item by: the reported post's hash for a report,
+	// ID for a post (which has no hash until it is published).
+	Key       string `json:"key"`
 	Kind      string `json:"kind"` // post | report
 	Community string `json:"community"`
 	Content   string `json:"content"`          // the post (own post, or the reported one)
@@ -44,7 +47,12 @@ type record struct {
 
 func (r *record) info(status string) PendingInfo {
 	ap, rj := r.P.Tally()
-	return PendingInfo{ID: r.ID, Kind: r.P.Kind, Community: r.P.Cert.Msg.Community, Content: string(r.P.Cert.Msg.Content),
+	key := r.ID
+	if r.P.Kind == forum.KindReport {
+		h := r.P.Cert.Hash()
+		key = hex.EncodeToString(h[:])
+	}
+	return PendingInfo{ID: r.ID, Key: key, Kind: r.P.Kind, Community: r.P.Cert.Msg.Community, Content: string(r.P.Cert.Msg.Content),
 		Reason: r.P.Reason, Created: r.Created, Approved: ap, Rejected: rj, Waiting: r.P.Waiting, Status: status}
 }
 
