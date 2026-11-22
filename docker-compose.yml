@@ -1,15 +1,23 @@
+# Run one LIBR v2 DB node. Put community files (*.json moderator sets) in ./communities
+# and set LIBR_RELAYS / LIBR_BOOTSTRAP in core/db/.env (see core/db/main.go).
 services:
   dbnode:
     build:
       context: .
       dockerfile: core/db/Dockerfile
     env_file:
-      - core/db/.env
+      - path: core/db/.env
+        required: false
     environment:
-      - DB_ENV_PATH=/app/core/db/.env
+      LIBR_DATA_DIR: /data
+      LIBR_COMMUNITIES: /communities
     volumes:
-      - ./core/db:/app/core/db:ro
-      - ./core/libr:/app/core/libr
-    # ports:
-    #   - "8080:8080"
+      - dbnode-data:/data
+      - ./communities:/communities:ro
+    ports:
+      - "4001:4001"
+      - "4001:4001/udp"
+    restart: unless-stopped
 
+volumes:
+  dbnode-data:
