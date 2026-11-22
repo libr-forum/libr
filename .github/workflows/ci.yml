@@ -126,4 +126,4 @@ jobs:
       - name: DB node
         run: docker build -f core/db/Dockerfile -t libr-db:ci .
       - name: Relay
-        run: docker build -t libr-relay:ci services/relay
+        run: docker build -f services/relay/Dockerfile -t libr-relay:ci .

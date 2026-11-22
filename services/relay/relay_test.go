@@ -2,73 +2,71 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"crypto/rand"
+	"io"
 	"testing"
-	"time"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
-func newHost(t *testing.T) host.Host {
-	t.Helper()
-	h, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"))
+// TestRelaysOpaqueStream: two peers that cannot dial each other exchange bytes through
+// the relay over a circuit. The relay only forwards; it has no application handler.
+func TestRelaysOpaqueStream(t *testing.T) {
+	ctx := context.Background()
+	key, _, _ := libp2pcrypto.GenerateEd25519Key(rand.Reader)
+	relay, err := newRelay(key, []string{"/ip4/127.0.0.1/tcp/0"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { h.Close() })
-	return h
-}
-
-// sendRegister opens a /chat/1.0.0 stream from c to relay and registers as claimed.
-func sendRegister(t *testing.T, c, relay host.Host, claimed string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := c.Connect(ctx, peer.AddrInfo{ID: relay.ID(), Addrs: relay.Addrs()}); err != nil {
-		t.Fatal(err)
+	defer relay.Close()
+	if n := len(relay.Mux().Protocols()); n == 0 {
+		t.Fatal("no protocols")
 	}
-	s, err := c.NewStream(ctx, relay.ID(), "/chat/1.0.0")
+	for _, p := range relay.Mux().Protocols() {
+		if p == "/chat/1.0.0" {
+			t.Fatal("v1 application proxy still registered")
+		}
+	}
+	ri := peer.AddrInfo{ID: relay.ID(), Addrs: relay.Addrs()}
+
+	// Listener: no listen addresses, so the only way in is the relay.
+	b, err := libp2p.New(libp2p.NoListenAddrs, libp2p.EnableRelay())
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _ := json.Marshal(reqFormat{Type: "register", PeerID: claimed})
-	if _, err := s.Write(b); err != nil {
+	defer b.Close()
+	if err := b.Connect(ctx, ri); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CloseWrite(); err != nil {
+	if _, err := client.Reserve(ctx, b, ri); err != nil {
 		t.Fatal(err)
 	}
-	// Wait for the relay to finish handling the request and close the stream (EOF).
-	_, _ = s.Read(make([]byte, 1))
-	_ = s.Close()
-}
+	b.SetStreamHandler("/test/echo", func(s network.Stream) { _, _ = io.Copy(s, s); _ = s.Close() })
 
-func lookup(id string) string {
-	mu.RLock()
-	defer mu.RUnlock()
-	return IDmap[id]
-}
-
-func TestRegisterBindsToAuthenticatedPeer(t *testing.T) {
-	relay := newHost(t)
-	relay.SetStreamHandler("/chat/1.0.0", handleChatStream)
-	victim, attacker := newHost(t), newHost(t)
-
-	sendRegister(t, attacker, relay, victim.ID().String())
-	if got := lookup(victim.ID().String()); got != "" {
-		t.Fatalf("attacker hijacked victim's ID: IDmap[victim]=%s", got)
+	a, err := libp2p.New(libp2p.NoListenAddrs, libp2p.EnableRelay())
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	sendRegister(t, victim, relay, victim.ID().String())
-	if got := lookup(victim.ID().String()); got != victim.ID().String() {
-		t.Fatalf("honest register: IDmap[victim]=%q", got)
+	defer a.Close()
+	circuit := ma.StringCast(relay.Addrs()[0].String() + "/p2p/" + relay.ID().String() + "/p2p-circuit")
+	if err := a.Connect(ctx, peer.AddrInfo{ID: b.ID(), Addrs: []ma.Multiaddr{circuit}}); err != nil {
+		t.Fatal(err)
 	}
-
-	// A later spoof must not overwrite the honest entry.
-	sendRegister(t, attacker, relay, victim.ID().String())
-	if got := lookup(victim.ID().String()); got != victim.ID().String() {
-		t.Fatalf("spoof overwrote entry: IDmap[victim]=%q", got)
+	s, err := a.NewStream(network.WithAllowLimitedConn(ctx, "test"), b.ID(), "/test/echo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Write([]byte("ping")); err != nil {
+		t.Fatal(err)
+	}
+	_ = s.CloseWrite()
+	got, err := io.ReadAll(s)
+	if err != nil || string(got) != "ping" {
+		t.Fatalf("echo through relay: %q %v", got, err)
 	}
 }
