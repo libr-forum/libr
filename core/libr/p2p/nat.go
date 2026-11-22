@@ -141,6 +141,9 @@ func Announce(ctx context.Context, h host.Host, d *dht.IpfsDHT) error {
 // refreshed through at least one of them. Connect returns before the DHT has added the
 // peer (that happens after identify), so refreshing straight away walks an empty table.
 func Join(ctx context.Context, h host.Host, d *dht.IpfsDHT, boot []peer.AddrInfo) error {
+	if len(boot) == 0 {
+		return errors.New("no bootstrap peers configured")
+	}
 	var errs []error
 	for _, b := range boot {
 		if err := h.Connect(ctx, b); err != nil {
