@@ -111,8 +111,16 @@ func RelayResources() relayv2.Resources {
 	return rc
 }
 
+// MaxConnsPerIP replaces libp2p's default of 8 concurrent connections per IPv4 address
+// (/56 for IPv6). Everyone behind one campus or carrier NAT shares an address, and
+// with 8 only eight of them could hold a connection (and so a relay reservation) to a
+// given relay or DB node; the rest got CONNECTION_FAILED (found on the LAN devnet:
+// loopback is exempt, so in-process tests cannot show it). The rate limit below still
+// bounds churn.
+const MaxConnsPerIP = 256
+
 // ResourceManager is libp2p's default resource manager with a looser connection-rate
-// limit. The default allows 0.2 new connections/s per IP after a burst of 16, and a
+// limit and per-IP connection cap. The default allows 0.2 new connections/s per IP after a burst of 16, and a
 // relayed connection is charged to the relay's IP, so a peer that opens circuits to
 // several mods and DB nodes through one relay gets "rate limit exceeded" (found by the
 // Docker DHT spike; localhost is exempt, so in-process tests cannot show it).
@@ -122,7 +130,10 @@ func ResourceManager() (network.ResourceManager, error) {
 		IPv6SubnetLimits: []rate.SubnetLimit{{PrefixLength: 56, Limit: rate.Limit{RPS: 20, Burst: 200}}},
 		GracePeriod:      time.Minute,
 	}}
-	return rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()), rcmgr.WithConnRateLimiters(limiter))
+	return rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()), rcmgr.WithConnRateLimiters(limiter),
+		rcmgr.WithLimitPerSubnet(
+			[]rcmgr.ConnLimitPerSubnet{{PrefixLength: 32, ConnCount: MaxConnsPerIP}},
+			[]rcmgr.ConnLimitPerSubnet{{PrefixLength: 56, ConnCount: MaxConnsPerIP}, {PrefixLength: 48, ConnCount: 4 * MaxConnsPerIP}}))
 }
 
 // LimitedOK lets every outbound stream use a limited (relayed) connection. kad-dht does
