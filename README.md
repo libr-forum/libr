@@ -1,289 +1,125 @@
 # LIBR
 
-> A Moderated, Censorship-Resilient Decentralized Social Network Framework.
+> A moderated, censorship-resilient, decentralized forum.
 
----
+LIBR lets a community run a public forum that no single server controls but that is
+still moderated. Posts are stored on many independent storage nodes; a post appears
+only when a quorum of the community's moderators has signed it, and it is removed only
+by a quorum (or by its author). Every reader checks those signatures itself, so a
+storage node or relay that lies is caught, not trusted.
 
-## 📖 Overview
-
-**LIBR** is a decentralized protocol and application framework designed for digital public forums that are both **provably censorship-resilient** and **protected against harmful content**.
-
-Traditional centralized social platforms exercise unilateral control over their databases, enabling arbitrary censorship and shadowbanning. Purely unmoderated decentralized networks, on the other hand, often devolve into spam and harassment.
-
-LIBR balances free speech and community safety through:
-1. **Decentralized Storage (DHT)**: Messages are stored across a replicated Distributed Hash Table rather than a single corporate server.
-2. **Multi-Moderator Quorum Consensus**: Content requiring review (e.g. image attachments or reported posts) is submitted to an open quorum of independent moderators. A message is only approved or deleted when a majority threshold of cryptographic moderator signatures is reached.
-3. **Decoupled Architecture**: Discovery, circuit relays, storage nodes, desktop clients, and mobile clients interact seamlessly over libp2p.
-
----
-
-## 🏛️ System Architecture
+## Architecture
 
 ```
-                  ┌─────────────────────────────────────────┐
-                  │        services/librserver              │
-                  │   (Discovery, Auth & Node Registry)     │
-                  └───────────────────▲─────────────────────┘
-                                      │ HTTP / REST
-         ┌────────────────────────────┼────────────────────────────┐
-         │                            │                            │
-┌────────┴────────┐          ┌────────┴────────┐          ┌────────┴────────┐
-│ services/relay  │          │    core/db      │          │ core/mod_client │
-│ (Circuit Relay) │          │  (Storage Node) │          │ (Desktop & Mod) │
-└────────┬────────┘          └────────┬────────┘          └────────┬────────┘
-         │ libp2p                     │ libp2p                     │ libp2p
-         └────────────────────────────┼────────────────────────────┘
-                                      │
-                             ┌────────┴────────┐
-                             │   mobile-app    │
-                             │ (React Native)  │
-                             └─────────────────┘
+ desktop app (Wails)          Android app (Expo + gomobile)        librctl (CLI)
+        └──────────────┬───────────────┴───────────────┬──────────────┘
+                       │  core/libr/app: the LIBR node every client runs
+                       ▼
+   ┌──────────── libp2p (Noise-encrypted, peer IDs authenticated) ────────────┐
+   │  circuit relays ── forward encrypted bytes for peers behind NAT          │
+   │  DB nodes ──────── store signed posts, feed index, removals (Kademlia DHT)│
+   │  moderators ────── sign approve/reject votes (any user whose key is in    │
+   │                    the community's moderator set, using the desktop app)│
+   └──────────────────────────────────────────────────────────────────────────┘
+   librserver: optional seed list of DB node addresses (bootstrap only)
 ```
 
-The system consists of 5 main components:
-1. **`services/librserver`**: Node.js & MongoDB discovery service. Manages active nodes, online moderators, relays, and Ed25519 authentication.
-2. **`services/relay`**: Standalone libp2p Circuit Relay (v2) for NAT traversal and peer routing.
-3. **`core/mod_client`**: Wails v2 Desktop application for users and moderators with multi-provider LLM auto-moderation (Groq, Gemini, OpenAI, DeepSeek).
-4. **`core/db`**: Distributed Hash Table (DHT) storage node that persists message certificates and report certificates.
-5. **`mobile-app`**: Cross-platform mobile client (React Native / Expo) embedding a compiled Go Mobile libp2p runtime (`go-core`).
+* **Communities** are defined by a genesis file: the moderator set (3f+1 keys, f faulty
+  tolerated), signed by the community's founders. Apps ship these files.
+* **Posting**: the author signs the post and asks every moderator; at 2f+1 approvals
+  the certificate is stored on the 4 DB nodes closest to its hash and indexed in the
+  community's 15-minute feed bucket. It counts as stored after 3 signed receipts.
+* **Human review**: moderators can defer a post (images by default) or a report to a
+  person. The app keeps the item and retries until a quorum has decided (≤ 1 week).
+* **Removal**: a moderator quorum (after a report) or the author signs a tombstone;
+  DB nodes delete the content and refuse new copies of that message.
+* **Reading**: a client fetches the feed index from two nodes, then every post by
+  hash, and keeps only posts that hash correctly and carry a valid quorum.
 
----
+Details: [`core/libr`](core/libr) packages, [`docs/v2-limits.md`](docs/v2-limits.md)
+(abuse limits and known gaps), [`docs/RELEASE.md`](docs/RELEASE.md) (deploying a
+network and releasing).
 
-## 📋 Prerequisites
+## Repository
 
-Ensure your development environment has the following installed:
+| Path | What |
+|---|---|
+| `core/libr` | Shared Go core: `proto` (signed objects), `p2p`, `wire`, `dbnode`, `moderator`, `forum` (client), `app` (node used by both apps), `seeds`, `cmd/librctl` |
+| `core/db` | DB node binary (SQLite) |
+| `core/mod_client` | Desktop app: client and moderator workstation (Wails, React) |
+| `mobile-app` | Android app (Expo / React Native) and its Go bridge (`go-core/`) |
+| `services/relay` | Circuit relay |
+| `services/librserver` | Seed server (in memory, no database) |
+| `testbed/` | Docker end-to-end test network; LAN dev network for the apps |
+| `deploy/` | Production compose file for relays, DB nodes and the seed server |
 
-* **Go**: `1.21+` (Go 1.23+ recommended) — [Download](https://go.dev/dl/)
-* **Node.js**: `18.x` or `20.x` LTS & **npm** — [Download](https://nodejs.org/)
-* **MongoDB**: Local MongoDB instance or free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
-* **Wails CLI** (for Desktop client):
-  ```bash
-  go install github.com/wailsapp/wails/v2/cmd/wails@latest
-  ```
-* **For Mobile Development (Android)**:
-  * Android Studio, Android SDK (API 34/35), Android NDK (r27+), and JDK 17
-  * `gomobile`:
-    ```bash
-    go install golang.org/x/mobile/cmd/gomobile@latest
-    gomobile init
-    ```
+## Quick start: a whole network on your machine
 
----
+Requirements: Go 1.24.4, Node 22, Docker.
 
-## 🚀 Setup & Execution Guide
-
-Follow these steps to run each component locally or in a distributed environment.
-
+```bash
+testbed/e2e.sh                     # Docker: relays, NATed DB nodes, 4 mods, 2 clients, fault tests
+DEVNET_IP=<your LAN ip> testbed/devnet.sh start   # long-running LAN network for the apps
 ```
-Recommended Startup Order:
-1. services/librserver  ──►  2. services/relay  ──►  3. core/db  ──►  4. core/mod_client  ──►  5. mobile-app
+
+`devnet.sh` prints the `LIBR_RELAYS`, `LIBR_BOOTSTRAP` and `LIBR_COMMUNITIES`
+settings for clients. With those exported, the CLI posts and reads:
+
+```bash
+cd core/libr
+go run ./cmd/librctl client submit -community general -text "hello"
+go run ./cmd/librctl client feed -community general
 ```
 
----
+`EXTRA_MODS=<base64 public key>` makes an app identity one of the dev network's
+moderators.
 
-### 1. Discovery Server (`services/librserver`)
+## Desktop app
 
-The discovery server maintains the active directory of online moderators, storage nodes, and relays.
+```bash
+cd core/mod_client/frontend && npm ci && cd ..
+LIBR_RELAYS=... LIBR_BOOTSTRAP=... LIBR_COMMUNITIES=... wails dev -tags webkit2_41
+wails build -tags webkit2_41        # binary in build/bin/
+```
 
-1. **Navigate to directory**:
-   ```bash
-   cd services/librserver
-   ```
+Drop `-tags webkit2_41` outside Ubuntu 24.04-style WebKitGTK 4.1 systems. Moderators
+configure automated review (forbidden words, LLM provider: Groq, Gemini, OpenAI,
+DeepSeek, or Google NLP) under **Mod Config**; API keys stay in the local config
+directory. If the classifier is unavailable, posts go to the human review queue.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+## Android app
 
-3. **Configure environment variables**:
-   Create a `.env` file (refer to `.env.example`):
-   ```env
-   PORT=3000
-   MONGO_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/
-   ENTRY_TTL_SECONDS=180
-   EXPIRY_JOB_INTERVAL_SECONDS=90
-   LOG_LEVEL=info
-   ```
+```bash
+cd mobile-app/go-core && ./build-android.sh   # builds android/app/libs/libr-core.aar
+cd .. && npm ci
+EXPO_PUBLIC_LIBR_RELAYS=... EXPO_PUBLIC_LIBR_BOOTSTRAP=... npx expo run:android
+```
 
-4. **Start the server**:
-   ```bash
-   npm start
-   # or for development:
-   node src/index.js
-   ```
-   *Health Check*: Verify at `http://localhost:3000/health`.
+For a dev network also set `EXPO_PUBLIC_LIBR_COMMUNITY` to the genesis JSON. Release
+builds use the communities and seeds built into the Go core.
 
----
+## Running network infrastructure
 
-### 2. Circuit Relay Server (`services/relay`)
+Relays and DB nodes are plain processes configured by environment variables (see the
+headers of `services/relay/relay.go` and `core/db/main.go`). `deploy/compose.yml` runs
+them on a public host; [`docs/RELEASE.md`](docs/RELEASE.md) is the full checklist,
+including how founders sign a community's genesis on their own machines.
 
-The relay facilitates peer-to-peer connectivity for clients and nodes located behind NATs and firewalls.
+## Security model in one paragraph
 
-1. **Navigate to directory**:
-   ```bash
-   cd services/relay
-   ```
+Keys never leave the device. Relays and DB nodes are untrusted: every connection is
+Noise-encrypted and authenticated to the peer ID the dialer asked for, every stored
+object is signed, and clients verify receipts and posts themselves. Safety needs at
+most f faulty moderators out of 3f+1 per community. Relays still see who talks to
+whom (not what), and some abuse limits are coarse; both are listed in
+[`docs/v2-limits.md`](docs/v2-limits.md). Report vulnerabilities as described in
+[SECURITY.md](SECURITY.md).
 
-2. **Install Go dependencies**:
-   ```bash
-   go mod tidy
-   ```
+## Contributing
 
-3. **Set environment variables**:
-   * **Linux / macOS**:
-     ```bash
-     export SERVER_URL="http://localhost:3000"
-     export RELAY_DOMAIN="localhost"   # or public domain/IP in production
-     export PORT="10000"
-     ```
-   * **Windows (PowerShell)**:
-     ```powershell
-     $env:SERVER_URL = "http://localhost:3000"
-     $env:RELAY_DOMAIN = "localhost"
-     $env:PORT = "10000"
-     ```
+See [CONTRIBUTING.md](CONTRIBUTING.md) (tests, commit format, branches) and, if you
+are new, [docs/BEGINNER_GUIDE.md](docs/BEGINNER_GUIDE.md).
 
-4. **Run the relay**:
-   ```bash
-   go run relay.go
-   ```
-   The relay will generate its cryptographic identity, start listening on `/ip4/0.0.0.0/tcp/10000/ws`, and automatically register its multiaddress with `librserver`.
+## License
 
----
-
-### 3. Storage / DHT Node (`core/db`)
-
-Storage nodes listen on libp2p, replicate the DHT routing table, validate moderator certificates, and persist messages.
-
-1. **Navigate to directory**:
-   ```bash
-   cd core/db
-   ```
-
-2. **Configure environment**:
-   Create a `core/db/.env` file or export the variables:
-   ```env
-   SERVER_URL=http://localhost:3000
-   DB_PATH=data/libr.db
-   ```
-
-3. **Run the node**:
-   ```bash
-   go run main.go
-   ```
-   The storage node will query `librserver` for active relays, establish libp2p connections, register itself, and begin serving DHT requests.
-
----
-
-### 4. Moderator & Desktop Client (`core/mod_client`)
-
-The Desktop application functions both as a client for regular messaging and as a full moderation workstation with automated AI review.
-
-1. **Navigate to directory**:
-   ```bash
-   cd core/mod_client
-   ```
-
-2. **Install frontend dependencies**:
-   ```bash
-   cd frontend
-   npm install
-   cd ..
-   ```
-
-3. **Configure discovery server (optional)**:
-   * Defaults to production or can be overridden via environment:
-     ```bash
-     # Linux / macOS
-     export SERVER_URL="http://localhost:3000"
-     # Windows (PowerShell)
-     $env:SERVER_URL="http://localhost:3000"
-     ```
-
-4. **Run in development mode (with Hot Reload)**:
-   ```bash
-   wails dev
-   ```
-
-5. **Build standalone binary**:
-   ```bash
-   wails build
-   ```
-   The compiled executable will be created in `core/mod_client/build/bin/`.
-
-6. **Configuring AI Auto-Moderation**:
-   * Open the app and navigate to **Mod Config**.
-   * Select your preferred LLM provider (**Groq**, **Gemini / Google NLP**, **OpenAI**, or **DeepSeek**).
-   * Enter your API key and save. Keys are securely stored locally on your device in `%APPDATA%\libr\modconfig\modkeys.json` (Windows) or `~/.config/libr/` (Linux/macOS).
-
----
-
-### 5. Mobile Client (`mobile-app`)
-
-The mobile client is an Expo React Native application backed by a compiled Go library (`gomobile`) for decentralized networking and background moderation.
-
-1. **Compile Go Core for Android**:
-   * **Windows (PowerShell)**:
-     ```powershell
-     cd mobile-app/go-core
-     .\build-android.ps1
-     cd ../..
-     ```
-   * **Linux / macOS**:
-     ```bash
-     cd mobile-app/go-core
-     chmod +x build-android.sh
-     ./build-android.sh
-     cd ../..
-     ```
-   *This compiles `libr-core.aar` into `mobile-app/android/app/libs/libr-core.aar`.*
-
-2. **Install mobile dependencies**:
-   ```bash
-   cd mobile-app
-   npm install
-   ```
-
-3. **Run on Android device or emulator**:
-   Ensure an Android emulator is running or a physical device is connected with USB debugging enabled (`adb devices`).
-   ```bash
-   npx expo run:android
-   ```
-
-4. **Start Metro bundler (if not started automatically)**:
-   ```bash
-   npx expo start
-   ```
-
----
-
-## 🔒 Security & Privacy Architecture
-
-* **Decentralized Identities**: Ed25519 keypairs are generated and stored exclusively on each user's local hardware (`context.filesDir` on Android, `%APPDATA%\libr` on desktop). No private keys ever leave the client.
-* **Incognito Mode**: Allows switching between persistent identity and disposable anonymous identities on demand.
-* **Moderation Threshold**: Messages with media attachments require consensus from multiple independent moderators before being committed to the public feed.
-* **Zero Secrets in Repository**: Database connection strings, API keys, and environment variables are excluded via `.gitignore`.
-
----
-
-## 🤝 Contributing
-
-We welcome contributions across all layers of the LIBR stack!
-
-1. Fork the repository and create your branch from `main`:
-   ```bash
-   git checkout -b feat/your-feature-name
-   ```
-2. Ensure commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
-   ```
-   feat: add support for custom relays
-   fix: handle websocket reconnection timeout
-   ```
-3. Test all modified components locally before opening a pull request.
-4. Submit a Pull Request targeting `main`.
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)
