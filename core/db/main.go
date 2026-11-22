@@ -6,22 +6,23 @@
 //	LIBR_RELAYS       comma-separated relay multiaddrs (with /p2p/<id>) to reserve on
 //	LIBR_BOOTSTRAP    comma-separated multiaddrs of DHT peers to join through
 //	LIBR_PUBLIC       "1" if publicly reachable: also serve as a circuit relay
+//	LIBR_PRIVATE      "1" if behind NAT: reserve on LIBR_RELAYS, advertise circuit addresses only
 package main
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/libr-forum/Libr/core/db/sqlstore"
@@ -41,7 +42,7 @@ func run() error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
-	key, err := loadOrCreateKey(filepath.Join(dir, "node.key"))
+	key, err := p2p.LoadOrCreateKey(filepath.Join(dir, "node.key"))
 	if err != nil {
 		return err
 	}
@@ -69,6 +70,7 @@ func run() error {
 		Listen:       split(env("LIBR_LISTEN", "/ip4/0.0.0.0/tcp/4001,/ip4/0.0.0.0/udp/4001/quic-v1")),
 		Relays:       relays,
 		RelayService: os.Getenv("LIBR_PUBLIC") == "1",
+		Private:      os.Getenv("LIBR_PRIVATE") == "1",
 	})
 	if err != nil {
 		return err
@@ -97,10 +99,29 @@ func run() error {
 	if err := d.Bootstrap(ctx); err != nil {
 		return err
 	}
+	go join(ctx, h, d, boot)
 
 	log.Printf("dbnode %s serving %v; communities %v", h.ID(), h.Addrs(), reg.Communities())
 	<-ctx.Done()
 	return nil
+}
+
+// join retries p2p.Join while no bootstrap peer is reachable (peers start in any order).
+func join(ctx context.Context, h host.Host, d *dht.IpfsDHT, boot []peer.AddrInfo) {
+	for len(boot) > 0 {
+		jctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		err := p2p.Join(jctx, h, d, boot)
+		cancel()
+		if err == nil {
+			log.Printf("joined the DHT; routing table %d", d.RoutingTable().Size())
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(3 * time.Second):
+		}
+	}
 }
 
 func env(k, def string) string {
@@ -137,28 +158,4 @@ func addrInfos(s string) ([]peer.AddrInfo, error) {
 		out = append(out, *ai)
 	}
 	return out, nil
-}
-
-// loadOrCreateKey keeps the node's identity across restarts: its peer ID, and the key
-// its receipts are signed with, derive from this seed.
-func loadOrCreateKey(path string) (ed25519.PrivateKey, error) {
-	seed, err := os.ReadFile(path)
-	switch {
-	case err == nil:
-		if len(seed) != ed25519.SeedSize {
-			return nil, fmt.Errorf("%s: want %d-byte seed, got %d", path, ed25519.SeedSize, len(seed))
-		}
-		return ed25519.NewKeyFromSeed(seed), nil
-	case errors.Is(err, fs.ErrNotExist):
-		seed = make([]byte, ed25519.SeedSize)
-		if _, err := rand.Read(seed); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(path, seed, 0o600); err != nil {
-			return nil, err
-		}
-		return ed25519.NewKeyFromSeed(seed), nil
-	default:
-		return nil, err
-	}
 }

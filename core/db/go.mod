@@ -99,6 +99,8 @@ require (
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
 
+require github.com/libp2p/go-libp2p-kad-dht v0.35.1
+
 require (
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -108,7 +110,6 @@ require (
 	github.com/ipfs/go-datastore v0.9.0 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.35.1 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.8.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.5 // indirect
