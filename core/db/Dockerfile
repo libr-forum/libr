@@ -2,7 +2,8 @@
 FROM golang:1.24.4-alpine
 
 # Install required packages
-RUN apk add --no-cache git libc6-compat
+# go-sqlite3 needs cgo
+RUN apk add --no-cache git build-base
 
 # Set working directory for build
 WORKDIR /build
@@ -14,11 +15,10 @@ COPY core/crypto /build/core/crypto
 # Move into db module
 WORKDIR /build/core/db
 
-# Tidy dependencies
-RUN go mod tidy
+RUN go mod download
 
 # Build the binary to a clean runtime path
-RUN go build -o /app/dbnode .
+RUN CGO_ENABLED=1 go build -o /app/dbnode .
 
 # Use a minimal final image (optional: smaller, safer)
 # If you want a separate stage, you can use `golang:alpine` again instead of scratch

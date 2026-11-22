@@ -1,0 +1,15 @@
+# golangci-lint v1 config. Kept small: the codebase has no lint history, so only
+# checks that catch real bugs are on; tighten as packages are rewritten for v2.
+run:
+  timeout: 5m
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - unused
+issues:
+  # Only code changed since staging is checked; legacy v1 code is replaced in later v2 steps.
+  new-from-merge-base: origin/staging

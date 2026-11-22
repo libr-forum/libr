@@ -28,8 +28,9 @@ Thumbs.db
 # Dependency directories (remove the comment below to include it)
 vendor/
 
-# Go workspace file
-go.work
+# Go workspace: the root go.work is shared (CI uses it); ignore nested ones
+/**/go.work
+!/go.work
 
 # Build directories
 /dist/
