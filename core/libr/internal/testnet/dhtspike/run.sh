@@ -7,7 +7,8 @@ ROOT=../../..   # core/libr
 P="docker compose -p libr-dhtspike -f compose.yml"
 trap '$P --profile probe down -v --remove-orphans >/dev/null 2>&1' EXIT
 
-docker build -q -t libr-dhtspike -f Dockerfile "$ROOT" >/dev/null
+# SKIP_BUILD=1 reuses an existing image (e.g. when the registry is unreachable)
+[ -n "${SKIP_BUILD:-}" ] || docker build -q -t libr-dhtspike -f Dockerfile "$ROOT" >/dev/null
 $P up -d relay-a relay-b
 sleep 2
 $P up -d db1
