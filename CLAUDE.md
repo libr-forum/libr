@@ -10,9 +10,9 @@ Decentralized, moderated forum: libp2p + Kademlia DHT storage + multi-moderator 
 | Path | What | Stack |
 |---|---|---|
 | `services/librserver` | Discovery/registry + Ed25519 challenge auth | Node, Express, MongoDB (`npm start`) |
-| `services/relay` | libp2p Circuit Relay v2 | Go (`relay.go`) |
-| `core/db` | DHT storage node (MsgCert/ReportCert, Kademlia routing) | Go, SQLite (`docker-compose.yml`, `core/db/Dockerfile`) |
-| `core/libr` | **Shared Go core** (desktop + mobile): `client` (submit/fetch/report/cron), `peers`/`network` (libp2p), `mod/*` (moderator handlers, LLM pipeline, mod SQLite), `crypto`, `types`, `cache`, `identity`, `keycache` | Go |
+| `services/relay` | Stock libp2p circuit relay v2 (forwards encrypted bytes only) | Go (`relay.go`, uses `core/libr/p2p`) |
+| `core/db` | v2 DB node binary + SQLite store (`sqlstore/`); logic in `core/libr/dbnode` (see `core/db/db_doc.md`) | Go, SQLite (`docker-compose.yml`, `core/db/Dockerfile`) |
+| `core/libr` | **Shared Go core** (desktop + mobile). v2: `proto` (signed objects), `p2p` (hosts, DHT), `wire` (framing, rate limits, protocol IDs), `dbnode` (storage protocols). v1 still used by the apps until step 6: `client` (submit/fetch/report/cron), `peers`/`network` (libp2p), `mod/*` (moderator handlers, LLM pipeline, mod SQLite), `crypto`, `types`, `cache`, `identity`, `keycache` | Go |
 | `core/mod_client` | Desktop app: thin Wails adapter (`app.go`) over `core/libr` | Go + Wails v2, React/Vite/shadcn frontend |
 | `mobile-app` | Expo / React Native client | TS; native module `modules/LibrCore.ts` → `android/.../LibrCoreModule` |
 | `mobile-app/go-core` | gomobile bridge only (`bridge/` = exported API) over `core/libr` | Go |
