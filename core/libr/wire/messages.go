@@ -94,10 +94,13 @@ type RemoveResp struct {
 type VoteReq = proto.MsgCert
 
 // VoteResp carries the moderator's signed decision; a rejection is a signed vote
-// with Approve false. Err is set when the request itself was refused.
+// with Approve false. Err is set when the request itself was refused. Also the reply
+// to ReportReq.
 type VoteResp struct {
 	Vote *proto.Vote `json:"vote,omitempty"`
-	Err  string      `json:"err,omitempty"`
+	// Pending: the moderator queued the item for human review; ask again later.
+	Pending bool   `json:"pending,omitempty"`
+	Err     string `json:"err,omitempty"`
 }
 
 // Error strings carried in Err fields.

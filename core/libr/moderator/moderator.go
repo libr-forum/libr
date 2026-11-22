@@ -71,8 +71,11 @@ type Mod struct {
 	Key    ed25519.PrivateKey
 	Sets   proto.ModSets
 	Policy Policy
-	Report ReportPolicy     // nil means RemoveIfRejected(Policy)
-	Now    func() time.Time // nil means time.Now
+	Report ReportPolicy // nil means RemoveIfRejected(Policy)
+	// Queue receives items a policy defers (ErrDefer) for a human to decide with
+	// Resolve. Nil: deferrals are rejections.
+	Queue *Queue
+	Now   func() time.Time // nil means time.Now
 
 	authors   *wire.Limiter
 	reporters *wire.Limiter
@@ -104,20 +107,73 @@ func (m *Mod) Register(h host.Host) {
 	reject := func(err error) wire.VoteResp { return wire.VoteResp{Err: err.Error()} }
 	wire.Handle(h, wire.ProtoVote, peers, m.vote, reject)
 	wire.Handle(h, wire.ProtoReport, peers, func(_ peer.ID, r wire.ReportReq) wire.VoteResp {
-		v, err := m.DecideReport(context.Background(), r)
-		if err != nil {
-			return wire.VoteResp{Err: err.Error()}
-		}
-		return wire.VoteResp{Vote: v}
+		return voteResp(m.DecideReport(context.Background(), r))
 	}, reject)
 }
 
 func (m *Mod) vote(_ peer.ID, c wire.VoteReq) wire.VoteResp {
-	v, err := m.Decide(context.Background(), c)
-	if err != nil {
+	return voteResp(m.Decide(context.Background(), c))
+}
+
+func voteResp(v *proto.Vote, err error) wire.VoteResp {
+	switch {
+	case errors.Is(err, ErrPending):
+		return wire.VoteResp{Pending: true}
+	case err != nil:
 		return wire.VoteResp{Err: err.Error()}
 	}
 	return wire.VoteResp{Vote: v}
+}
+
+// queued answers a repeated request from the queue: the human's vote once decided,
+// ErrPending until then. ok is false for items never queued.
+func (m *Mod) queued(key string) (*proto.Vote, bool, error) {
+	if m.Queue == nil {
+		return nil, false, nil
+	}
+	it, ok := m.Queue.get(key)
+	if !ok {
+		return nil, false, nil
+	}
+	if it.Vote == nil {
+		return nil, true, ErrPending
+	}
+	return it.Vote, true, nil
+}
+
+// deferOr queues it when the policy deferred; otherwise signs sign(approve).
+func (m *Mod) deferOr(it Item, approve bool, err error, sign func(bool) proto.Vote) (*proto.Vote, error) {
+	if errors.Is(err, ErrDefer) && m.Queue != nil {
+		if qerr := m.Queue.add(it); qerr != nil {
+			return nil, qerr
+		}
+		return nil, ErrPending
+	}
+	v := sign(approve && err == nil)
+	return &v, nil
+}
+
+// Resolve records a human decision on a queued item and signs the vote that every
+// later request for it receives.
+func (m *Mod) Resolve(key string, approve bool) error {
+	it, ok := m.Queue.get(key)
+	if !ok {
+		return fmt.Errorf("no queued item %q", key)
+	}
+	var v proto.Vote
+	switch it.Kind {
+	case "post":
+		v = proto.SignModVote(m.Key, it.Cert.Msg, it.Epoch, approve)
+	case "report":
+		v = proto.SignRepVote(m.Key, repCert(it.Cert.Msg, it.Epoch, it.Reason), approve)
+	default:
+		return fmt.Errorf("unknown item kind %q", it.Kind)
+	}
+	return m.Queue.decide(key, v)
+}
+
+func repCert(msg proto.Msg, epoch uint64, reason string) proto.RepCert {
+	return proto.RepCert{MsgID: msg.ID(), Community: msg.Community, Epoch: epoch, Reason: reason}
 }
 
 func (m *Mod) now() time.Time {
@@ -146,12 +202,17 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	if err := m.member(msg.Community, c.Epoch); err != nil {
 		return nil, err
 	}
+	if err := proto.VerifyAuthor(c); err != nil {
+		return nil, err
+	}
+	// A queued post is answered before the timestamp check: the author re-asks later.
+	key := PostKey(msg, c.Epoch)
+	if v, ok, err := m.queued(key); ok {
+		return v, err
+	}
 	// Both directions: a backdated message would land in an old feed bucket.
 	if d := now.Sub(time.Unix(msg.Ts, 0)); d > proto.MaxClockSkew || d < -proto.MaxClockSkew {
 		return nil, errors.New("timestamp too far from now")
-	}
-	if err := proto.VerifyAuthor(c); err != nil {
-		return nil, err
 	}
 	if m.authors != nil && !m.authors.Allow(string(msg.Author)) {
 		return nil, wire.ErrRateLimited
@@ -163,8 +224,8 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	if busy := m.decide(func() { ok, err = m.Policy(ctx, msg) }); busy != nil {
 		return nil, busy
 	}
-	v := proto.SignModVote(m.Key, msg, c.Epoch, ok && err == nil)
-	return &v, nil
+	return m.deferOr(Item{Key: key, Kind: "post", Cert: proto.MsgCert{Msg: msg, AuthorSig: c.AuthorSig}, Epoch: c.Epoch}, ok, err,
+		func(approve bool) proto.Vote { return proto.SignModVote(m.Key, msg, c.Epoch, approve) })
 }
 
 // DecideReport checks a report and returns this moderator's signed vote on removing
@@ -186,6 +247,10 @@ func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, 
 		!ed25519.Verify(r.Reporter, proto.ReportBytes(msg.Community, r.Epoch, id, r.Reason), r.Sig) {
 		return nil, errors.New("bad reporter signature")
 	}
+	key := ReportKey(msg, r.Epoch, r.Reason)
+	if v, ok, err := m.queued(key); ok {
+		return v, err
+	}
 	if m.reporters != nil && !m.reporters.Allow(string(r.Reporter)) {
 		return nil, wire.ErrRateLimited
 	}
@@ -200,6 +265,8 @@ func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, 
 	if busy := m.decide(func() { remove, err = policy(ctx, msg, r.Reason) }); busy != nil {
 		return nil, busy
 	}
-	v := proto.SignRepVote(m.Key, proto.RepCert{MsgID: id, Community: msg.Community, Epoch: r.Epoch, Reason: r.Reason}, remove && err == nil)
-	return &v, nil
+	return m.deferOr(Item{Key: key, Kind: "report", Cert: r.Cert, Epoch: r.Epoch, Reason: r.Reason}, remove, err,
+		func(approve bool) proto.Vote {
+			return proto.SignRepVote(m.Key, repCert(msg, r.Epoch, r.Reason), approve)
+		})
 }
