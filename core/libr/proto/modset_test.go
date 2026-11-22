@@ -36,7 +36,13 @@ func TestGenesisChecks(t *testing.T) {
 		{"extra signer", func() ModSet { return sign(base(), founder, key("stranger")) }, founders, false},
 		{"missing a co-founder", func() ModSet { return sign(base(), founder) }, append(founders, pub(key("cofounder"))), false},
 		{"both co-founders", func() ModSet { return sign(base(), founder, key("cofounder")) }, append(founders, pub(key("cofounder"))), true},
-		{"tampered after signing", func() ModSet { s := sign(base(), founder); s.Mods = s.Mods[:len(s.Mods)-1]; s.F = 0; s.Threshold = 1; return s }, founders, false},
+		{"tampered after signing", func() ModSet {
+			s := sign(base(), founder)
+			s.Mods = s.Mods[:len(s.Mods)-1]
+			s.F = 0
+			s.Threshold = 1
+			return s
+		}, founders, false},
 		{"non-zero prev hash", func() ModSet { s := base(); s.PrevHash = Sum([]byte("x")); return sign(s, founder) }, founders, false},
 		{"genesis not epoch 0", func() ModSet { s := base(); s.Epoch = 3; return sign(s, founder) }, founders, false},
 		{"no founders trusted", func() ModSet { return sign(base(), founder) }, nil, false},

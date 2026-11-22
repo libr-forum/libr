@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"errors"
 	"fmt"
@@ -94,4 +95,21 @@ func quorum(set *ModSet, votes []Vote, payload []byte) error {
 		return fmt.Errorf("%d approvals, need %d", len(seen), set.Threshold)
 	}
 	return nil
+}
+
+// VerifyAuthor checks c's message bounds and author signature (what a moderator checks
+// before spending anything on a decision).
+func VerifyAuthor(c MsgCert) error {
+	if len(c.Msg.Content) == 0 || len(c.Msg.Content) > MaxContent {
+		return fmt.Errorf("content length %d out of range", len(c.Msg.Content))
+	}
+	if !verify(c.Msg.Author, c.Msg.Bytes(), c.AuthorSig) {
+		return errors.New("bad author signature")
+	}
+	return nil
+}
+
+// VerifyVote checks v is mod's signed decision on publishing m in epoch.
+func VerifyVote(v Vote, mod ed25519.PublicKey, m Msg, epoch uint64) bool {
+	return bytes.Equal(v.Mod, mod) && verify(mod, ModVoteBytes(m.Community, epoch, m.ID(), v.Approve), v.Sig)
 }

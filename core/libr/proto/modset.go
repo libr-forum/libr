@@ -222,3 +222,15 @@ func (r *Registry) Communities() []string {
 	sort.Strings(out)
 	return out
 }
+
+// Head returns the community's latest verified moderator set (the one authors collect
+// votes from).
+func (r *Registry) Head(community string) (*ModSet, bool) {
+	var head *ModSet
+	for _, s := range r.sets[community] {
+		if head == nil || s.Epoch > head.Epoch {
+			head = s
+		}
+	}
+	return head, head != nil
+}
