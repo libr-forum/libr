@@ -404,15 +404,9 @@ func main() {
 	// Keepalive: periodically log IDmap, ping connected peers, and re-register with the server.
 	go func() {
 		registerTicker := time.NewTicker(4 * time.Minute)
-		logTicker := time.NewTicker(30 * time.Second)
 		defer registerTicker.Stop()
-		defer logTicker.Stop()
 		for {
 			select {
-			case <-logTicker.C:
-				mu.RLock()
-				fmt.Println("[DEBUG] IDmap:", IDmap)
-				mu.RUnlock()
 			case <-registerTicker.C:
 				// Re-register to keep the relay visible in the server registry.
 				go func() {
@@ -457,11 +451,29 @@ func main() {
 	fmt.Println("[INFO] Shutting down relay...")
 }
 
+// maxMsgBytes caps any single request or response the relay reads from a stream.
+const maxMsgBytes = 1 << 20
+
+// registerPeer maps a peer to itself. The claimed ID must be the authenticated remote
+// peer; otherwise anyone could register under a DB node's or moderator's ID and hijack it.
+func registerPeer(claimed string, remote peer.ID) error {
+	if claimed != remote.String() {
+		return fmt.Errorf("claimed peer_id %q does not match connection peer %s", claimed, remote)
+	}
+	mu.Lock()
+	IDmap[claimed] = remote.String()
+	mu.Unlock()
+	if RelayHost != nil {
+		RelayHost.ConnManager().Protect(remote, "registered-peer")
+	}
+	return nil
+}
+
 func handleChatStream(s network.Stream) {
 	fmt.Println("[DEBUG] Incoming chat stream from", s.Conn().RemoteMultiaddr())
 	defer s.Close()
 
-	reqData, err := io.ReadAll(s)
+	reqData, err := io.ReadAll(io.LimitReader(s, maxMsgBytes))
 	if err != nil {
 		fmt.Println("[DEBUG] Error reading from connection at relay:", err)
 		return
@@ -477,27 +489,16 @@ func handleChatStream(s network.Stream) {
 	var req reqFormat
 	err = json.Unmarshal(reqData, &req)
 	if err != nil {
-		fmt.Printf("[DEBUG] Error parsing JSON at relay: %v\n", err)
-		// Truncate output for logs if it's too large
-		if len(reqData) > 500 {
-			fmt.Printf("[DEBUG] Received Data (truncated): %s\n", string(reqData[:500]))
-		} else {
-			fmt.Printf("[DEBUG] Received Data: %s\n", string(reqData))
-		}
+		fmt.Printf("[DEBUG] Error parsing JSON at relay: %v (%d bytes)\n", err, len(reqData))
 		return
 	}
 
 	fmt.Printf("[DEBUG] req by user is: Type=%s PeerID=%s\n", req.Type, req.PeerID)
 
 	if req.Type == "register" {
-		peerID := s.Conn().RemotePeer()
-		fmt.Printf("[INFO] Registering peer: %s\n", req.PeerID)
-		fmt.Println("[INFO] Registering the peer into relay map")
-		mu.Lock()
-		IDmap[req.PeerID] = peerID.String()
-		mu.Unlock()
-		if RelayHost != nil {
-			RelayHost.ConnManager().Protect(peerID, "registered-peer")
+		if err := registerPeer(req.PeerID, s.Conn().RemotePeer()); err != nil {
+			fmt.Printf("[WARN] Rejected register: %v\n", err)
+			return
 		}
 	}
 
@@ -563,7 +564,7 @@ func handleChatStream(s network.Stream) {
 				return
 			}
 
-			respBody, err := io.ReadAll(forwardStream)
+			respBody, err := io.ReadAll(io.LimitReader(forwardStream, maxMsgBytes))
 			if err != nil && err != io.EOF {
 				fmt.Println("[DEBUG] Error reading response from target relay:", err)
 				forwardStream.Close()
@@ -573,7 +574,6 @@ func handleChatStream(s network.Stream) {
 			var resp respFormat
 			resp.Type = "GET"
 			resp.Resp = respBody
-			fmt.Printf("[Debug]Forwarded Resp from relay : %s : %+v \n", TargetRelayInfo.ID.String(), resp)
 
 			_, err = s.Write(resp.Resp)
 			forwardStream.Close()
@@ -640,7 +640,7 @@ func handleChatStream(s network.Stream) {
 				return
 			}
 
-			respBody, err := io.ReadAll(sendStream)
+			respBody, err := io.ReadAll(io.LimitReader(sendStream, maxMsgBytes))
 			if err != nil && err != io.EOF {
 				fmt.Println("[DEBUG] Error reading response from target peer:", err)
 				sendStream.Close()
@@ -651,14 +651,12 @@ func handleChatStream(s network.Stream) {
 			var resp respFormat
 			resp.Type = "GET"
 			resp.Resp = respBody
-			fmt.Printf("[Debug]Resp from %s : %+v \n", targetID.String(), resp)
 
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error marshalling the response at relay")
 			}
 			_ = jsonResp // if required whole jsonResp can be sent but it makes unmarhsalling the response harder for the client
-			fmt.Println("[DEBUG]Raw Resp :", string(resp.Resp))
 			_, err = s.Write(resp.Resp)
 			if err != nil {
 				fmt.Println("[DEBUG]Error sending response back")
@@ -726,7 +724,7 @@ func handleChatStream(s network.Stream) {
 		}
 		//s.Write([]byte("Success\n"))
 
-		respBody, err := io.ReadAll(sendStream)
+		respBody, err := io.ReadAll(io.LimitReader(sendStream, maxMsgBytes))
 		if err != nil && err != io.EOF {
 			fmt.Println("[DEBUG] Error reading response from target peer:", err)
 			sendStream.Close()
@@ -737,14 +735,12 @@ func handleChatStream(s network.Stream) {
 		var resp respFormat
 		resp.Type = "GET"
 		resp.Resp = respBody
-		fmt.Printf("[Debug]Resp from %s : %+v \n", targetID.String(), resp)
 
 		jsonResp, err := json.Marshal(resp)
 		if err != nil {
 			fmt.Println("[DEBUG]Error marshalling the response at relay")
 		}
 		_ = jsonResp // if required whole jsonResp can be sent but it makes unmarhsalling the response harder for the client
-		fmt.Println("[DEBUG]Raw Resp :", string(resp.Resp))
 		_, err = s.Write(resp.Resp)
 		if err != nil {
 			fmt.Println("[DEBUG]Error sending response back")
