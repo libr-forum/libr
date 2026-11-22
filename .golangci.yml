@@ -20,7 +20,7 @@ linters-settings:
 issues:
   exclude-rules:
     - linters: [forbidigo]
-      path-except: '(^|/)(dbnode|moderator|wire|forum|p2p|proto|seeds)/' # relative to the module dir
+      path-except: '(^|/)(app|dbnode|moderator|wire|forum|p2p|proto|seeds)/' # relative to the module dir
 
   # Only code changed since staging is checked; legacy v1 code is replaced in later v2 steps.
   new-from-merge-base: origin/staging
