@@ -12,18 +12,19 @@ Decentralized, moderated forum: libp2p + Kademlia DHT storage + multi-moderator 
 | `services/librserver` | Discovery/registry + Ed25519 challenge auth | Node, Express, MongoDB (`npm start`) |
 | `services/relay` | libp2p Circuit Relay v2 | Go (`relay.go`) |
 | `core/db` | DHT storage node (MsgCert/ReportCert, Kademlia routing) | Go, SQLite (`docker-compose.yml`, `core/db/Dockerfile`) |
-| `core/crypto` | Key gen / sign / verify | Go |
-| `core/mod_client` | Desktop user + moderator app, LLM auto-mod | Go + Wails v2, React/Vite/shadcn frontend |
+| `core/libr` | **Shared Go core** (desktop + mobile): `client` (submit/fetch/report/cron), `peers`/`network` (libp2p), `mod/*` (moderator handlers, LLM pipeline, mod SQLite), `crypto`, `types`, `cache`, `identity`, `keycache` | Go |
+| `core/mod_client` | Desktop app: thin Wails adapter (`app.go`) over `core/libr` | Go + Wails v2, React/Vite/shadcn frontend |
 | `mobile-app` | Expo / React Native client | TS; native module `modules/LibrCore.ts` → `android/.../LibrCoreModule` |
-| `mobile-app/go-core` | gomobile build of the client core (`bridge/` = exported API) | Go |
+| `mobile-app/go-core` | gomobile bridge only (`bridge/` = exported API) over `core/libr` | Go |
 | `landing-page` | Marketing site | React/Vite |
 | `packaging`, `Casks`, `scripts` | nfpm deb/rpm/arch, Homebrew, install/release scripts | |
 
 ## Gotchas
-- **`mobile-app/go-core` is a forked copy of `core/mod_client`** (same module path `github.com/libr-forum/Libr/core/mod_client`) and `go-core/crypto` copies `core/crypto`. ~18 files have drifted. A protocol fix in one usually needs porting to the other — diff before editing.
-- Message signing depends on canonicalization (`util` / `CanonicalizeMsg`); desktop and mobile must stay byte-identical or signatures fail across clients.
+- Desktop and mobile share `core/libr`; there is no fork any more. UI hooks go through `client.SetEvents` (Wails emits on desktop, notifications on mobile) and `peers.HandlePost` (desktop registers moderator routes; mobile forwards unknown routes to native). Never import Wails or cgo SQLite from packages the bridge uses (`go list -deps ./bridge` in go-core to check).
+- The bridge API is pinned: `mobile-app/go-core/bridge/testdata/bridge_api.golden` plus a test that every `callBridgeString` in `LibrCoreModule.kt` resolves (Kotlin calls by reflection; mismatches fail silently). Desktop: `app_api_test.go` checks `App` methods = `frontend/wailsjs/go/main/App.d.ts`.
+- go-core needs a `replace` to `core/libr` because gomobile ignores go.work; build with `GOWORK=off` (`build-android.sh`).
 - `.wailsignore` excludes everything but `core/mod_client` from Wails dev/build.
-- Root `go.work` covers core/crypto, core/db, core/libr, core/mod_client, services/relay (`mobile-app/go-core` excluded until v2 step 3; use `GOWORK=off` there). Tests: `go test -race ./...` per module; frontend `npm test`/`npm run typecheck`/`npm run lint`; librserver `npm test`. CI = `.github/workflows/ci.yml`. Lint config `.golangci.yml` only flags code changed since `origin/staging`.
+- Root `go.work` covers core/db, core/libr, core/mod_client, mobile-app/go-core, services/relay. Tests: `go test -race ./...` per module; frontend `npm test`/`npm run typecheck`/`npm run lint`; librserver `npm test`. CI = `.github/workflows/ci.yml`. Lint config `.golangci.yml` only flags code changed since `origin/staging`.
 - `core/mod_client` embeds `frontend/dist`; create `frontend/dist/.keep` (or build the frontend) before `go vet`/`go test`.
 - `CONTRIBUTING.md` / `docs/BEGINNER_GUIDE.md` still describe a stale `src/` layout; BEGINNER_GUIDE has unresolved merge-conflict markers (fixed in v2 step 10).
 - v2 rebuild in progress on branch `v2`. New shared code lives in `core/libr`; `core/libr/internal/testnet` builds in-process relayed topologies (all NATed peers reachable only via `/p2p-circuit`). Streams over relays need `network.WithAllowLimitedConn`; LIBR hosts use `testnet.ResourceManager()` because libp2p's default conn-rate limit charges relayed conns to the relay IP. Docker e2e: `core/libr/internal/testnet/dhtspike/run.sh` (workflow `e2e.yml`).
