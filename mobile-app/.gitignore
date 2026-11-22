@@ -43,6 +43,7 @@ go-core/libs/
 go-core/bin/
 *.aar
 *.jar
+!android/gradle/wrapper/gradle-wrapper.jar
 
 # Android specific
 android/.gradle
