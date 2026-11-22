@@ -20,6 +20,8 @@ const (
 	DomainAuthorDelete = "libr/v2/authordelete"
 	DomainReceipt      = "libr/v2/receipt"
 	DomainModSet       = "libr/v2/modset"
+	DomainReport       = "libr/v2/report"
+	DomainRemoveAck    = "libr/v2/removeack"
 )
 
 // Encode returns the canonical bytes for a signed object: the domain and then each
