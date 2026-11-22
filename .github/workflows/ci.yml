@@ -92,18 +92,15 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@v3
-      - name: Install NDK and gomobile
+      - name: Install NDK
         run: |
           sdkmanager --install "ndk;26.3.11579264"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.3.11579264" >> "$GITHUB_ENV"
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
       - name: Bind
         working-directory: mobile-app/go-core
         run: |
-          go get golang.org/x/mobile/bind
-          gomobile init
-          gomobile bind -target=android -androidapi 21 -ldflags "-checklinkname=0" -o /tmp/libr-core.aar ./bridge
+          go tool gomobile init
+          go tool gomobile bind -target=android -androidapi 21 -ldflags "-checklinkname=0" -o /tmp/libr-core.aar ./bridge
 
   librserver:
     name: librserver

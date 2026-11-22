@@ -10,7 +10,7 @@ export GO111MODULE=on
 
 # Build
 echo "🚀 Building Go mobile bridge for Android..."
-GOWORK=off gomobile bind -v -target=android -androidapi $ANDROID_API -ldflags "-checklinkname=0" -o ../android/app/libs/$OUTPUT_NAME $PACKAGE_PATH
+GOWORK=off go tool gomobile bind -v -target=android -androidapi $ANDROID_API -ldflags "-checklinkname=0" -o ../android/app/libs/$OUTPUT_NAME $PACKAGE_PATH
 
 if [ $? -eq 0 ]; then
     echo "✅ Build successful! Output: ../android/app/libs/$OUTPUT_NAME"
