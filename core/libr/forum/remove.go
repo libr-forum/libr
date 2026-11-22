@@ -34,43 +34,39 @@ func (c *Client) Delete(ctx context.Context, cert proto.MsgCert) (*Removed, erro
 }
 
 // Report asks the community's moderators to remove cert's message for reason. With a
-// removal quorum it tombstones the message and returns the RepCert; ErrRejected if
-// the moderators keep it.
+// removal quorum it tombstones the message; ErrRejected if the moderators keep it; a
+// *QuorumError (resumable) while they are still deciding.
 func (c *Client) Report(ctx context.Context, cert proto.MsgCert, reason string) (*Removed, error) {
-	m := cert.Msg
-	set, ok := c.Sets.Head(m.Community)
+	set, ok := c.Sets.Head(cert.Msg.Community)
 	if !ok {
-		return nil, fmt.Errorf("unknown community %q", m.Community)
+		return nil, fmt.Errorf("unknown community %q", cert.Msg.Community)
 	}
-	rc := proto.RepCert{MsgID: m.ID(), Community: m.Community, Epoch: set.Epoch, Reason: reason}
-	req := wire.ReportReq{Cert: cert, Epoch: set.Epoch, Reason: reason, Reporter: c.Key.Public().(ed25519.PublicKey),
-		Sig: ed25519.Sign(c.Key, proto.ReportBytes(m.Community, set.Epoch, rc.MsgID, reason))}
-	ballot := rc // late answers still read it after quorum returns; rc gets the votes
-	votes, err := c.quorum(ctx, set, func(ctx context.Context, mod proto.ModEntry) (*proto.Vote, error) {
-		p, err := peer.Decode(mod.PeerID)
-		if err != nil {
-			return nil, err
-		}
-		var resp wire.VoteResp
-		err = c.call(ctx, "report", p, wire.ProtoReport, req, &resp, func() error {
-			if resp.Err != "" {
-				return errors.New(resp.Err)
-			}
-			if resp.Vote == nil || !proto.VerifyRepVote(*resp.Vote, mod.PubKey, ballot) {
-				return errors.New("invalid vote")
-			}
-			return nil
-		})
-		return resp.Vote, err
-	})
+	_, r, err := c.advance(ctx, &Pending{Kind: KindReport, Cert: cert, Epoch: set.Epoch, Reason: reason})
+	return r, err
+}
+
+func (c *Client) askReport(ctx context.Context, mod proto.ModEntry, req wire.ReportReq, ballot proto.RepCert) (*proto.Vote, error) {
+	p, err := peer.Decode(mod.PeerID)
 	if err != nil {
 		return nil, err
 	}
-	rc.Votes = votes
-	if err := proto.VerifyRepCert(c.Sets, rc); err != nil {
-		return nil, fmt.Errorf("assembled removal certificate does not verify: %w", err)
+	var resp wire.VoteResp
+	err = c.call(ctx, "report", p, wire.ProtoReport, req, &resp, func() error {
+		if resp.Err != "" {
+			return errors.New(resp.Err)
+		}
+		if resp.Pending {
+			return nil
+		}
+		if resp.Vote == nil || !proto.VerifyRepVote(*resp.Vote, mod.PubKey, ballot) {
+			return errors.New("invalid vote")
+		}
+		return nil
+	})
+	if err == nil && resp.Pending {
+		return nil, ErrPending
 	}
-	return c.remove(ctx, m, cert.Hash(), proto.Tombstone{MsgID: rc.MsgID, Rep: &rc})
+	return resp.Vote, err
 }
 
 // remove sends the tombstone to the nodes holding the cert and to the message's feed

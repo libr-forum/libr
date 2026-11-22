@@ -87,6 +87,7 @@ func (c *Client) now() time.Time {
 
 // Submit publishes content to community. It returns once a moderator quorum approved
 // it and StoredQuorum nodes signed receipts for both the cert and its index entry.
+// Without a quorum yet it returns a *QuorumError whose Pending can be resumed.
 func (c *Client) Submit(ctx context.Context, community string, content []byte) (*Posted, error) {
 	set, ok := c.Sets.Head(community)
 	if !ok {
@@ -97,21 +98,18 @@ func (c *Client) Submit(ctx context.Context, community string, content []byte) (
 	}
 	cert := proto.SignMsg(c.Key, proto.Msg{Community: community, Ts: c.now().Unix(), Content: content})
 	cert.Epoch = set.Epoch
-	unvoted := cert // late answers still read it after quorum returns; cert gets the votes
-	votes, err := c.quorum(ctx, set, func(ctx context.Context, m proto.ModEntry) (*proto.Vote, error) {
-		return c.askVote(ctx, m, unvoted)
-	})
-	if err != nil {
-		return nil, err
-	}
-	cert.Votes = votes
+	posted, _, err := c.advance(ctx, &Pending{Kind: KindPost, Cert: cert, Epoch: set.Epoch})
+	return posted, err
+}
+
+// finishPost verifies the assembled cert and stores and indexes it.
+func (c *Client) finishPost(ctx context.Context, cert proto.MsgCert) (*Posted, error) {
 	if err := proto.VerifyMsgCert(c.Sets, cert, c.now()); err != nil {
 		return nil, fmt.Errorf("assembled certificate does not verify: %w", err)
 	}
-
 	p := &Posted{Cert: cert, Hash: cert.Hash()}
-	var err2 error
-	p.Done, err2 = both(
+	var err error
+	p.Done, err = both(
 		func() (d <-chan struct{}, err error) {
 			p.Receipts, d, err = c.replicate(ctx, "store", wire.ProtoStore, p.Hash, cert)
 			return d, err
@@ -120,7 +118,7 @@ func (c *Client) Submit(ctx context.Context, community string, content []byte) (
 			p.Indexed, d, err = c.replicate(ctx, "index_put", wire.ProtoIndexPut, indexKeyOf(cert.Msg), cert)
 			return d, err
 		})
-	return p, err2
+	return p, err
 }
 
 func indexKeyOf(m proto.Msg) proto.Hash { return wire.IndexKey(m.Community, wire.Bucket(m.Ts)) }
@@ -150,48 +148,6 @@ func both(a, b func() (<-chan struct{}, error)) (<-chan struct{}, error) {
 	return done, errors.Join(errs[0], errs[1])
 }
 
-// quorum asks every moderator in parallel and returns as soon as Threshold approvals
-// are in, or as soon as the outstanding answers can no longer reach it.
-func (c *Client) quorum(ctx context.Context, set *proto.ModSet, ask func(context.Context, proto.ModEntry) (*proto.Vote, error)) ([]proto.Vote, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	type answer struct {
-		v   *proto.Vote
-		err error
-	}
-	answers := make(chan answer, len(set.Mods))
-	for _, m := range set.Mods {
-		go func(m proto.ModEntry) {
-			v, err := ask(ctx, m)
-			answers <- answer{v, err}
-		}(m)
-	}
-	var approvals []proto.Vote
-	rejected, failed := 0, 0
-	for range set.Mods {
-		a := <-answers
-		switch {
-		case a.err != nil:
-			failed++
-		case !a.v.Approve:
-			rejected++
-		default:
-			approvals = append(approvals, *a.v)
-		}
-		if uint64(len(approvals)) >= set.Threshold {
-			return approvals, nil
-		}
-		if uint64(len(set.Mods)-rejected-failed) < set.Threshold {
-			if uint64(len(set.Mods)-rejected) < set.Threshold {
-				return nil, ErrRejected
-			}
-			return nil, fmt.Errorf("%w: %d approved, %d rejected, %d unreachable, need %d",
-				ErrNoQuorum, len(approvals), rejected, failed, set.Threshold)
-		}
-	}
-	return nil, ErrNoQuorum // unreachable: the loop decides by the last answer
-}
-
 func (c *Client) askVote(ctx context.Context, m proto.ModEntry, cert proto.MsgCert) (*proto.Vote, error) {
 	p, err := peer.Decode(m.PeerID)
 	if err != nil {
@@ -202,11 +158,17 @@ func (c *Client) askVote(ctx context.Context, m proto.ModEntry, cert proto.MsgCe
 		if resp.Err != "" {
 			return errors.New(resp.Err)
 		}
+		if resp.Pending {
+			return nil
+		}
 		if resp.Vote == nil || !proto.VerifyVote(*resp.Vote, m.PubKey, cert.Msg, cert.Epoch) {
 			return errors.New("invalid vote")
 		}
 		return nil
 	})
+	if err == nil && resp.Pending {
+		return nil, ErrPending
+	}
 	return resp.Vote, err
 }
 

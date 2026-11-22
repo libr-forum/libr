@@ -72,6 +72,7 @@ type world struct {
 	t       *testing.T
 	reg     *proto.Registry
 	modKeys []ed25519.PrivateKey
+	modObjs []*moderator.Mod
 	relays  []host.Host
 	dbs     []*testnet.Node
 	stores  []*tamperStore
@@ -86,7 +87,10 @@ type world struct {
 type worldCfg struct {
 	report moderator.ReportPolicy
 	optOut map[int]bool // DB node index -> refuses "general"
+	queue  bool         // mods keep a human review queue
 }
+
+func withQueue() worldOpt { return func(c *worldCfg) { c.queue = true } }
 
 type worldOpt func(*worldCfg)
 
@@ -144,7 +148,11 @@ func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy, opts ...
 		n := start(k, false)
 		m := &moderator.Mod{Key: k, Sets: reg, Policy: policy}
 		m.Report = cfg.report
+		if cfg.queue {
+			m.Queue, _ = moderator.NewQueue("")
+		}
 		m.Register(n.Host)
+		w.modObjs = append(w.modObjs, m)
 		w.mods = append(w.mods, n)
 	}
 	cl := start(nil, false)
