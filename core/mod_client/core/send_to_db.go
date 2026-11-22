@@ -237,7 +237,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 					}
 
 					switch base.Type {
-					case "stored":
+					case "stored", "deleted": // "deleted" is the success reply on /route=delete
 						var storedResp StoredResponse
 						if err := json.Unmarshal(respBytes, &storedResp); err != nil {
 							log.Printf("Failed to decode stored response: %v", err)
@@ -284,6 +284,11 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 							}
 						}
 
+					case "error": // node refused the cert (e.g. failed validation)
+						log.Printf("Node %s refused: %s", n.PeerId, respBytes)
+						mu.Lock()
+						failed[n.PeerId] = true
+						mu.Unlock()
 					default:
 						log.Printf("Unknown response type '%s' from %s", base.Type, n.PeerId)
 					}

@@ -207,7 +207,7 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 					}
 
 					switch base.Type {
-					case "stored":
+					case "stored", "deleted": // "deleted" is the success reply on /route=delete
 						var storedResp StoredResponse
 						if err := json.Unmarshal(respBytes, &storedResp); err != nil {
 							return
@@ -229,6 +229,10 @@ func SendToDb(key [20]byte, msgcert interface{}, route string) error {
 						}
 						mu.Unlock()
 
+					case "error": // node refused the cert (e.g. failed validation)
+						mu.Lock()
+						failed[n.PeerId] = true
+						mu.Unlock()
 					case "redirect":
 						var redirectResp RedirectResponse
 						if err := json.Unmarshal(respBytes, &redirectResp); err != nil {
