@@ -42,9 +42,9 @@ var shipped embed.FS
 type Config struct {
 	DataDir   string             // pending items, peer cache, mod queue, extra communities
 	Key       ed25519.PrivateKey // the user's identity (author, reporter, moderator)
-	Relays    []string           // multiaddrs with /p2p/ID; LIBR_RELAYS
-	Bootstrap []string           // LIBR_BOOTSTRAP
-	SeedURLs  []string           // LIBR_SEED_URLS
+	Relays    []string           // multiaddrs with /p2p/ID; else LIBR_RELAYS; else seeds.json
+	Bootstrap []string           // else LIBR_BOOTSTRAP; seeds.json peers are always added
+	SeedURLs  []string           // else LIBR_SEED_URLS; else seeds.json
 	// Policy and Report decide for a moderator (return moderator.ErrDefer to queue an
 	// item for human review). Nil: approve posts, queue every report.
 	Policy moderator.Policy
@@ -126,6 +126,15 @@ func Start(ctx context.Context, cfg Config) (*App, error) {
 	envList(&cfg.Relays, "LIBR_RELAYS")
 	envList(&cfg.Bootstrap, "LIBR_BOOTSTRAP")
 	envList(&cfg.SeedURLs, "LIBR_SEED_URLS")
+	// Nothing configured: use the network built into this binary. Bootstrap peers
+	// from seeds.json are added by seeds.Resolve in any case.
+	built := seeds.Built()
+	if len(cfg.Relays) == 0 {
+		cfg.Relays = built.Relays
+	}
+	if len(cfg.SeedURLs) == 0 {
+		cfg.SeedURLs = built.SeedURLs
+	}
 	relays := seeds.Parse(cfg.Relays)
 	pub := cfg.Key.Public().(ed25519.PublicKey)
 	isMod := false

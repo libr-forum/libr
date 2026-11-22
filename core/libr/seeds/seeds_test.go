@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	ma "github.com/multiformats/go-multiaddr"
@@ -85,5 +86,25 @@ func TestRegisterNeedsDialableAddrs(t *testing.T) {
 	}
 	if got, _ := Fetch(context.Background(), s.URL, 8); len(got) != 0 {
 		t.Fatalf("server has %v", got)
+	}
+}
+
+// TestBuiltParses: the shipped seeds.json is valid and every entry parses, so a typo
+// at release fails CI instead of silently dropping a seed.
+func TestBuiltParses(t *testing.T) {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(shipped, &raw); err != nil {
+		t.Fatalf("seeds.json: %v", err)
+	}
+	n := Built()
+	for _, list := range [][]string{n.Bootstrap, n.Relays} {
+		if got := Parse(list); len(got) != len(list) {
+			t.Errorf("seeds.json: %d of %d multiaddrs parse: %v", len(got), len(list), list)
+		}
+	}
+	for _, u := range n.SeedURLs {
+		if !strings.HasPrefix(u, "https://") {
+			t.Errorf("seed URL %q: production seed servers must use https", u)
+		}
 	}
 }

@@ -42,12 +42,24 @@ const (
 
 var client = &http.Client{Timeout: httpTimeout}
 
-// Shipped returns the seeds built into this binary ("/.../p2p/<id>" multiaddrs).
-func Shipped() []peer.AddrInfo {
-	var list []string
-	_ = json.Unmarshal(shipped, &list)
-	return Parse(list)
+// Network is the production network built into this binary (seeds.json, filled at
+// release): DHT bootstrap peers and relays as "/.../p2p/<id>" multiaddrs, and seed
+// server URLs.
+type Network struct {
+	Bootstrap []string `json:"bootstrap"`
+	Relays    []string `json:"relays"`
+	SeedURLs  []string `json:"seed_urls"`
 }
+
+// Built returns the network shipped in this binary.
+func Built() Network {
+	var n Network
+	_ = json.Unmarshal(shipped, &n)
+	return n
+}
+
+// Shipped returns the built-in bootstrap peers.
+func Shipped() []peer.AddrInfo { return Parse(Built().Bootstrap) }
 
 // Parse turns "/.../p2p/<id>" strings into AddrInfos, merging addresses of the same
 // peer and skipping anything malformed.
