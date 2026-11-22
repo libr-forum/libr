@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   relay:
-    name: Relay (${{ matrix.goos }}/${{ matrix.goarch }})
+    # The relay and librctl (keys, genesis, headless client/mod) are pure Go.
+    name: Relay + librctl (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,10 +31,14 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
-        run: go build -o "$GITHUB_WORKSPACE/libr-relay-${GOOS}-${GOARCH}" .
+        run: |
+          go build -o "$GITHUB_WORKSPACE/libr-relay-${GOOS}-${GOARCH}" .
+          cd ../../core/libr && go build -o "$GITHUB_WORKSPACE/librctl-${GOOS}-${GOARCH}" ./cmd/librctl
       - uses: softprops/action-gh-release@v2
         with:
-          files: libr-relay-*
+          files: |
+            libr-relay-*
+            librctl-*
 
   dbnode:
     # go-sqlite3 needs cgo, so only the native linux/amd64 binary is built here;

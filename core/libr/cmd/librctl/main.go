@@ -3,7 +3,9 @@
 // measurements (--trace writes one JSON line per network request).
 //
 //	librctl keygen  -out FILE [-libp2p]
-//	librctl genesis -community NAME -f 1 -founders KEYFILE,... -mods PUBKEY,...
+//	librctl genesis -community NAME -f 1 -mods PUBKEY,... (-founders KEYFILE,... | -founder-keys PUBKEY,... -out FILE)
+//	librctl sign    -key FOUNDERKEY -in FILE     (each founder, on their own machine)
+//	librctl verify  -in FILE
 //	librctl mod serve -key FILE -communities DIR -policy approve-all|keyword:w1,w2 [net flags]
 //	librctl client submit -communities DIR -community NAME -text TEXT [net flags]
 //	librctl client feed   -communities DIR -community NAME [-since 1h] [-json] [net flags]
@@ -17,6 +19,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
@@ -69,6 +72,10 @@ func run(args []string, out io.Writer) error {
 		return keygen(args, out)
 	case "genesis":
 		return genesis(args, out)
+	case "sign":
+		return signGenesis(args, out)
+	case "verify":
+		return verifyGenesis(args, out)
 	case "mod serve":
 		return modServe(args)
 	case "client submit", "client feed", "client report", "client delete":
@@ -117,7 +124,9 @@ func genesis(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("genesis", flag.ContinueOnError)
 	name := fs.String("community", "", "community name")
 	f := fs.Uint64("f", 1, "faulty moderators tolerated (needs >= 3f+1 mods)")
-	founders := fs.String("founders", "", "comma-separated founder seed files")
+	founders := fs.String("founders", "", "comma-separated founder seed files (all keys on this machine: dev only)")
+	founderKeys := fs.String("founder-keys", "", "comma-separated founder public keys (base64): write an unsigned file for `sign`")
+	outPath := fs.String("out", "", "with -founder-keys: file to write")
 	mods := fs.String("mods", "", "comma-separated moderator public keys (base64)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -133,6 +142,24 @@ func genesis(args []string, out io.Writer) error {
 			return err
 		}
 		s.Mods = append(s.Mods, proto.ModEntry{PubKey: pk, PeerID: id})
+	}
+	if *founderKeys != "" {
+		if *founders != "" || *outPath == "" {
+			return errors.New("genesis: -founder-keys needs -out and excludes -founders")
+		}
+		cf := proto.CommunityFile{Chain: []proto.ModSet{s}}
+		for _, b64 := range split(*founderKeys) {
+			pk, err := base64.StdEncoding.DecodeString(b64)
+			if err != nil || len(pk) != ed25519.PublicKeySize {
+				return fmt.Errorf("founder key %q: not a base64 Ed25519 public key", b64)
+			}
+			cf.Founders = append(cf.Founders, pk)
+		}
+		if err := writeCommunity(*outPath, cf); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "wrote %s: unsigned; each founder runs `librctl sign -key <their key> -in %s`\n", *outPath, *outPath)
+		return nil
 	}
 	var fpubs []ed25519.PublicKey
 	for _, path := range split(*founders) {
@@ -150,6 +177,87 @@ func genesis(args []string, out io.Writer) error {
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
 	return enc.Encode(cf)
+}
+
+// signGenesis adds one founder's signature to an unsigned or partly signed genesis.
+func signGenesis(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("sign", flag.ContinueOnError)
+	keyPath := fs.String("key", "", "founder seed file")
+	in := fs.String("in", "", "community file to sign in place")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cf, err := readCommunity(*in)
+	if err != nil {
+		return err
+	}
+	k, err := readKey(*keyPath)
+	if err != nil {
+		return err
+	}
+	pub := k.Public().(ed25519.PublicKey)
+	listed := false
+	for _, f := range cf.Founders {
+		listed = listed || bytes.Equal(f, pub)
+	}
+	if !listed {
+		return errors.New("sign: this key is not one of the file's founders")
+	}
+	g := &cf.Chain[0]
+	for _, sg := range g.Sigs {
+		if bytes.Equal(sg.Signer, pub) {
+			return errors.New("sign: already signed by this key")
+		}
+	}
+	proto.SignModSet(k, g)
+	if err := writeCommunity(*in, cf); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "signed: %d of %d founders\n", len(g.Sigs), len(cf.Founders))
+	return nil
+}
+
+// verifyGenesis checks a community file exactly as nodes and apps will.
+func verifyGenesis(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
+	in := fs.String("in", "", "community file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cf, err := readCommunity(*in)
+	if err != nil {
+		return err
+	}
+	if err := (&proto.Registry{}).Add(cf); err != nil {
+		return err
+	}
+	g := cf.Chain[0]
+	fmt.Fprintf(out, "ok: community %q, %d moderators, threshold %d (f=%d), signed by all %d founders\n",
+		g.Community, len(g.Mods), g.Threshold, g.F, len(cf.Founders))
+	return nil
+}
+
+func readCommunity(path string) (proto.CommunityFile, error) {
+	var cf proto.CommunityFile
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return cf, err
+	}
+	if err := json.Unmarshal(b, &cf); err != nil {
+		return cf, fmt.Errorf("%s: %w", path, err)
+	}
+	if len(cf.Chain) != 1 {
+		return cf, fmt.Errorf("%s: want a genesis file (one moderator set), got %d", path, len(cf.Chain))
+	}
+	return cf, nil
+}
+
+func writeCommunity(path string, cf proto.CommunityFile) error {
+	b, err := json.MarshalIndent(cf, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
 }
 
 // netFlags are shared by mod and client.
