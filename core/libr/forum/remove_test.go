@@ -85,7 +85,7 @@ func TestReport(t *testing.T) {
 	removeMe := func(_ context.Context, m proto.Msg, _ string) (bool, error) {
 		return strings.Contains(string(m.Content), "remove-me"), nil
 	}
-	w := newWorld(t, 1, 4, moderator.ApproveAll, removeMe)
+	w := newWorld(t, 1, 4, moderator.ApproveAll, withReport(removeMe))
 	bad, err := w.submit("please remove-me")
 	if err != nil {
 		t.Fatal(err)

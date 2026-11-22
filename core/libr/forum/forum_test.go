@@ -83,7 +83,28 @@ type world struct {
 
 // newWorld starts relays and NATed DB nodes, moderators and one author, all reachable
 // only through circuits, with the DHT joined and moderators announced.
-func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy, report ...moderator.ReportPolicy) *world {
+type worldCfg struct {
+	report moderator.ReportPolicy
+	optOut map[int]bool // DB node index -> refuses "general"
+}
+
+type worldOpt func(*worldCfg)
+
+func withReport(p moderator.ReportPolicy) worldOpt { return func(c *worldCfg) { c.report = p } }
+func withOptOut(dbs ...int) worldOpt {
+	return func(c *worldCfg) {
+		c.optOut = map[int]bool{}
+		for _, i := range dbs {
+			c.optOut[i] = true
+		}
+	}
+}
+
+func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy, opts ...worldOpt) *world {
+	var cfg worldCfg
+	for _, o := range opts {
+		o(&cfg)
+	}
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -112,15 +133,17 @@ func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy, report .
 		k := key(fmt.Sprint("db", i))
 		n := start(k, true)
 		st := &tamperStore{MemStore: dbnode.NewMemStore()}
-		(&dbnode.Node{Key: k, Sets: reg, Store: st}).Register(n.Host)
+		node := &dbnode.Node{Key: k, Sets: reg, Store: st}
+		if cfg.optOut[i] {
+			node.OptOut = map[string]bool{"general": true}
+		}
+		node.Register(n.Host)
 		w.dbs, w.stores = append(w.dbs, n), append(w.stores, st)
 	}
 	for _, k := range modKeys {
 		n := start(k, false)
 		m := &moderator.Mod{Key: k, Sets: reg, Policy: policy}
-		if len(report) > 0 {
-			m.Report = report[0]
-		}
+		m.Report = cfg.report
 		m.Register(n.Host)
 		w.mods = append(w.mods, n)
 	}
@@ -314,5 +337,36 @@ func TestRelayFailover(t *testing.T) {
 	}
 	if got := w.feed(); len(got) != 2 {
 		t.Fatalf("feed after relay loss = %q", got)
+	}
+}
+
+// TestOptOutSkipped: a DB node that opted out of the community refuses its posts, and
+// placement moves on so the post still reaches K nodes that store it.
+func TestOptOutSkipped(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts 11 hosts")
+	}
+	w := newWorld(t, 1, 5, moderator.ApproveAll, withOptOut(0))
+	for i := 0; i < 3; i++ {
+		p, err := w.submit(fmt.Sprint("post ", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		<-p.Done
+		held := 0
+		for _, st := range w.stores {
+			if c, _ := st.Get(p.Hash); c != nil {
+				held++
+			}
+		}
+		if c, _ := w.stores[0].Get(p.Hash); c != nil {
+			t.Fatal("opted-out node stored the post")
+		}
+		if held != Replicas {
+			t.Fatalf("post %d held by %d nodes, want %d", i, held, Replicas)
+		}
+	}
+	if got := w.feed(); len(got) != 3 {
+		t.Fatalf("feed = %q", got)
 	}
 }

@@ -32,6 +32,9 @@ const (
 	indexReaders = 2
 	// MaxFeedBuckets bounds one Feed call (one week of 15-minute buckets).
 	MaxFeedBuckets = 7 * 24 * 4
+	// MaxFeedFetches bounds the certificates one Feed call fetches, so index nodes that
+	// list junk hashes cannot make a reader do unbounded lookups.
+	MaxFeedFetches = 2000
 	parallelGets   = 8
 	lookupTimeout  = 30 * time.Second
 	backgroundTime = 2 * wire.Timeout
@@ -305,6 +308,10 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 
 	list := make([]proto.Hash, 0, len(hashes))
 	for h := range hashes {
+		if len(list) == MaxFeedFetches {
+			// shortcut: arbitrary which ones are dropped; a busy community needs paging (step 9 UI)
+			break
+		}
 		list = append(list, h)
 	}
 	byID := map[proto.Hash]proto.MsgCert{}

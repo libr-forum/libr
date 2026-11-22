@@ -11,7 +11,8 @@
 //	librctl client delete -communities DIR -hash HEX -key AUTHORKEY [net flags]
 //
 // Net flags: -relays, -bootstrap (comma-separated multiaddrs with /p2p/ID), -listen,
-// -communities, -private, -trace FILE. The first four default to the DB node's
+// -communities, -seeds URLS, -cache FILE, -private, -trace FILE. Bootstrap peers come
+// from -bootstrap, the shipped seed list, -cache, then -seeds servers. The first four default to the DB node's
 // environment variables LIBR_RELAYS, LIBR_BOOTSTRAP, LIBR_LISTEN, LIBR_COMMUNITIES.
 package main
 
@@ -42,6 +43,7 @@ import (
 	"github.com/libr-forum/Libr/core/libr/moderator"
 	"github.com/libr-forum/Libr/core/libr/p2p"
 	"github.com/libr-forum/Libr/core/libr/proto"
+	"github.com/libr-forum/Libr/core/libr/seeds"
 )
 
 func main() {
@@ -152,14 +154,16 @@ func genesis(args []string, out io.Writer) error {
 
 // netFlags are shared by mod and client.
 type netFlags struct {
-	relays, bootstrap, listen, communities, trace, key *string
-	private                                            *bool
+	relays, bootstrap, seedURLs, cache, listen, communities, trace, key *string
+	private                                                             *bool
 }
 
 func addNetFlags(fs *flag.FlagSet, private bool) netFlags {
 	return netFlags{
 		relays:      fs.String("relays", os.Getenv("LIBR_RELAYS"), "relay multiaddrs to reserve on (with -private)"),
 		bootstrap:   fs.String("bootstrap", os.Getenv("LIBR_BOOTSTRAP"), "DHT bootstrap multiaddrs (DB nodes)"),
+		seedURLs:    fs.String("seeds", os.Getenv("LIBR_SEED_URLS"), "seed servers (librserver) to fetch bootstrap peers from"),
+		cache:       fs.String("cache", "", "peer cache file: read for bootstrap, rewritten after joining"),
 		listen:      fs.String("listen", env("LIBR_LISTEN", "/ip4/0.0.0.0/tcp/0"), "listen multiaddrs"),
 		communities: fs.String("communities", os.Getenv("LIBR_COMMUNITIES"), "directory of community *.json files"),
 		trace:       fs.String("trace", "", "append one JSON line per network request to this file"),
@@ -199,8 +203,9 @@ func (nf netFlags) start(ctx context.Context) (*node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("-bootstrap: %w", err)
 	}
+	boot = seeds.Resolve(ctx, boot, *nf.cache, split(*nf.seedURLs), 8)
 	if len(boot) == 0 {
-		return nil, errors.New("-bootstrap is required")
+		return nil, errors.New("no bootstrap peers: set -bootstrap, -seeds or -cache")
 	}
 	h, err := p2p.NewHost(p2p.Config{Key: key, Listen: split(*nf.listen), Relays: relays, Private: *nf.private})
 	if err != nil {
@@ -217,6 +222,11 @@ func (nf netFlags) start(ctx context.Context) (*node, error) {
 	if err := p2p.Join(jctx, h, d, boot); err != nil {
 		n.close()
 		return nil, err
+	}
+	if *nf.cache != "" {
+		if err := seeds.SaveCache(*nf.cache, h, d); err != nil {
+			log.Printf("peer cache: %v", err)
+		}
 	}
 	return n, nil
 }
