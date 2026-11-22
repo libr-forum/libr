@@ -1,0 +1,28 @@
+# DHT spike topology: relays reachable from every network; DB nodes and mods split
+# across two networks with no route between them, so DB<->DB traffic must be relayed.
+x-node: &node
+  image: libr-dhtspike
+  restart: "no"
+
+services:
+  relay-a: { <<: *node, command: [-role=relay, -name=relay-a], networks: [nat1, nat2] }
+  relay-b: { <<: *node, command: [-role=relay, -name=relay-b], networks: [nat1, nat2] }
+  db1: { <<: *node, command: [-role=db, -name=db1], networks: [nat1] }
+  db2: { <<: *node, command: [-role=db, -name=db2], networks: [nat1] }
+  db3: { <<: *node, command: [-role=db, -name=db3], networks: [nat1] }
+  db4: { <<: *node, command: [-role=db, -name=db4], networks: [nat1] }
+  db5: { <<: *node, command: [-role=db, -name=db5], networks: [nat2] }
+  db6: { <<: *node, command: [-role=db, -name=db6], networks: [nat2] }
+  db7: { <<: *node, command: [-role=db, -name=db7], networks: [nat2] }
+  db8: { <<: *node, command: [-role=db, -name=db8], networks: [nat2] }
+  mod1: { <<: *node, command: [-role=mod, -name=mod1], networks: [nat1] }
+  mod2: { <<: *node, command: [-role=mod, -name=mod2], networks: [nat2] }
+  probe:
+    <<: *node
+    profiles: [probe]
+    networks: [nat2]
+    command: [-role=probe, -name=probe, "-dbs=db1,db2,db3,db4,db5,db6,db7,db8", "-mods=mod1,mod2", "-relays=${PROBE_RELAYS:-relay-a,relay-b}"]
+
+networks:
+  nat1: { internal: true }
+  nat2: { internal: true }
