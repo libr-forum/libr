@@ -513,6 +513,21 @@ export const Sidebar: React.FC = () => {
                   >
                     Reset Identity
                   </button>
+                  <button
+                    onClick={async () => {
+                      // Moderators send this to a community's founders (docs/RELEASE.md).
+                      try {
+                        await navigator.clipboard.writeText(user.publicKey);
+                        toast.success("Public key copied");
+                      } catch {
+                        toast.error("Could not copy", { description: user.publicKey });
+                      }
+                    }}
+                    className="libr-button bg-muted hover:bg-muted/80"
+                    title={user.publicKey}
+                  >
+                    Copy public key
+                  </button>
                   <AlertDialogCancel className="libr-button bg-muted hover:bg-muted/70">
                     Close
                   </AlertDialogCancel>
