@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [core/crypto, core/db, core/mod_client, services/relay]
+        module: [core/crypto, core/db, core/libr, core/mod_client, services/relay]
     steps:
       - uses: actions/checkout@v4
         with:

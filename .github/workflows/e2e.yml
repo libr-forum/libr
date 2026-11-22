@@ -1,0 +1,26 @@
+name: E2E
+
+# Multi-container network tests (Docker). Slower than CI, so run nightly, on demand,
+# and when the shared v2 core changes.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+  push:
+    branches: [v2, staging, main]
+    paths: ['core/libr/**', '.github/workflows/e2e.yml']
+  pull_request:
+    paths: ['core/libr/**', '.github/workflows/e2e.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  dht-spike:
+    name: DHT over circuit relays (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run spike topology
+        run: core/libr/internal/testnet/dhtspike/run.sh
