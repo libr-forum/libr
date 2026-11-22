@@ -3,7 +3,7 @@ import { AppState as ReactNativeAppState, AppStateStatus, Platform, PermissionsA
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import LibrCore, { RetMsgCert } from '@/modules/LibrCore';
+import LibrCore, { RetMsgCert, Community } from '@/modules/LibrCore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,8 +26,12 @@ interface AppState {
   isFetching: boolean;
   /** Set of message signatures reported by the current user. */
   reportedSigns: Set<string>;
-  /** Whether the current user is a moderator. */
+  /** Whether the current user moderates the current community. */
   isModerator: boolean;
+  /** Communities this build knows (verified moderator sets). */
+  communities: Community[];
+  /** The community the feed shows and posts go to. */
+  community: string;
   /** Global custom alert / notification modal config. */
   noticeModal: NoticeModalConfig | null;
 }
@@ -50,6 +54,8 @@ type Action =
   | { type: 'REMOVE_MESSAGE'; payload: string }
   | { type: 'ADD_MESSAGE'; payload: RetMsgCert }
   | { type: 'SET_MODERATOR'; payload: boolean }
+  | { type: 'SET_COMMUNITIES'; payload: Community[] }
+  | { type: 'SET_COMMUNITY'; payload: string }
   | { type: 'ADD_REPORTED_SIGN'; payload: string }
   | { type: 'REMOVE_REPORTED_SIGN'; payload: string }
   | { type: 'SET_REPORTED_SIGNS'; payload: Set<string> }
@@ -67,6 +73,8 @@ const initialState: AppState = {
   isFetching: false,
   reportedSigns: new Set(),
   isModerator: false,
+  communities: [],
+  community: '',
   noticeModal: null,
 };
 
@@ -111,6 +119,12 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_REPORTED_SIGNS': return { ...state, reportedSigns: action.payload };
     case 'SET_MODERATOR': return { ...state, isModerator: action.payload };
+    case 'SET_COMMUNITIES': return { ...state, communities: action.payload };
+    // A different community has a different feed and moderator role.
+    case 'SET_COMMUNITY': return action.payload === state.community ? state : {
+      ...state, community: action.payload, messages: [],
+      isModerator: state.communities.some(c => c.name === action.payload && c.is_mod),
+    };
     case 'SET_NOTICE_MODAL': return { ...state, noticeModal: action.payload };
     default: return state;
   }
@@ -130,6 +144,8 @@ interface StoreContextValue {
   removeMessage: (sign: string) => void;
   addMessage: (msg: RetMsgCert) => void;
   setModerator: (isMod: boolean) => void;
+  setCommunities: (cs: Community[]) => void;
+  setCommunity: (name: string) => void;
   addReportedSign: (sign: string, cert?: RetMsgCert) => void;
   removeReportedSign: (sign: string) => void;
   showNotice: (title: string, message: string, icon?: 'check' | 'clock' | 'info') => void;
@@ -157,7 +173,7 @@ const BACKGROUND_MODERATION_TASK = 'BACKGROUND_MODERATION_TASK';
 
 TaskManager.defineTask(BACKGROUND_MODERATION_TASK, async () => {
   try {
-    const tickResult = await LibrCore.tickCron();
+    const tickResult = await LibrCore.tick(); // resume pending posts and reports
     console.log('[BackgroundFetch] Moderation tick result:', tickResult);
 
     const hasNewNotification = await checkAndSendModerationNotifications();
@@ -229,27 +245,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Manage Go Cron Job Lifecycle
+  // The node retries pending posts and reports every 30 s while running; when the
+  // app comes back to the foreground, retry at once (the OS may have paused it).
   useEffect(() => {
     const subscription = ReactNativeAppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active' && state.connectionStatus === 'connected') {
-        LibrCore.startCron().catch(console.warn);
-      } else if (nextAppState === 'background') {
-        // We no longer explicitly stop the cron, but it likely will be suspended by OS.
-        // The BackgroundFetch task will wake it up for a "tick" periodically.
-        console.log('[LibrCore] App backgrounded, letting periodic fetch handle cron.');
+        LibrCore.tick().catch(console.warn);
       }
     });
-
-    // Start immediately if already connected
-    if (ReactNativeAppState.currentState === 'active' && state.connectionStatus === 'connected') {
-      LibrCore.startCron().catch(console.warn);
-    }
-
-    return () => {
-      subscription.remove();
-      LibrCore.stopCron().catch(console.warn);
-    };
+    return () => subscription.remove();
   }, [state.connectionStatus]);
 
   const setPublicKey = useCallback((key: string) => dispatch({ type: 'SET_PUBLIC_KEY', payload: key }), []);
@@ -262,6 +266,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const removeMessage = useCallback((sign: string) => dispatch({ type: 'REMOVE_MESSAGE', payload: sign }), []);
   const addMessage = useCallback((msg: RetMsgCert) => dispatch({ type: 'ADD_MESSAGE', payload: msg }), []);
   const setModerator = useCallback((isMod: boolean) => dispatch({ type: 'SET_MODERATOR', payload: isMod }), []);
+  const setCommunities = useCallback((cs: Community[]) => dispatch({ type: 'SET_COMMUNITIES', payload: cs }), []);
+  const setCommunity = useCallback((name: string) => dispatch({ type: 'SET_COMMUNITY', payload: name }), []);
   const addReportedSign = useCallback((sign: string, cert?: RetMsgCert) => {
     dispatch({ type: 'ADD_REPORTED_SIGN', payload: sign });
     // Persist sign to AsyncStorage
@@ -308,7 +314,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <StoreContext.Provider value={{ state, setPublicKey, setIncognito, setPeerId, setConnectionStatus, setError, setMessages, setFetching, removeMessage, addMessage, setModerator, addReportedSign, removeReportedSign, showNotice, hideNotice }}>
+    <StoreContext.Provider value={{ state, setPublicKey, setIncognito, setPeerId, setConnectionStatus, setError, setMessages, setFetching, removeMessage, addMessage, setModerator, setCommunities, setCommunity, addReportedSign, removeReportedSign, showNotice, hideNotice }}>
       {children}
     </StoreContext.Provider>
   );

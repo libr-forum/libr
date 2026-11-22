@@ -156,8 +156,8 @@ export default function ModerationQueueScreen() {
             return next;
         });
         // Call Go core bridge to delete from pending and finalized cache
-        if (typeof (LibrCore as any).dismissReport === 'function') {
-            (LibrCore as any).dismissReport(sign).catch(() => {});
+        if (typeof LibrCore.dismissReport === 'function') {
+            LibrCore.dismissReport(sign).catch(() => {});
         }
         // Remove from app store & local AsyncStorage caches
         removeReportedSign(sign);
@@ -199,8 +199,8 @@ export default function ModerationQueueScreen() {
         });
 
         for (const s of completedSigns) {
-            if (typeof (LibrCore as any).dismissReport === 'function') {
-                (LibrCore as any).dismissReport(s).catch(() => {});
+            if (typeof LibrCore.dismissReport === 'function') {
+                LibrCore.dismissReport(s).catch(() => {});
             }
             removeReportedSign(s);
             cachedMessagesRef.current.delete(s);
@@ -243,21 +243,7 @@ export default function ModerationQueueScreen() {
                     }
                 }
 
-                // For any pending/reported signs not in cache, try to fetch them from DHT
                 const targetSigns = Array.from(new Set([...pendingSigns, ...Array.from(state.reportedSigns)]));
-                const missingSigns = targetSigns.filter(s => !cachedMessagesRef.current.has(s));
-                for (const sign of missingSigns) {
-                    try {
-                        if (typeof (LibrCore as any).fetchMessageBySign === 'function') {
-                            const raw = await (LibrCore as any).fetchMessageBySign(sign);
-                            if (raw && !raw.startsWith('error:')) {
-                                cachedMessagesRef.current.set(sign, JSON.parse(raw));
-                            }
-                        }
-                    } catch {
-                        // Ignore individual fetch errors
-                    }
-                }
 
                 // Detect resolved reports from feed status
                 const newResolved: Record<string, 'approved' | 'rejected'> = {};
@@ -321,9 +307,8 @@ export default function ModerationQueueScreen() {
     // Poll pendingStatus every 4 seconds
     useEffect(() => {
         const pollStatus = async () => {
-            if (typeof (LibrCore as any).getPendingReports !== 'function') return;
             try {
-                const rawStatus = await (LibrCore as any).getPendingReports();
+                const rawStatus = await LibrCore.pendingStatus();
                 if (rawStatus && !rawStatus.startsWith('error:')) {
                     const newPending: Record<string, { total: number, approved: number, rejected: number, final_status?: string, type?: string }> = JSON.parse(rawStatus);
                     const prev = prevStatusRef.current;

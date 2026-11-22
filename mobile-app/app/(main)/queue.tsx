@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors as C, Fonts } from '@/constants/theme';
-import LibrCore from '@/modules/LibrCore';
+import LibrCore, { parse, QueueItem } from '@/modules/LibrCore';
 import { useAppStore } from '@/store/useAppStore';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Flag, Check, X, ShieldAlert, Clock, AlertTriangle } from 'lucide-react-native';
@@ -34,13 +34,18 @@ export default function QueueScreen() {
         else setLoading(true);
 
         try {
-            const result = await LibrCore.fetchReports();
-            if (result.startsWith('error:')) {
-                Alert.alert('Error', result);
-            } else {
-                const parsed = JSON.parse(result);
-                setReports(parsed);
-            }
+            // The moderator's human review queue: image posts and reports, undecided.
+            const items = parse<QueueItem[]>(await LibrCore.modQueue());
+            setReports(items.filter(it => !it.vote).map(it => ({
+                msgcert: {
+                    public_key: it.cert.msg.author,
+                    msg: { content: it.cert.msg.content, ts: it.cert.msg.ts },
+                    sign: it.key,
+                    reason: it.kind === 'report' ? it.reason : 'Image attached',
+                },
+                repmod_certs: [],
+                mode: it.kind === 'report' ? 'report' : 'manual_mod',
+            })));
         } catch (err: any) {
             Alert.alert('Error', err?.message || 'Failed to fetch reports');
         } finally {
@@ -55,7 +60,8 @@ export default function QueueScreen() {
 
     const handleModerate = async (report: ReportCert, action: 'approve' | 'reject') => {
         try {
-            const result = await LibrCore.moderateMessage(JSON.stringify(report.msgcert), action);
+            // approve: publish the post / remove the reported post
+            const result = await LibrCore.modDecide(report.msgcert.sign, action);
             if (result === 'ok') {
                 Alert.alert('Success', `Message ${action === 'approve' ? 'approved' : 'rejected'}.`);
                 // Remove from local list
