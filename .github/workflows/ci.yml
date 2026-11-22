@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [core/crypto, core/db, core/libr, core/mod_client, services/relay]
+        module: [core/db, core/libr, core/mod_client, mobile-app/go-core, services/relay]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -76,29 +76,11 @@ jobs:
       - run: npx expo lint
       - run: npx tsc --noEmit
 
-  mobile-go:
-    name: Mobile Go core
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile-app/go-core
-    env:
-      GOWORK: 'off' # go-core still shares core/mod_client's module path; joins go.work in v2 step 3
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: mobile-app/go-core/go.mod
-          cache-dependency-path: mobile-app/go-core/go.sum
-      - run: go vet ./...
-      - run: go test -race ./...
-
   gomobile:
     name: gomobile bind (Android)
     runs-on: ubuntu-latest
-    continue-on-error: true # becomes blocking once the shared core lands (v2 step 3)
     env:
-      GOWORK: 'off'
+      GOWORK: 'off' # gomobile ignores workspaces; go-core reaches core/libr via replace
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
