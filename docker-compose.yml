@@ -9,7 +9,7 @@ services:
       - DB_ENV_PATH=/app/core/db/.env
     volumes:
       - ./core/db:/app/core/db:ro
-      - ./core/crypto:/app/core/crypto
+      - ./core/libr:/app/core/libr
     # ports:
     #   - "8080:8080"
 

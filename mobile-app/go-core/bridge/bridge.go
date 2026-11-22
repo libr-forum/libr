@@ -10,18 +10,18 @@ import (
 	"sync"
 	"time"
 
-	cryptoconfig "github.com/libr-forum/Libr/core/crypto/config"
-	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
-	"github.com/libr-forum/Libr/core/mod_client/alias"
-	"github.com/libr-forum/Libr/core/mod_client/avatar"
-	"github.com/libr-forum/Libr/core/mod_client/config"
-	"github.com/libr-forum/Libr/core/mod_client/core"
-	cache "github.com/libr-forum/Libr/core/mod_client/core/cache_handler"
-	"github.com/libr-forum/Libr/core/mod_client/identity"
-	"github.com/libr-forum/Libr/core/mod_client/keycache"
-	peer "github.com/libr-forum/Libr/core/mod_client/peers"
-	"github.com/libr-forum/Libr/core/mod_client/types"
-	util "github.com/libr-forum/Libr/core/mod_client/util"
+	cryptoconfig "github.com/libr-forum/Libr/core/libr/crypto/config"
+	"github.com/libr-forum/Libr/core/libr/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/libr/alias"
+	"github.com/libr-forum/Libr/core/libr/avatar"
+	"github.com/libr-forum/Libr/core/libr/config"
+	"github.com/libr-forum/Libr/core/libr/client"
+	cache "github.com/libr-forum/Libr/core/libr/cache"
+	"github.com/libr-forum/Libr/core/libr/identity"
+	"github.com/libr-forum/Libr/core/libr/keycache"
+	peer "github.com/libr-forum/Libr/core/libr/peers"
+	"github.com/libr-forum/Libr/core/libr/types"
+	util "github.com/libr-forum/Libr/core/libr/util"
 )
 
 var (
@@ -129,8 +129,18 @@ type MessageHandler interface {
 	OnMessage(peerID string, msg string)
 }
 
+// SetMessageHandler forwards POSTs on routes the shared core does not serve to native
+// code and acknowledges them (mobile does not moderate).
 func SetMessageHandler(h MessageHandler) {
-	peer.SetMessageHandler(h)
+	peer.HandleUnknownPost(func(from string, body []byte) []byte {
+		content := string(body)
+		var unquoted string
+		if json.Unmarshal(body, &unquoted) == nil {
+			content = unquoted
+		}
+		h.OnMessage(from, content)
+		return []byte(`"ACK"`)
+	})
 }
 
 // NotificationHandler is an interface implemented in native Android code to show push notifications.
@@ -139,7 +149,24 @@ type NotificationHandler interface {
 }
 
 func SetNotificationHandler(h NotificationHandler) {
-	core.SetNotificationHandler(h)
+	client.SetEvents(notifier{h})
+}
+
+// notifier turns finalized moderations into native notifications.
+type notifier struct{ h NotificationHandler }
+
+func (notifier) CronStatus([]map[string]interface{}) {}
+
+func (n notifier) ModerationFinalized(f types.FinalizedModeration) {
+	titles := map[string][2]string{
+		"manual_mod/approved": {"Image Approved", "Your image was approved by moderators and published to the feed."},
+		"manual_mod/rejected": {"Image Rejected", "Your image was rejected by moderators."},
+		"report/approved":     {"Report Upheld", "A reported message was verified as a violation and removed."},
+		"report/rejected":     {"Report Dismissed", "A reported message was reviewed and dismissed."},
+	}
+	if t, ok := titles[f.Type+"/"+f.Status]; ok {
+		n.h.OnNotification(t[0], t[1])
+	}
 }
 
 // ── Key management ────────────────────────────────────────────────────────────
@@ -151,6 +178,7 @@ func SetNotificationHandler(h NotificationHandler) {
 func InitApp(keyDir string, serverURL string) string {
 	if keyDir != "" {
 		cryptoconfig.SetKeyDir(keyDir)
+		cache.SetCacheDir(keyDir) // mobile keeps caches next to the keys
 	}
 	if serverURL != "" {
 		util.InitServerClient(serverURL)
@@ -305,7 +333,7 @@ func SendTextMessage(content string) string {
 
 		modChan := make(chan []types.ModCert, 1)
 		go func() {
-			modChan <- core.ManualSendToMods(msgCert, mods, "Image attached", true)
+			modChan <- client.ManualSendToMods(msgCert, mods, "Image attached", true)
 		}()
 
 		var modcertlist []types.ModCert
@@ -342,7 +370,7 @@ func SendTextMessage(content string) string {
 	}
 
 	// ── AUTO ROUTE (Text) ──
-	modcerts, err := core.AutoSendToMods(content, ts)
+	modcerts, err := client.AutoSendToMods(content, ts)
 	if err != nil || len(modcerts) == 0 {
 		status := "rejected"
 		if err != nil {
@@ -352,11 +380,11 @@ func SendTextMessage(content string) string {
 		return string(b)
 	}
 
-	msgCert := core.CreateMsgCert(content, ts, modcerts)
+	msgCert := client.CreateMsgCert(content, ts, modcerts)
 	tsMin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsMin, 10))
 
-	dbErr := core.SendToDb(key, msgCert, "/route=store")
+	dbErr := client.SendToDb(key, msgCert, "/route=store")
 	dbStatus := "stored"
 	if dbErr != nil {
 		dbStatus = fmt.Sprintf("db_error:%v", dbErr)
@@ -386,7 +414,7 @@ func ResendToDb(msgCertJSON string) string {
 	tsMin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsMin, 10))
 
-	dbErr := core.SendToDb(key, msgCert, "/route=store")
+	dbErr := client.SendToDb(key, msgCert, "/route=store")
 	dbStatus := "stored"
 	if dbErr != nil {
 		dbStatus = fmt.Sprintf("db_error:%v", dbErr)
@@ -411,7 +439,7 @@ func FetchMessages() string {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	certs := core.FetchRecent(ctx)
+	certs := client.FetchRecent(ctx)
 	b, err := json.Marshal(certs)
 	if err != nil {
 		return fmt.Sprintf("error:%v", err)
@@ -439,7 +467,7 @@ func ReportMessage(msgCertJSON string, reason string) string {
 	}
 
 	// firstTry = true to allow caching the new request
-	repModCerts := core.ManualSendToMods(msgCert, mods, reason, true)
+	repModCerts := client.ManualSendToMods(msgCert, mods, reason, true)
 	if repModCerts == nil {
 		return "error:no moderators reached"
 	}
@@ -452,7 +480,7 @@ func TickCron() string {
 	if peer.Peer == nil || peer.Peer.Host == nil {
 		return "skipped:node_not_initialized"
 	}
-	core.MaybeStartCron()
+	client.MaybeStartCron()
 	return "ok"
 }
 
@@ -462,14 +490,14 @@ func StartCron() string {
 	if peer.Peer == nil || peer.Peer.Host == nil {
 		return "skipped:node_not_initialized"
 	}
-	core.MaybeStartCron()
+	client.MaybeStartCron()
 	return "ok"
 }
 
 // StopCron gracefully halts the moderation cron job.
 // Call this when the app goes to the background.
 func StopCron() string {
-	core.StopModerationCron()
+	client.StopModerationCron()
 	return "ok"
 }
 
@@ -545,7 +573,9 @@ func DismissReport(msgSign string) string {
 
 // FetchReports retrieves recent reported messages for moderation.
 func FetchReports() string {
-	reports := core.FetchRecentReports(context.Background())
+	// No DB node serves the old find_report route, so this was always empty; the
+	// v2 report flow (step 7) replaces it. Same JSON as before: null.
+	var reports []types.ReportCert
 	b, err := json.Marshal(reports)
 	if err != nil {
 		return fmt.Sprintf("error:%v", err)
@@ -583,11 +613,11 @@ func ModerateMessage(msgCertJSON string, action string) string {
 		Status:    status,
 	}
 
-	repCert := core.CreateRepCert(msgCert, []types.ModCert{modCert}, "moderation")
+	repCert := client.CreateRepCert(msgCert, []types.ModCert{modCert}, "moderation")
 
 	ts := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(ts, 10))
-	if err := core.SendToDb(key, repCert, "/route=moderation"); err != nil {
+	if err := client.SendToDb(key, repCert, "/route=moderation"); err != nil {
 		return fmt.Sprintf("error:send to db: %v", err)
 	}
 
@@ -612,10 +642,10 @@ func DeleteMessage(msgCertJSON string) string {
 		PublicKey: string(pubkey),
 		Status:    "",
 	}}
-	repCert := core.CreateRepCert(msgcert, delcert, "delete")
+	repCert := client.CreateRepCert(msgcert, delcert, "delete")
 	tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	if err := core.SendToDb(key, repCert, "/route=delete"); err != nil {
+	if err := client.SendToDb(key, repCert, "/route=delete"); err != nil {
 		return fmt.Sprintf("error:send to db: %v", err)
 	}
 

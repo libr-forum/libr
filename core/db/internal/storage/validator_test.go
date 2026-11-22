@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/libr/crypto/cryptoutils"
 	"github.com/libr-forum/Libr/core/db/config"
 	"github.com/libr-forum/Libr/core/db/internal/models"
 )

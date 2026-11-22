@@ -16,21 +16,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
-	"github.com/libr-forum/Libr/core/mod_client/alias"
-	"github.com/libr-forum/Libr/core/mod_client/avatar"
-	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
-	"github.com/libr-forum/Libr/core/mod_client/config"
-	"github.com/libr-forum/Libr/core/mod_client/core"
-	"github.com/libr-forum/Libr/core/mod_client/identity"
-	moddb "github.com/libr-forum/Libr/core/mod_client/internal/mod_db"
-	service "github.com/libr-forum/Libr/core/mod_client/internal/service"
-	"github.com/libr-forum/Libr/core/mod_client/keycache"
-	"github.com/libr-forum/Libr/core/mod_client/logger"
-	"github.com/libr-forum/Libr/core/mod_client/models"
-	Peers "github.com/libr-forum/Libr/core/mod_client/peers"
-	"github.com/libr-forum/Libr/core/mod_client/types"
-	util "github.com/libr-forum/Libr/core/mod_client/util"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libr-forum/Libr/core/libr/alias"
+	"github.com/libr-forum/Libr/core/libr/avatar"
+	cache "github.com/libr-forum/Libr/core/libr/cache"
+	"github.com/libr-forum/Libr/core/libr/client"
+	"github.com/libr-forum/Libr/core/libr/config"
+	"github.com/libr-forum/Libr/core/libr/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/libr/identity"
+	"github.com/libr-forum/Libr/core/libr/keycache"
+	"github.com/libr-forum/Libr/core/libr/logger"
+	"github.com/libr-forum/Libr/core/libr/mod/handlers"
+	moddb "github.com/libr-forum/Libr/core/libr/mod/moddb"
+	service "github.com/libr-forum/Libr/core/libr/mod/service"
+	"github.com/libr-forum/Libr/core/libr/models"
+	Peers "github.com/libr-forum/Libr/core/libr/peers"
+	"github.com/libr-forum/Libr/core/libr/types"
+	util "github.com/libr-forum/Libr/core/libr/util"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -48,16 +50,19 @@ func NewApp() *App {
 	util.InitServerClient(config.GetServerURL())
 	amImod, _ := util.AmIMod(base64.StdEncoding.EncodeToString(keycache.PubKey))
 	if amImod {
-		config.InitDB()
+		moddb.InitDB()
 	}
-	core.MaybeStartCron()
+	// Moderation routes are always served; non-moderators' replies are rejected by quorum checks.
+	Peers.HandlePost("auto", func(_ string, body []byte) []byte { return handlers.MsgIN(body) })
+	Peers.HandlePost("manual", func(_ string, body []byte) []byte { return handlers.MsgReport(body) })
+	client.MaybeStartCron()
 	return &App{relayStatus: "offline", isMod: amImod}
 }
 
 // SetContext passes the Wails context from main to core for event emission
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	core.WailsCtx = ctx
+	client.SetEvents(wailsEvents{ctx})
 	logger.LogToFile("App started")
 	runtime.WindowMaximise(ctx)
 	go func() {
@@ -209,10 +214,18 @@ func (a *App) Connect(relayAdds []string) error {
 	if len(relayAdds) == 0 {
 		return fmt.Errorf("No relay addresses provided")
 	}
+	var opts []libp2p.Option
+	if a.isMod { // mods are located by key; clients keep a fresh peer ID per run
+		id, err := Peers.StableIdentity(keycache.PrivKey)
+		if err != nil {
+			return fmt.Errorf("mod identity: %w", err)
+		}
+		opts = append(opts, id)
+	}
 	err := Peers.StartNode(relayAdds, func(status string) {
 		a.relayStatus = status
 		runtime.EventsEmit(a.ctx, "relay_status_changed", status)
-	})
+	}, opts...)
 	if err != nil {
 		a.relayStatus = "offline"
 		runtime.EventsEmit(a.ctx, "relay_status_changed", "offline")
@@ -227,7 +240,7 @@ func (a *App) Connect(relayAdds []string) error {
 		if err := util.RegisterAsMod(peerId, pubKeyB64, keycache.PrivKey); err != nil {
 			log.Printf("⚠️ RegisterAsMod failed: %v", err)
 		} else {
-			core.StartRefreshCron(pubKeyB64, keycache.PrivKey, config.RegistryRefreshSeconds)
+			client.StartRefreshCron(pubKeyB64, keycache.PrivKey, config.RegistryRefreshSeconds)
 		}
 	}
 	return nil
@@ -238,7 +251,7 @@ func (a *App) Connect(relayAdds []string) error {
 func (a *App) shutdown(_ context.Context) bool {
 	if a.isMod {
 		pubKeyB64 := base64.StdEncoding.EncodeToString(keycache.PubKey)
-		core.StopRefreshCron()
+		client.StopRefreshCron()
 		if err := util.DeregisterAsMod(pubKeyB64, keycache.PrivKey); err != nil {
 			log.Printf("⚠️ DeregisterAsMod on shutdown failed: %v", err)
 		}
@@ -278,7 +291,7 @@ func (a *App) SendInput(input string) (types.SendResult, error) {
 	var err error
 	go func() {
 		var modcerts []types.ModCert
-		modcerts, err = core.AutoSendToMods(input, ts)
+		modcerts, err = client.AutoSendToMods(input, ts)
 		modChan <- modcerts
 	}()
 
@@ -299,10 +312,10 @@ func (a *App) SendInput(input string) (types.SendResult, error) {
 
 	fmt.Println("ModCerts received:", modcertlist)
 
-	msgCert := core.CreateMsgCert(input, ts, modcertlist)
+	msgCert := client.CreateMsgCert(input, ts, modcertlist)
 	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	err = core.SendToDb(key, msgCert, "/route=store")
+	err = client.SendToDb(key, msgCert, "/route=store")
 	if err != nil {
 		return types.SendResult{
 			Status:   "storage_failed",
@@ -326,7 +339,7 @@ func (a *App) SendInput(input string) (types.SendResult, error) {
 func (a *App) ResendToDb(msgCert types.MsgCert) (types.SendResult, error) {
 	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	err := core.SendToDb(key, msgCert, "/route=store")
+	err := client.SendToDb(key, msgCert, "/route=store")
 	if err != nil {
 		return types.SendResult{
 			Status:   "storage_failed",
@@ -394,7 +407,7 @@ func (a *App) SendImageInput(input string) types.SendResult {
 
 	modChan := make(chan []types.ModCert, 1)
 	go func() {
-		modcerts := core.ManualSendToMods(msgCert, mods, "Image attached", true)
+		modcerts := client.ManualSendToMods(msgCert, mods, "Image attached", true)
 		modChan <- modcerts
 	}()
 
@@ -463,7 +476,7 @@ func (a *App) Report(msgcert types.MsgCert, reason *string) string {
 	modChan := make(chan []types.ModCert, 1)
 	mods, _ := util.GetOnlineMods()
 	go func() {
-		modcerts := core.ManualSendToMods(msgcert, mods, reasonStr, true)
+		modcerts := client.ManualSendToMods(msgcert, mods, reasonStr, true)
 		modChan <- modcerts
 	}()
 
@@ -504,16 +517,18 @@ func (a *App) Delete(msgcert types.MsgCert) string {
 	},
 	}
 	fmt.Println("msgcert:", msgcert)
-	repCert := core.CreateRepCert(msgcert, delcert, "delete")
+	repCert := client.CreateRepCert(msgcert, delcert, "delete")
 	tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
 	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	core.SendToDb(key, repCert, "/route=delete")
+	if err := client.SendToDb(key, repCert, "/route=delete"); err != nil {
+		log.Printf("delete failed: %v", err)
+	}
 
 	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", time.Now().Unix())
 }
 
 func (a *App) FetchAll() []types.RetMsgCert {
-	messages := core.FetchRecent(context.Background())
+	messages := client.FetchRecent(context.Background())
 	return messages
 }
 
@@ -533,7 +548,7 @@ func (a *App) ManualModerate(cert types.MsgCert, moderated int) {
 
 // IsModerationCronRunning exposes the cron status to the frontend via Wails.
 func (a *App) IsModerationCronRunning() bool {
-	return core.IsModerationCronRunning()
+	return client.IsModerationCronRunning()
 }
 
 // ModerateBySign is a simpler Wails-callable that takes just the sign string,
@@ -588,7 +603,7 @@ func (a *App) GetPendingModerationStats() PendingModerationStats {
 
 	stats := PendingModerationStats{
 		Items:      []PendingItemStat{},
-		CronActive: core.IsModerationCronRunning(),
+		CronActive: client.IsModerationCronRunning(),
 	}
 
 	for _, f := range files {
@@ -707,7 +722,7 @@ func (a *App) TestDirectCloudConnection(provider, model, apiKey string) (string,
 		keys, _ := service.ReadModKeys()
 		if keys != nil {
 			providerKeyName := strings.ToUpper(provider) + "_API_KEY"
-		if k, ok := keys[providerKeyName]; ok && k != "" {
+			if k, ok := keys[providerKeyName]; ok && k != "" {
 				apiKey = k
 			} else if k, ok := keys["LLM_API_KEY"]; ok && k != "" {
 				apiKey = k
@@ -756,4 +771,15 @@ func (a *App) TestDirectCloudConnection(provider, model, apiKey string) (string,
 	}
 
 	return fmt.Sprintf("Direct connection verified! %s responded in %dms", reqModel, elapsed), nil
+}
+
+// wailsEvents forwards client events to the frontend.
+type wailsEvents struct{ ctx context.Context }
+
+func (w wailsEvents) CronStatus(queue []map[string]interface{}) {
+	runtime.EventsEmit(w.ctx, "cron_status_update", queue)
+}
+
+func (w wailsEvents) ModerationFinalized(f types.FinalizedModeration) {
+	runtime.EventsEmit(w.ctx, "moderation_finalized", map[string]interface{}{"status": f.Status, "id": f.MsgSign})
 }

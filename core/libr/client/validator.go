@@ -1,0 +1,26 @@
+package client
+
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/libr-forum/Libr/core/libr/types"
+)
+
+func IsValidMessage(content string) bool {
+	if len(content) == 0 || len(content) > 2000000 {
+		return false
+	}
+	if strings.ContainsAny(content, "<>{}") {
+		return false
+	}
+	return true
+}
+
+func CanonicalizeMsg(msg types.Msg) (string, error) {
+	jsonBytes, err := json.Marshal(msg)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
+}

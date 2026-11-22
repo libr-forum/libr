@@ -3,9 +3,12 @@ module github.com/libr-forum/Libr/core/libr
 go 1.24.4
 
 require (
+	github.com/caarlos0/env/v10 v10.0.0
+	github.com/joho/godotenv v1.5.1
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/libp2p/go-libp2p-kad-dht v0.35.1
 	github.com/libp2p/go-libp2p-kbucket v0.8.0
+	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/multiformats/go-multiaddr v0.16.1
 )
 

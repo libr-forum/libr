@@ -10,7 +10,7 @@ WORKDIR /build
 
 # Copy modules
 COPY core/db /build/core/db
-COPY core/crypto /build/core/crypto
+COPY core/libr /build/core/libr
 
 # Move into db module
 WORKDIR /build/core/db
