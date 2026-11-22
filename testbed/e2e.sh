@@ -17,7 +17,7 @@ fi
 # Fresh keys and genesis every run (nothing secret is committed).
 rm -rf $OUT && mkdir -p $OUT/keys $OUT/communities $OUT/trace
 ctl() { docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/$OUT:/out" libr-ctl "$@"; }
-for n in founder relay-a relay-b db1 db2 db3 db4 db5 mod1 mod2 mod3 mod4; do
+for n in founder author relay-a relay-b db1 db2 db3 db4 db5 mod1 mod2 mod3 mod4; do
   ctl keygen -out /out/keys/$n.key -libp2p > $OUT/keys/$n.id
 done
 pid() { cut -d' ' -f1 $OUT/keys/$1.id; }
@@ -40,13 +40,18 @@ echo "waiting for the DHT to settle"
 sleep 30
 
 fail() { echo "FAIL: $*"; $P logs --tail 30 >&2 || true; exit 1; }
-submit() { # client text
-  $P run --rm -T "$1" client submit -community general -text "$2" -trace /out/trace/$1.jsonl
+submit() { # client text [extra flags]
+  $P run --rm -T "$1" client submit -community general -text "$2" -trace /out/trace/$1.jsonl "${@:3}"
 }
+hash_of() { sed -n 's/.*hash=\([0-9a-f]*\).*/\1/p' <<<"$1"; }
 feed() { $P run --rm -T "$1" client feed -community general -since 1h; }
 expect_post() { # client text
   local got; got=$(feed "$1") || fail "feed from $1: $got"
   grep -qF "$2" <<<"$got" || fail "$1 feed lacks '$2': $got"
+}
+expect_gone() { # client text
+  local got; got=$(feed "$1") || fail "feed from $1: $got"
+  if grep -qF "$2" <<<"$got"; then fail "$1 feed still shows '$2'"; fi
 }
 
 echo "== 1. post from nat1, read from nat2"
@@ -78,6 +83,26 @@ sleep 20 # one reservation keeper tick withdraws relay-a circuit addresses
 submit client1 "after relay failover" || fail "submit after relay-a down"
 expect_post client2 "after relay failover"
 expect_post client2 "hello from nat1"
+
+echo "== 7. author deletes their post (from the other network)"
+out=$(submit client1 "author will delete this" -key /out/keys/author.key) || fail "submit: $out"
+h=$(hash_of "$out")
+expect_post client2 "author will delete this"
+$P run --rm -T client2 client delete -hash "$h" -key /out/keys/author.key || fail "delete"
+expect_gone client1 "author will delete this"
+if $P run --rm -T client1 client delete -hash "$(hash_of "$(submit client1 "not yours")")" 2>/dev/null; then
+  fail "deleted a post with a different key"
+fi
+
+echo "== 8. report: mods remove by quorum, or keep"
+out=$(submit client1 "please remove-me") || fail "submit: $out"
+$P run --rm -T client2 client report -hash "$(hash_of "$out")" -reason "breaks rules" || fail "report"
+expect_gone client1 "please remove-me"
+out=$(submit client1 "a fine post") || fail "submit: $out"
+if $P run --rm -T client2 client report -hash "$(hash_of "$out")" -reason "dislike" 2>/dev/null; then
+  fail "fine post removed"
+fi
+expect_post client2 "a fine post"
 
 echo "== trace"
 for op in vote store index_put; do

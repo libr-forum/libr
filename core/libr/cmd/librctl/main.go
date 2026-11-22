@@ -7,6 +7,8 @@
 //	librctl mod serve -key FILE -communities DIR -policy approve-all|keyword:w1,w2 [net flags]
 //	librctl client submit -communities DIR -community NAME -text TEXT [net flags]
 //	librctl client feed   -communities DIR -community NAME [-since 1h] [-json] [net flags]
+//	librctl client report -communities DIR -hash HEX -reason TEXT [net flags]
+//	librctl client delete -communities DIR -hash HEX -key AUTHORKEY [net flags]
 //
 // Net flags: -relays, -bootstrap (comma-separated multiaddrs with /p2p/ID), -listen,
 // -communities, -private, -trace FILE. The first four default to the DB node's
@@ -67,7 +69,7 @@ func run(args []string, out io.Writer) error {
 		return genesis(args, out)
 	case "mod serve":
 		return modServe(args)
-	case "client submit", "client feed":
+	case "client submit", "client feed", "client report", "client delete":
 		return clientCmd(cmd, args, out)
 	}
 	return errors.New(usage)
@@ -227,21 +229,25 @@ func (n *node) close() {
 func modServe(args []string) error {
 	fs := flag.NewFlagSet("mod serve", flag.ContinueOnError)
 	nf := addNetFlags(fs, true)
-	policy := fs.String("policy", "approve-all", "approve-all | keyword:w1,w2 (deterministic; no LLM)")
+	policy := fs.String("policy", "approve-all", "posts: approve-all | keyword:w1,w2 (deterministic; no LLM)")
+	reportPolicy := fs.String("report-policy", "", "reports: remove what this policy would reject (default: -policy)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *nf.key == "" {
 		return errors.New("mod serve: -key is required (the moderator's identity)")
 	}
-	var pol moderator.Policy
-	switch {
-	case *policy == "approve-all":
-		pol = moderator.ApproveAll
-	case strings.HasPrefix(*policy, "keyword:"):
-		pol = moderator.Keywords(split(strings.TrimPrefix(*policy, "keyword:"))...)
-	default:
-		return fmt.Errorf("unknown policy %q", *policy)
+	pol, err := parsePolicy(*policy)
+	if err != nil {
+		return err
+	}
+	mod := &moderator.Mod{Policy: pol}
+	if *reportPolicy != "" {
+		rp, err := parsePolicy(*reportPolicy)
+		if err != nil {
+			return err
+		}
+		mod.Report = moderator.RemoveIfRejected(rp)
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -250,11 +256,22 @@ func modServe(args []string) error {
 		return err
 	}
 	defer n.close()
-	(&moderator.Mod{Key: n.key, Sets: n.reg, Policy: pol}).Register(n.host)
+	mod.Key, mod.Sets = n.key, n.reg
+	mod.Register(n.host)
 	go p2p.KeepFindable(ctx, n.host, n.dht, 30*time.Second)
 	log.Printf("mod %s serving %v; policy %s", n.host.ID(), n.host.Addrs(), *policy)
 	<-ctx.Done()
 	return nil
+}
+
+func parsePolicy(spec string) (moderator.Policy, error) {
+	switch {
+	case spec == "approve-all":
+		return moderator.ApproveAll, nil
+	case strings.HasPrefix(spec, "keyword:"):
+		return moderator.Keywords(split(strings.TrimPrefix(spec, "keyword:"))...), nil
+	}
+	return nil, fmt.Errorf("unknown policy %q", spec)
 }
 
 func clientCmd(cmd string, args []string, out io.Writer) error {
@@ -262,6 +279,8 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 	nf := addNetFlags(fs, false)
 	community := fs.String("community", "", "community name")
 	text := fs.String("text", "", "submit: post text")
+	hashHex := fs.String("hash", "", "report/delete: certificate hash (hex, as printed by submit)")
+	reason := fs.String("reason", "", "report: why")
 	since := fs.Duration("since", time.Hour, "feed: how far back")
 	asJSON := fs.Bool("json", false, "feed: print certificates as JSON lines")
 	timeout := fs.Duration("timeout", 2*time.Minute, "overall timeout")
@@ -303,6 +322,33 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 			time.Since(start).Round(time.Millisecond))
 		select { // let replication to the remaining replicas finish before exiting
 		case <-p.Done:
+		case <-ctx.Done():
+		}
+		return nil
+	}
+
+	if cmd == "client report" || cmd == "client delete" {
+		var h proto.Hash
+		if b, err := hex.DecodeString(*hashHex); err != nil || copy(h[:], b) != len(h) || len(b) != len(h) {
+			return fmt.Errorf("-hash: want %d hex bytes", len(h))
+		}
+		cert, err := c.Get(ctx, h)
+		if err != nil {
+			return err
+		}
+		var r *forum.Removed
+		if cmd == "client report" {
+			r, err = c.Report(ctx, cert, *reason)
+		} else {
+			r, err = c.Delete(ctx, cert)
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "removed msg_id=%s kind=%s acks=%d index_acks=%d\n",
+			hex.EncodeToString(r.Tomb.MsgID[:]), r.Tomb.Kind(), len(r.Acks), len(r.IndexAcks))
+		select {
+		case <-r.Done:
 		case <-ctx.Done():
 		}
 		return nil
