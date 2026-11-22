@@ -164,3 +164,36 @@ func TestDecideReport(t *testing.T) {
 		})
 	}
 }
+
+// TestBusy: with every decision slot taken, further requests are refused at once
+// instead of queueing more policy (LLM) calls.
+func TestBusy(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{}, maxDeciding)
+	m, _ := setup(t, func(context.Context, proto.Msg) (bool, error) {
+		started <- struct{}{}
+		<-release
+		return true, nil
+	})
+	m.slots = make(chan struct{}, maxDeciding)
+	m.authors = nil
+	done := make(chan error, maxDeciding)
+	for i := 0; i < maxDeciding; i++ {
+		go func(i int) {
+			_, err := m.Decide(context.Background(), msg(fmt.Sprint("a", i), "x", now))
+			done <- err
+		}(i)
+	}
+	for i := 0; i < maxDeciding; i++ {
+		<-started
+	}
+	if _, err := m.Decide(context.Background(), msg("late", "x", now)); !errors.Is(err, ErrBusy) {
+		t.Fatalf("err = %v, want ErrBusy", err)
+	}
+	close(release)
+	for i := 0; i < maxDeciding; i++ {
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+}

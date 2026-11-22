@@ -58,7 +58,13 @@ const (
 	authorPerSecond = 0.2
 	authorBurst     = 5
 	decideTimeout   = 20 * time.Second // under wire.Timeout, so the reply still arrives
+	// maxDeciding bounds concurrent policy calls (an LLM is the expensive part); peer
+	// IDs and author keys are free to mint, so per-key limits alone do not bound it.
+	maxDeciding = 16
 )
+
+// ErrBusy is returned when maxDeciding decisions are already running.
+var ErrBusy = errors.New("busy")
 
 // Mod is one moderator.
 type Mod struct {
@@ -70,12 +76,30 @@ type Mod struct {
 
 	authors   *wire.Limiter
 	reporters *wire.Limiter
+	slots     chan struct{}
+}
+
+// decide runs fn in one of maxDeciding slots, refusing at once when all are taken.
+func (m *Mod) decide(fn func()) error {
+	if m.slots == nil { // Decide used without Register (tests)
+		fn()
+		return nil
+	}
+	select {
+	case m.slots <- struct{}{}:
+		defer func() { <-m.slots }()
+		fn()
+		return nil
+	default:
+		return ErrBusy
+	}
 }
 
 // Register installs /libr/2/vote on h.
 func (m *Mod) Register(h host.Host) {
 	m.authors = wire.NewLimiter(authorPerSecond, authorBurst)
 	m.reporters = wire.NewLimiter(authorPerSecond, authorBurst)
+	m.slots = make(chan struct{}, maxDeciding)
 	peers := wire.NewLimiter(peerPerSecond, peerBurst)
 	reject := func(err error) wire.VoteResp { return wire.VoteResp{Err: err.Error()} }
 	wire.Handle(h, wire.ProtoVote, peers, m.vote, reject)
@@ -134,7 +158,11 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	}
 	ctx, cancel := context.WithTimeout(ctx, decideTimeout)
 	defer cancel()
-	ok, err := m.Policy(ctx, msg)
+	var ok bool
+	var err error
+	if busy := m.decide(func() { ok, err = m.Policy(ctx, msg) }); busy != nil {
+		return nil, busy
+	}
 	v := proto.SignModVote(m.Key, msg, c.Epoch, ok && err == nil)
 	return &v, nil
 }
@@ -167,7 +195,11 @@ func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, decideTimeout)
 	defer cancel()
-	remove, err := policy(ctx, msg, r.Reason)
+	var remove bool
+	var err error
+	if busy := m.decide(func() { remove, err = policy(ctx, msg, r.Reason) }); busy != nil {
+		return nil, busy
+	}
 	v := proto.SignRepVote(m.Key, proto.RepCert{MsgID: id, Community: msg.Community, Epoch: r.Epoch, Reason: r.Reason}, remove && err == nil)
 	return &v, nil
 }
