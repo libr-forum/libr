@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/libr-forum/Libr/core/libr/p2p"
+
 	kb "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -80,7 +82,7 @@ func ReachPeer(asker *Node, target peer.ID) error {
 	if err := asker.Host.Connect(ctx, info); err != nil {
 		return err
 	}
-	s, err := LimitedOK{asker.Host}.NewStream(ctx, target, EchoProto)
+	s, err := p2p.LimitedOK{Host: asker.Host}.NewStream(ctx, target, EchoProto)
 	if err != nil {
 		return err
 	}

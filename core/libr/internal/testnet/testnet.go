@@ -9,22 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libr-forum/Libr/core/libr/p2p"
+
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/control"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	"github.com/libp2p/go-libp2p/x/rate"
 	ma "github.com/multiformats/go-multiaddr"
 )
-
-// DHTPrefix keeps LIBR's DHT separate from the public IPFS DHT.
-const DHTPrefix = protocol.ID("/libr")
 
 // Config describes a topology. All DB nodes and mods are NATed.
 type Config struct {
@@ -126,6 +122,11 @@ func NewRelay(listen string, opts ...libp2p.Option) (host.Host, error) {
 // NewNATed starts a peer that is reachable only through circuits on relays, holds a
 // reservation on each, and runs the LIBR DHT in mode. opts are extra host options.
 func NewNATed(ctx context.Context, listen string, relays []peer.AddrInfo, mode dht.ModeOpt, opts ...libp2p.Option) (*Node, error) {
+	return NewNATedHost(ctx, p2p.Config{Listen: []string{listen}}, relays, mode == dht.ModeServer, opts...)
+}
+
+// NewNATedHost is NewNATed with the production host config (e.g. a stable key).
+func NewNATedHost(ctx context.Context, cfg p2p.Config, relays []peer.AddrInfo, server bool, opts ...libp2p.Option) (*Node, error) {
 	relaySet := map[peer.ID]bool{}
 	for _, r := range relays {
 		relaySet[r.ID] = true
@@ -134,22 +135,19 @@ func NewNATed(ctx context.Context, listen string, relays []peer.AddrInfo, mode d
 	// so reserve explicitly and advertise exactly the circuit addresses.
 	var mu sync.Mutex
 	var circuits []ma.Multiaddr
-	rm, err := ResourceManager()
+	base, err := p2p.BaseOptions(cfg)
 	if err != nil {
 		return nil, err
 	}
-	h, err := libp2p.New(append([]libp2p.Option{
-		libp2p.ListenAddrStrings(listen),
-		libp2p.ResourceManager(rm),
+	h, err := libp2p.New(append(append(base,
 		libp2p.ForceReachabilityPrivate(),
-		libp2p.EnableHolePunching(),
 		libp2p.ConnectionGater(natGater{relays: relaySet}),
 		libp2p.AddrsFactory(func([]ma.Multiaddr) []ma.Multiaddr {
 			mu.Lock()
 			defer mu.Unlock()
 			return append([]ma.Multiaddr(nil), circuits...)
 		}),
-	}, opts...)...)
+	), opts...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,10 +178,7 @@ func NewNATed(ctx context.Context, listen string, relays []peer.AddrInfo, mode d
 		return fail("%s advertises %v, want circuit addrs", h.ID(), h.Addrs())
 	}
 
-	d, err := dht.New(ctx, LimitedOK{h},
-		dht.Mode(mode),
-		dht.ProtocolPrefix(DHTPrefix),
-	)
+	d, err := p2p.NewDHT(ctx, h, server, nil)
 	if err != nil {
 		return fail("dht: %w", err)
 	}
@@ -194,28 +189,6 @@ func NewNATed(ctx context.Context, listen string, relays []peer.AddrInfo, mode d
 func (n *Node) Close() error {
 	n.DHT.Close()
 	return n.Host.Close()
-}
-
-// ResourceManager is libp2p's default resource manager with a looser connection-rate
-// limit. The default allows 0.2 new connections/s per IP after a burst of 16, and a
-// relayed connection is charged to the relay's IP, so a peer that opens circuits to
-// several mods and DB nodes through one relay gets "rate limit exceeded". Found by the
-// Docker DHT spike; localhost is exempt, so in-process tests cannot show it.
-func ResourceManager() (network.ResourceManager, error) {
-	limiter := &rate.Limiter{SubnetRateLimiter: rate.SubnetLimiter{
-		IPv4SubnetLimits: []rate.SubnetLimit{{PrefixLength: 32, Limit: rate.Limit{RPS: 20, Burst: 200}}},
-		IPv6SubnetLimits: []rate.SubnetLimit{{PrefixLength: 56, Limit: rate.Limit{RPS: 20, Burst: 200}}},
-		GracePeriod:      time.Minute,
-	}}
-	return rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()), rcmgr.WithConnRateLimiters(limiter))
-}
-
-// LimitedOK lets every outbound stream use a limited (relayed) connection. kad-dht
-// does not opt in itself, and NATed DB nodes are only reachable over circuits.
-type LimitedOK struct{ host.Host }
-
-func (h LimitedOK) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (network.Stream, error) {
-	return h.Host.NewStream(network.WithAllowLimitedConn(ctx, "libr"), p, pids...)
 }
 
 // natGater models a symmetric NAT: outbound is free, inbound is accepted only from
