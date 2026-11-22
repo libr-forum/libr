@@ -98,20 +98,5 @@ func ReachPeer(asker *Node, target peer.ID) error {
 	return nil
 }
 
-// Announce connects n to the DB nodes closest to its own peer ID and keeps those
-// connections. Client-mode peers (mods) are not in anyone's routing table, so this is
-// what lets FindPeer resolve them: those DB nodes hold n's circuit addresses.
-func Announce(ctx context.Context, n *Node) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	closest, err := n.DHT.GetClosestPeers(ctx, string(n.Host.ID()))
-	if err != nil {
-		return err
-	}
-	for _, p := range closest {
-		if err := n.Host.Connect(ctx, peer.AddrInfo{ID: p}); err == nil {
-			n.Host.ConnManager().Protect(p, "libr-announce")
-		}
-	}
-	return nil
-}
+// Announce keeps a client-mode node findable (see p2p.Announce).
+func Announce(ctx context.Context, n *Node) error { return p2p.Announce(ctx, n.Host, n.DHT) }

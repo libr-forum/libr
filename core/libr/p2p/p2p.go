@@ -35,6 +35,10 @@ type Config struct {
 	Relays []peer.AddrInfo
 	// RelayService makes a publicly reachable node relay for others.
 	RelayService bool
+	// Private marks a host behind NAT: it reserves on Relays itself and advertises
+	// only its circuit addresses. Otherwise relays are used through AutoRelay, which
+	// only engages when AutoNAT finds the host unreachable and only uses public relays.
+	Private bool
 }
 
 // BaseOptions are the options every LIBR host uses (production and tests).
@@ -62,17 +66,29 @@ func BaseOptions(cfg Config) ([]libp2p.Option, error) {
 	return opts, nil
 }
 
-// NewHost starts a host that keeps reservations on cfg.Relays while it is not
-// publicly reachable.
-func NewHost(cfg Config) (host.Host, error) {
+// NewHost starts a host. A Private host returns once it has tried every relay once;
+// it keeps (re)reserving in the background until closed. extra are added last.
+func NewHost(cfg Config, extra ...libp2p.Option) (host.Host, error) {
 	opts, err := BaseOptions(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if len(cfg.Relays) > 0 {
-		opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(cfg.Relays))
+	if !cfg.Private {
+		if len(cfg.Relays) > 0 {
+			opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(cfg.Relays))
+		}
+		return libp2p.New(append(append(opts, libp2p.NATPortMap()), extra...)...)
 	}
-	return libp2p.New(append(opts, libp2p.NATPortMap())...)
+	r := &reservations{relays: cfg.Relays, expiry: map[peer.ID]time.Time{}}
+	h, err := libp2p.New(append(append(opts, libp2p.ForceReachabilityPrivate(), libp2p.AddrsFactory(r.addrs)), extra...)...)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	r.h = h
+	r.refresh(ctx)
+	go r.run(ctx)
+	return &privateHost{Host: h, cancel: cancel}, nil
 }
 
 // NewDHT starts the routing DHT. DB nodes are servers (they appear in routing tables,

@@ -5,7 +5,6 @@ package testnet
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -131,56 +129,19 @@ func NewNATedHost(ctx context.Context, cfg p2p.Config, relays []peer.AddrInfo, s
 	for _, r := range relays {
 		relaySet[r.ID] = true
 	}
-	// autorelay only advertises relays with public IPs, which loopback relays are not,
-	// so reserve explicitly and advertise exactly the circuit addresses.
-	var mu sync.Mutex
-	var circuits []ma.Multiaddr
-	base, err := p2p.BaseOptions(cfg)
+	cfg.Private, cfg.Relays = true, relays
+	h, err := p2p.NewHost(cfg, append([]libp2p.Option{libp2p.ConnectionGater(natGater{relays: relaySet})}, opts...)...)
 	if err != nil {
 		return nil, err
-	}
-	h, err := libp2p.New(append(append(base,
-		libp2p.ForceReachabilityPrivate(),
-		libp2p.ConnectionGater(natGater{relays: relaySet}),
-		libp2p.AddrsFactory(func([]ma.Multiaddr) []ma.Multiaddr {
-			mu.Lock()
-			defer mu.Unlock()
-			return append([]ma.Multiaddr(nil), circuits...)
-		}),
-	), opts...)...)
-	if err != nil {
-		return nil, err
-	}
-	fail := func(format string, args ...any) (*Node, error) {
-		h.Close()
-		return nil, fmt.Errorf(format, args...)
-	}
-
-	for _, r := range relays {
-		if err := h.Connect(ctx, r); err != nil {
-			return fail("connect relay %s: %w", r.ID, err)
-		}
-		if _, err := client.Reserve(ctx, h, r); err != nil {
-			return fail("reserve on relay %s: %w", r.ID, err)
-		}
-		h.ConnManager().Protect(r.ID, "relay")
-		for _, a := range r.Addrs {
-			c, err := ma.NewMultiaddr(fmt.Sprintf("%s/p2p/%s/p2p-circuit", a, r.ID))
-			if err != nil {
-				return fail("circuit addr: %w", err)
-			}
-			mu.Lock()
-			circuits = append(circuits, c)
-			mu.Unlock()
-		}
 	}
 	if circuitAddrs(h.Addrs()) < len(relays) {
-		return fail("%s advertises %v, want circuit addrs", h.ID(), h.Addrs())
+		h.Close()
+		return nil, fmt.Errorf("%s advertises %v, want a circuit addr per relay", h.ID(), h.Addrs())
 	}
-
 	d, err := p2p.NewDHT(ctx, h, server, nil)
 	if err != nil {
-		return fail("dht: %w", err)
+		h.Close()
+		return nil, fmt.Errorf("dht: %w", err)
 	}
 	return &Node{Host: h, DHT: d}, nil
 }
