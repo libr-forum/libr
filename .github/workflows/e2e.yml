@@ -1,6 +1,6 @@
 name: E2E
 
-# Multi-container network tests (Docker). Slower than CI, so run nightly, on demand,
+# Multi-container network tests (Docker) and fuzzing. Slower than CI, so run nightly, on demand,
 # and when the shared v2 core changes.
 on:
   workflow_dispatch:
@@ -24,3 +24,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run spike topology
         run: core/libr/internal/testnet/dhtspike/run.sh
+
+  fuzz:
+    name: Fuzz proto (60s per target)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: core/libr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/libr/go.mod
+          cache-dependency-path: core/libr/go.sum
+      - name: Fuzz
+        run: |
+          for t in FuzzEncodeInjective FuzzVerifyMsgCert FuzzDecodeMsgCert; do
+            go test ./proto -run '^$' -fuzz "^$t\$" -fuzztime 60s
+          done
+      - name: Keep failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus
+          path: core/libr/proto/testdata/fuzz
