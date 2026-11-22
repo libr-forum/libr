@@ -188,7 +188,7 @@ const App: React.FC = () => {
       logger.debug("🔄 Fetching relay addresses...");
       const relayAddrs = await fetchRelayAddrs();
       
-      let status = await GetRelayStatus();
+      const status = await GetRelayStatus();
       let connected = false;
       if (status === "online") {
         setRelayStatus("online");

@@ -135,8 +135,10 @@ export default {
 		}
 	},
 	plugins: [
+		/* eslint-disable @typescript-eslint/no-require-imports -- tailwind plugins are CommonJS */
 		require("tailwindcss-animate"),
 		require('tailwind-scrollbar')({ nocompatible: true }),
+		/* eslint-enable @typescript-eslint/no-require-imports */
 	],
 	safelist: ['prose-mirror-editor'],
 } satisfies Config;

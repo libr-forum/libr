@@ -113,7 +113,7 @@ export const Menubar: React.FC = () => {
 
   const displayItems = React.useMemo<DisplayQueueItem[]>(
     () =>
-      displayOrder.flatMap((id) => {
+      displayOrder.flatMap((id): DisplayQueueItem[] => {
         const resolved = resolvedMap.get(id);
         if (resolved) {
           return [{ kind: 'resolved', item: resolved }];
@@ -267,7 +267,7 @@ export const Menubar: React.FC = () => {
                   {displayItems.map((entry) => {
                     const item = entry.item;
                     const isResolved = entry.kind === 'resolved';
-                    const isApproved = isResolved && item.finalStatus === 'approved';
+                    const isApproved = entry.kind === 'resolved' && entry.item.finalStatus === 'approved';
                     const isOpen = expandedItem === item.id;
                     const { rawText, preview, isImage, isReport } = getQueueText(item);
                     const TypeIcon = isImage ? ImageIcon : isReport ? Flag : FileText;
@@ -305,7 +305,7 @@ export const Menubar: React.FC = () => {
                             {isResolved ? (
                               <>
                                 <span className={`font-semibold uppercase text-[10px] tracking-wide ${statusColor}`}>
-                                  {item.finalStatus}
+                                  {entry.kind === 'resolved' && entry.item.finalStatus}
                                 </span>
                                 <button
                                   onClick={(e) => {

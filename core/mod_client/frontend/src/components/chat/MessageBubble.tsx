@@ -180,7 +180,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                           // Full moderation resend
                           retried = await apiService.sendMessage(message.communityId, message.content);
                         }
-                        setMessages(messages.map(m => m.id === message.id ? retried : m));
+                        setMessages(messages.map(m => m.sign === message.sign ? retried : m));
                       }}
                       className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
                     >
