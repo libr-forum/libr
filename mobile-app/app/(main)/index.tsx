@@ -514,7 +514,8 @@ export default function ChatScreen() {
       let pubKey = '';
       try {
         if (typeof (LibrCore as any).initApp === 'function') {
-          pubKey = await (LibrCore as any).initApp('');
+          // Empty means the Go core's default; set EXPO_PUBLIC_SERVER_URL at build time to override.
+          pubKey = await (LibrCore as any).initApp(process.env.EXPO_PUBLIC_SERVER_URL ?? '');
           log(`Step 1 OK: pubKey=${pubKey ? pubKey.slice(0, 16) + '…' : '(empty)'}`);
         } else {
           log('Step 1 SKIP: initApp not in AAR');
