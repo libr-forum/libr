@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"strconv"
 
 	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
-	"github.com/libr-forum/Libr/core/db/config"
 	"github.com/libr-forum/Libr/core/db/internal/models"
-	"github.com/libr-forum/Libr/core/db/internal/utils"
 )
 
 func ValidateMsgCert(msgcert *models.MsgCert) error {
@@ -108,101 +105,67 @@ func ValidateRepCert(repCert *models.ReportCert, validMods []*models.Mod) error 
 }
 
 func ValidateRepModCerts(repCert *models.ReportCert, validMods []*models.Mod) error {
-	validMap := make(map[string]struct{})
-	for _, mod := range validMods {
-		validMap[mod.PublicKey] = struct{}{}
-	}
-	fmt.Println("Valid mods map:", validMap)
-	totalMods := len(validMods)
-
-	msgCertSign := repCert.Msgcert.Sign
-	msgCertPubKey := repCert.Msgcert.PublicKey
-
-	approveCount := 0
-	rejectCount := 0
-
-	for _, repmodcert := range repCert.RepModCerts {
-		if repCert.Mode == "delete" {
-			// In delete mode, must be signed by the original author
-			if repmodcert.PublicKey != msgCertPubKey {
-				return fmt.Errorf("❌ Delete mode: modcert.PublicKey (%s) != MsgCert.PublicKey (%s)", repmodcert.PublicKey, msgCertPubKey)
+	if repCert.Mode == "delete" {
+		// Author self-delete: needs the original author's signature over the cert sign; no mod quorum.
+		for _, c := range repCert.RepModCerts {
+			if c.PublicKey == repCert.Msgcert.PublicKey && cryptoutils.VerifySignature(c.PublicKey, repCert.Msgcert.Sign, c.Sign) {
+				return nil
 			}
-			if !cryptoutils.VerifySignature(repmodcert.PublicKey, msgCertSign, repmodcert.Sign) {
-				return fmt.Errorf("❌ Delete mode: invalid signature from original user %s", repmodcert.PublicKey)
-			}
-			approveCount = totalMods
-			break
 		}
-
-		// Manual (report) mode
-		if _, ok := validMap[repmodcert.PublicKey]; !ok {
-			return fmt.Errorf("❌ Unauthorized moderator: %s", repmodcert.PublicKey)
-		}
-
-		payload := repCert.Msgcert.Sign + repmodcert.Status
-		if !cryptoutils.VerifySignature(repmodcert.PublicKey, payload, repmodcert.Sign) {
-			return fmt.Errorf("❌ Invalid signature from mod: %s", repmodcert.PublicKey)
-		}
-
-		switch repmodcert.Status {
-		case "1":
-			approveCount++
-		case "0":
-			rejectCount++
-		}
-		if (rejectCount) > totalMods/2 {
-			return fmt.Errorf("❌ Too many rejections: got %d, need at most %d", rejectCount, totalMods/2)
-		}
+		return errors.New("delete mode: no valid signature from the original author")
 	}
-
-	if float32(approveCount)/float32(rejectCount+approveCount) > 0.5 && float32(approveCount)/float32(totalMods) > 0.3 {
-		return nil
-	} else {
-		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, int(math.Ceil(float64(totalMods)*0.3)))
-	}
+	return checkQuorum(repCert.RepModCerts, validMods, func(c models.ModCert) string {
+		return repCert.Msgcert.Sign + c.Status
+	})
 }
 
-func ValidateModCert(msgCert *models.MsgCert) error {
-	apprCount := 0
-	rejCount := 0
-	validMods, _ := utils.GetOnlineMods()
-	totalMods := len(validMods)
-	for _, modcert := range msgCert.ModCerts {
-		payload := msgCert.Msg.Content + strconv.FormatInt(msgCert.Msg.Ts, 10) + modcert.Status
-		fmt.Println("Payload:", payload)
-		if !cryptoutils.VerifySignature(modcert.PublicKey, payload, modcert.Sign) {
-			return fmt.Errorf("❌ Invalid ModCert signature")
-		}
-		switch modcert.Status {
-		case "1":
-			apprCount++
-		case "0":
-			rejCount++
-		}
-		if (rejCount) > totalMods/2 {
-			return fmt.Errorf("❌ Too many rejections: got %d, need at most %d", rejCount, totalMods/2)
-		}
-	}
-	if float32(apprCount)/float32(rejCount+apprCount) > 0.5 && float32(apprCount)/float32(totalMods) > 0.3 {
-		return nil
-	} else {
-		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", apprCount, int(math.Ceil(float64(totalMods)*0.3)))
-	}
-
+// ValidateModCert checks the moderator approvals on a MsgCert against the given moderator set.
+func ValidateModCert(msgCert *models.MsgCert, validMods []*models.Mod) error {
+	return checkQuorum(msgCert.ModCerts, validMods, func(c models.ModCert) string {
+		return msgCert.Msg.Content + strconv.FormatInt(msgCert.Msg.Ts, 10) + c.Status
+	})
 }
 
-func ValidateMajority(modcertlist []*models.ModCert, totalMods int) error {
-	approveCount := 0
-	for _, modcert := range modcertlist {
-		if modcert.Status == "1" {
-			approveCount++
+// checkQuorum counts each moderator key in validMods at most once, after verifying its
+// signature over payload(cert). It fails closed: an empty moderator set, an unknown key,
+// a repeated key or a bad signature is an error.
+func checkQuorum(certs []models.ModCert, validMods []*models.Mod, payload func(models.ModCert) string) error {
+	total := len(validMods)
+	if total == 0 {
+		return errors.New("moderator set unavailable or empty")
+	}
+	valid := make(map[string]bool, total)
+	for _, m := range validMods {
+		valid[m.PublicKey] = true
+	}
+
+	seen := make(map[string]bool, len(certs))
+	appr, rej := 0, 0
+	for _, c := range certs {
+		if !valid[c.PublicKey] {
+			return fmt.Errorf("unauthorized moderator: %s", c.PublicKey)
+		}
+		if seen[c.PublicKey] {
+			return fmt.Errorf("duplicate vote from moderator: %s", c.PublicKey)
+		}
+		seen[c.PublicKey] = true
+		if !cryptoutils.VerifySignature(c.PublicKey, payload(c), c.Sign) {
+			return fmt.Errorf("invalid signature from moderator: %s", c.PublicKey)
+		}
+		switch c.Status {
+		case "1":
+			appr++
+		case "0":
+			rej++
 		}
 	}
 
-	threshold := int(math.Ceil(float64(len(modcertlist)) * float64(config.RepMajority)))
-	if approveCount < threshold {
-		return fmt.Errorf("❌ Not enough approvals: got %d, need more than %d", approveCount, threshold)
+	// v1 rule kept: rejections <= half the set, approvals > half of votes and > 30% of the set.
+	if rej > total/2 {
+		return fmt.Errorf("too many rejections: %d of %d", rej, total)
 	}
-
+	if 2*appr <= appr+rej || 10*appr <= 3*total {
+		return fmt.Errorf("not enough approvals: %d of %d (rejections %d)", appr, total, rej)
+	}
 	return nil
 }

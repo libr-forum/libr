@@ -77,26 +77,31 @@ func SendFindNode(targetId [20]byte, rt *routing.RoutingTable) []*models.Node {
 	return ClosestNodes
 }
 
-func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, bool) {
+// StoreValue stores cert if this node is among the K closest to key. stored=false with a
+// nil error means "redirect to closest"; a non-nil error means the cert was refused.
+func StoreValue(key [20]byte, cert *models.MsgCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, bool, error) {
 	closest := rt.FindClosest(key, config.K)
-	fmt.Println(closest)
-
 	selfDist := node.XORBigInt(self.NodeId, key)
-	fmt.Println(selfDist)
 
-	if len(closest) < config.K {
-		storage.StoreMsgCert(cert)
-		return closest, true
-	}
-
+	isClose := len(closest) < config.K
 	for _, n := range closest {
 		if selfDist.Cmp(node.XORBigInt(n.NodeId, key)) < 0 {
-			storage.StoreMsgCert(cert)
-			return closest, true
+			isClose = true
+			break
 		}
 	}
+	if !isClose {
+		return closest, false, nil
+	}
 
-	return closest, false
+	mods, err := utils.GetOnlineMods()
+	if err != nil {
+		return closest, false, fmt.Errorf("moderator set unavailable: %w", err)
+	}
+	if _, err := storage.StoreMsgCert(cert, mods); err != nil {
+		return closest, false, err
+	}
+	return closest, true, nil
 }
 
 func SendFindValue(key string, self *models.Node, rt *routing.RoutingTable) ([]models.RetMsgCert, []*models.Node) {
@@ -189,6 +194,7 @@ func SendFindValue(key string, self *models.Node, rt *routing.RoutingTable) ([]m
 // }
 
 func DeleteValue(key *[20]byte, repCert *models.ReportCert, self *models.Node, rt *routing.RoutingTable) ([]*models.Node, error) {
+	// An unavailable list leaves validMods empty, which fails closed for report mode.
 	validMods, _ := utils.GetOnlineMods()
 
 	selfDist := node.XORBigInt(self.NodeId, *key)

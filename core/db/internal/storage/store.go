@@ -9,14 +9,14 @@ import (
 	"github.com/libr-forum/Libr/core/db/internal/models"
 )
 
-func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
+func StoreMsgCert(msgcert *models.MsgCert, validMods []*models.Mod) (string, error) {
 	fmt.Println("Storing MsgCert")
 	if err := ValidateMsgCert(msgcert); err != nil {
 		log.Printf("Error validating MsgCert: %v", err)
 		return "", err
 	}
 
-	if err := ValidateModCert(msgcert); err != nil {
+	if err := ValidateModCert(msgcert, validMods); err != nil {
 		log.Printf("Error validating ModCert: %v", err)
 		return "", err
 	}
@@ -37,7 +37,6 @@ func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
 		msgcert.Sign,
 	)
 
-	fmt.Println("Probably stored???")
 	if err != nil {
 		log.Printf("Error inserting MsgCert: %v", err)
 		return "Error inserting MsgCert", err
@@ -47,9 +46,10 @@ func StoreMsgCert(msgcert *models.MsgCert) (string, error) {
 
 func DeleteMsgCert(repCert *models.ReportCert) error {
 	fmt.Println("Deleting MsgCert :]")
-	query := "UPDATE msgcert SET deleted = 1 WHERE ts = ? AND sender = ?;"
+	// Match the exact certificate, not every post the sender made in that second.
+	query := "UPDATE msgcert SET deleted = 1 WHERE sign = ? AND sender = ?;"
 
-	result, err := config.DB.Exec(query, repCert.Msgcert.Msg.Ts, repCert.Msgcert.PublicKey)
+	result, err := config.DB.Exec(query, repCert.Msgcert.Sign, repCert.Msgcert.PublicKey)
 	if err != nil {
 		log.Printf("Error soft-deleting MsgCert: %v", err)
 		return err

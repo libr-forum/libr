@@ -194,7 +194,11 @@ func StoreHandler(body interface{}, localNode *models.Node, rt *routing.RoutingT
 	keyBytes := node.GenerateNodeID(strconv.FormatInt(tsmin, 10))
 	fmt.Println(tsmin, keyBytes)
 
-	closest, stored := StoreValue(keyBytes, &msgcert, localNode, rt)
+	closest, stored, err := StoreValue(keyBytes, &msgcert, localNode, rt)
+	if err != nil {
+		data, _ := json.Marshal(map[string]string{"type": "error", "error": err.Error()})
+		return data
+	}
 
 	if !stored {
 		fmt.Println("Sending list of k closest nodes")

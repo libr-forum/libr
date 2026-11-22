@@ -13,7 +13,6 @@ import (
 )
 
 const K = 4
-const RepMajority = 0.5
 
 // DB is the global SQLite connection
 var DB *sql.DB
@@ -31,17 +30,25 @@ func InitDB() {
 		log.Fatalf("Failed to create DB directory: %v", err)
 	}
 
-	DB, err = sql.Open("sqlite3", dbPath)
+	DB, err = OpenDB(dbPath)
 	if err != nil {
-		log.Fatalf("Failed to connect to SQLite DB: %v", err)
-	}
-
-	err = createTables()
-	if err != nil {
-		log.Printf("Failed to create tables: %v", err)
+		log.Fatalf("Failed to open SQLite DB: %v", err)
 	}
 
 	log.Println("SQLite database initialized successfully.")
+}
+
+// OpenDB opens the SQLite file at path and creates the tables. Tests point it at a temp file.
+func OpenDB(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		return nil, err
+	}
+	if err := createTables(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
 }
 
 func getDBPath() string {
@@ -64,7 +71,7 @@ func getDBPath() string {
 	return dbPath
 }
 
-func createTables() error {
+func createTables(DB *sql.DB) error {
 	createMsgCertTable := `
 	CREATE TABLE IF NOT EXISTS msgcert (
 		sender TEXT NOT NULL,
