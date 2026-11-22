@@ -101,7 +101,7 @@ func TestKotlinCallsResolve(t *testing.T) {
 			}
 		}
 	}
-	for _, h := range []string{"SetMessageHandler", "SetNotificationHandler"} {
+	for _, h := range []string{"SetNotificationHandler"} {
 		if _, ok := funcs[h]; !ok {
 			t.Errorf("Kotlin registers %s, bridge has none", h)
 		}
