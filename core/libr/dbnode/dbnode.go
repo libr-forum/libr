@@ -33,6 +33,9 @@ type Node struct {
 	Sets  proto.ModSets
 	Store Store
 	Now   func() time.Time // nil means time.Now
+	// OptOut lists communities this node refuses to store (legal opt-out). Clients
+	// move on to the next-closest node. Not modified after Register.
+	OptOut map[string]bool
 }
 
 // Per-peer request budget: generous for a client posting and reading feeds, small
@@ -63,6 +66,9 @@ func (n *Node) now() time.Time {
 // admit verifies c and refuses messages that have been removed, so a removed post
 // cannot come back under a second certificate.
 func (n *Node) admit(c proto.MsgCert) *wire.ReceiptResp {
+	if n.OptOut[c.Msg.Community] {
+		return &wire.ReceiptResp{Err: wire.ErrOptOut}
+	}
 	if err := proto.VerifyMsgCert(n.Sets, c, n.now()); err != nil {
 		return &wire.ReceiptResp{Err: "invalid: " + err.Error()}
 	}

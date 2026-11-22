@@ -105,4 +105,5 @@ const (
 	ErrNotFound = "notfound"
 	ErrInternal = "internal"
 	ErrRemoved  = "removed" // the message has a tombstone; no new copies are accepted
+	ErrOptOut   = "optout"  // this node does not store the community; try the next one
 )

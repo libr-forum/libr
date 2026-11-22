@@ -7,10 +7,13 @@
 //	LIBR_BOOTSTRAP    comma-separated multiaddrs of DHT peers to join through
 //	LIBR_PUBLIC       "1" if publicly reachable: also serve as a circuit relay
 //	LIBR_PRIVATE      "1" if behind NAT: reserve on LIBR_RELAYS, advertise circuit addresses only
+//	LIBR_SEED_URLS    comma-separated seed servers (librserver): register this node, find peers
+//	LIBR_OPTOUT       comma-separated communities this node will not store
 package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"log"
@@ -29,6 +32,7 @@ import (
 	"github.com/libr-forum/Libr/core/libr/dbnode"
 	"github.com/libr-forum/Libr/core/libr/p2p"
 	"github.com/libr-forum/Libr/core/libr/proto"
+	"github.com/libr-forum/Libr/core/libr/seeds"
 )
 
 func main() {
@@ -82,7 +86,12 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	(&dbnode.Node{Key: key, Sets: reg, Store: store}).Register(h)
+	optOut := map[string]bool{}
+	for _, c := range split(os.Getenv("LIBR_OPTOUT")) {
+		optOut[c] = true
+	}
+	(&dbnode.Node{Key: key, Sets: reg, Store: store, OptOut: optOut}).Register(h)
+	servers := split(os.Getenv("LIBR_SEED_URLS"))
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -99,27 +108,61 @@ func run() error {
 	if err := d.Bootstrap(ctx); err != nil {
 		return err
 	}
-	go join(ctx, h, d, boot)
+	go join(ctx, h, d, boot, servers, filepath.Join(dir, "peers.json"))
+	for _, s := range servers {
+		go register(ctx, h, key, s)
+	}
 
-	log.Printf("dbnode %s serving %v; communities %v", h.ID(), h.Addrs(), reg.Communities())
+	log.Printf("dbnode %s serving %v; communities %v; opted out of %v", h.ID(), h.Addrs(), reg.Communities(), split(os.Getenv("LIBR_OPTOUT")))
 	<-ctx.Done()
 	return nil
 }
 
-// join retries p2p.Join while no bootstrap peer is reachable (peers start in any order).
-func join(ctx context.Context, h host.Host, d *dht.IpfsDHT, boot []peer.AddrInfo) {
-	for len(boot) > 0 {
-		jctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-		err := p2p.Join(jctx, h, d, boot)
-		cancel()
-		if err == nil {
-			log.Printf("joined the DHT; routing table %d", d.RoutingTable().Size())
-			return
+// join joins the DHT through the configured, shipped, cached and seed-server peers,
+// retrying while none is reachable (peers start in any order), then caches the
+// routing table for the next start.
+func join(ctx context.Context, h host.Host, d *dht.IpfsDHT, boot []peer.AddrInfo, servers []string, cache string) {
+	for {
+		var peers []peer.AddrInfo
+		for _, p := range seeds.Resolve(ctx, boot, cache, servers, 8) {
+			if p.ID != h.ID() {
+				peers = append(peers, p)
+			}
+		}
+		if len(peers) > 0 {
+			jctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			err := p2p.Join(jctx, h, d, peers)
+			cancel()
+			if err == nil {
+				log.Printf("joined the DHT; routing table %d", d.RoutingTable().Size())
+				if err := seeds.SaveCache(cache, h, d); err != nil {
+					log.Printf("peer cache: %v", err)
+				}
+				return
+			}
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(3 * time.Second):
+		}
+	}
+}
+
+// register keeps this node listed on a seed server, renewing at half the TTL.
+func register(ctx context.Context, h host.Host, key ed25519.PrivateKey, server string) {
+	for {
+		wait := 30 * time.Second
+		ttl, err := seeds.Register(ctx, server, key, h.Addrs())
+		if err != nil {
+			log.Printf("seed %s: %v", server, err)
+		} else if ttl/2 > wait {
+			wait = ttl / 2
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
 		}
 	}
 }
