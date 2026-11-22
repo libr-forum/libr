@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	kb "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	kb "github.com/libp2p/go-libp2p-kbucket"
 
 	"github.com/libr-forum/Libr/core/libr/dbnode"
 	"github.com/libr-forum/Libr/core/libr/internal/testnet"
@@ -69,26 +69,27 @@ func (s *tamperStore) Get(h proto.Hash) (*proto.MsgCert, error) {
 }
 
 type world struct {
-	t      *testing.T
-	reg    *proto.Registry
-	relays []host.Host
-	dbs    []*testnet.Node
-	stores []*tamperStore
-	mods   []*testnet.Node
-	client *Client
-	trace  []Event
-	mu     sync.Mutex
+	t       *testing.T
+	reg     *proto.Registry
+	modKeys []ed25519.PrivateKey
+	relays  []host.Host
+	dbs     []*testnet.Node
+	stores  []*tamperStore
+	mods    []*testnet.Node
+	client  *Client
+	trace   []Event
+	mu      sync.Mutex
 }
 
 // newWorld starts relays and NATed DB nodes, moderators and one author, all reachable
 // only through circuits, with the DHT joined and moderators announced.
-func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy) *world {
+func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy, report ...moderator.ReportPolicy) *world {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	w := &world{t: t}
 	reg, modKeys := registry(t)
-	w.reg = reg
+	w.reg, w.modKeys = reg, modKeys
 	var relays []peer.AddrInfo
 	for i := 0; i < nRelays; i++ {
 		r, err := testnet.NewRelay("/ip4/127.0.0.1/tcp/0")
@@ -116,7 +117,11 @@ func newWorld(t *testing.T, nRelays, nDBs int, policy moderator.Policy) *world {
 	}
 	for _, k := range modKeys {
 		n := start(k, false)
-		(&moderator.Mod{Key: k, Sets: reg, Policy: policy}).Register(n.Host)
+		m := &moderator.Mod{Key: k, Sets: reg, Policy: policy}
+		if len(report) > 0 {
+			m.Report = report[0]
+		}
+		m.Register(n.Host)
 		w.mods = append(w.mods, n)
 	}
 	cl := start(nil, false)

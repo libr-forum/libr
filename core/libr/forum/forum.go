@@ -13,11 +13,11 @@ import (
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	kb "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	kb "github.com/libp2p/go-libp2p-kbucket"
 
 	"github.com/libr-forum/Libr/core/libr/proto"
 	"github.com/libr-forum/Libr/core/libr/wire"
@@ -94,7 +94,10 @@ func (c *Client) Submit(ctx context.Context, community string, content []byte) (
 	}
 	cert := proto.SignMsg(c.Key, proto.Msg{Community: community, Ts: c.now().Unix(), Content: content})
 	cert.Epoch = set.Epoch
-	votes, err := c.collectVotes(ctx, set, cert)
+	unvoted := cert // late answers still read it after quorum returns; cert gets the votes
+	votes, err := c.quorum(ctx, set, func(ctx context.Context, m proto.ModEntry) (*proto.Vote, error) {
+		return c.askVote(ctx, m, unvoted)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -104,38 +107,49 @@ func (c *Client) Submit(ctx context.Context, community string, content []byte) (
 	}
 
 	p := &Posted{Cert: cert, Hash: cert.Hash()}
+	var err2 error
+	p.Done, err2 = both(
+		func() (d <-chan struct{}, err error) {
+			p.Receipts, d, err = c.replicate(ctx, "store", wire.ProtoStore, p.Hash, cert)
+			return d, err
+		},
+		func() (d <-chan struct{}, err error) {
+			p.Indexed, d, err = c.replicate(ctx, "index_put", wire.ProtoIndexPut, indexKeyOf(cert.Msg), cert)
+			return d, err
+		})
+	return p, err2
+}
+
+func indexKeyOf(m proto.Msg) proto.Hash { return wire.IndexKey(m.Community, wire.Bucket(m.Ts)) }
+
+// both runs a and b concurrently; done closes when both background parts have.
+func both(a, b func() (<-chan struct{}, error)) (<-chan struct{}, error) {
 	var wg sync.WaitGroup
-	var storeErr, indexErr error
-	var storeDone, indexDone <-chan struct{}
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		p.Receipts, storeDone, storeErr = c.replicate(ctx, "store", wire.ProtoStore, p.Hash, cert)
-	}()
-	go func() {
-		defer wg.Done()
-		p.Indexed, indexDone, indexErr = c.replicate(ctx, "index_put", wire.ProtoIndexPut, wire.IndexKey(community, wire.Bucket(cert.Msg.Ts)), cert)
-	}()
+	var dones [2]<-chan struct{}
+	var errs [2]error
+	for i, f := range []func() (<-chan struct{}, error){a, b} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			dones[i], errs[i] = f()
+		}()
+	}
 	wg.Wait()
 	done := make(chan struct{})
 	go func() {
-		for _, d := range []<-chan struct{}{storeDone, indexDone} {
+		for _, d := range dones {
 			if d != nil {
 				<-d
 			}
 		}
 		close(done)
 	}()
-	p.Done = done
-	if err := errors.Join(storeErr, indexErr); err != nil {
-		return p, err
-	}
-	return p, nil
+	return done, errors.Join(errs[0], errs[1])
 }
 
-// collectVotes asks every moderator in parallel and returns as soon as Threshold
-// approvals are in, or as soon as the outstanding answers can no longer reach it.
-func (c *Client) collectVotes(ctx context.Context, set *proto.ModSet, cert proto.MsgCert) ([]proto.Vote, error) {
+// quorum asks every moderator in parallel and returns as soon as Threshold approvals
+// are in, or as soon as the outstanding answers can no longer reach it.
+func (c *Client) quorum(ctx context.Context, set *proto.ModSet, ask func(context.Context, proto.ModEntry) (*proto.Vote, error)) ([]proto.Vote, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	type answer struct {
@@ -145,7 +159,7 @@ func (c *Client) collectVotes(ctx context.Context, set *proto.ModSet, cert proto
 	answers := make(chan answer, len(set.Mods))
 	for _, m := range set.Mods {
 		go func(m proto.ModEntry) {
-			v, err := c.askVote(ctx, m, cert)
+			v, err := ask(ctx, m)
 			answers <- answer{v, err}
 		}(m)
 	}
@@ -193,19 +207,30 @@ func (c *Client) askVote(ctx context.Context, m proto.ModEntry, cert proto.MsgCe
 	return resp.Vote, err
 }
 
-// replicate sends cert on pid to the Replicas DB nodes closest to key, moving on to
-// the next-closest node whenever one fails. It returns the verified receipts once
-// StoredQuorum are in; the rest continue in the background until done closes.
-func (c *Client) replicate(ctx context.Context, op string, pid protocol.ID, key proto.Hash, cert proto.MsgCert) ([]proto.StoreReceipt, <-chan struct{}, error) {
+// spread runs try on the Replicas DB nodes closest to key, moving on to the
+// next-closest node whenever one fails. It returns once StoredQuorum succeeded; the
+// rest continue in the background until done closes.
+func (c *Client) spread(ctx context.Context, op string, key proto.Hash, try func(context.Context, peer.ID) bool) (<-chan struct{}, error) {
 	cands, err := c.closest(ctx, key)
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), backgroundTime)
+	ok, done := fanout(bg, cands, Replicas, Replicas, StoredQuorum, try)
+	go func() { <-done; cancel() }()
+	if ok < StoredQuorum {
+		return done, fmt.Errorf("%s: %w (%d of %d)", op, ErrNotStored, ok, StoredQuorum)
+	}
+	return done, nil
+}
+
+// replicate sends cert on pid to the nodes closest to key and returns the verified
+// receipts it had when the quorum was reached.
+func (c *Client) replicate(ctx context.Context, op string, pid protocol.ID, key proto.Hash, cert proto.MsgCert) ([]proto.StoreReceipt, <-chan struct{}, error) {
 	want := cert.Hash()
 	var mu sync.Mutex
 	var receipts []proto.StoreReceipt
-	ok, done := fanout(bg, cands, Replicas, Replicas, StoredQuorum, func(ctx context.Context, p peer.ID) bool {
+	done, err := c.spread(ctx, op, key, func(ctx context.Context, p peer.ID) bool {
 		var resp wire.ReceiptResp
 		err := c.call(ctx, op, p, pid, cert, &resp, func() error {
 			if resp.Err != "" {
@@ -220,14 +245,9 @@ func (c *Client) replicate(ctx context.Context, op string, pid protocol.ID, key 
 		}
 		return err == nil
 	})
-	go func() { <-done; cancel() }()
 	mu.Lock()
 	defer mu.Unlock()
-	out := append([]proto.StoreReceipt(nil), receipts...)
-	if ok < StoredQuorum {
-		return out, done, fmt.Errorf("%s: %w (%d of %d)", op, ErrNotStored, ok, StoredQuorum)
-	}
-	return out, done, nil
+	return append([]proto.StoreReceipt(nil), receipts...), done, err
 }
 
 // checkReceipt accepts only a receipt for this cert signed by the key of the peer we
@@ -256,6 +276,7 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 
 	var mu sync.Mutex
 	hashes := map[proto.Hash]bool{}
+	tombs := map[proto.Hash][]proto.Tombstone{}
 	read := 0
 	var lastErr error
 	var buckets []int64
@@ -263,7 +284,7 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 		buckets = append(buckets, b)
 	}
 	parallel(len(buckets), parallelGets, func(i int) {
-		hs, err := c.indexGet(ctx, community, buckets[i])
+		hs, ts, err := c.indexGet(ctx, community, buckets[i])
 		mu.Lock()
 		defer mu.Unlock()
 		if err == nil {
@@ -273,6 +294,9 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 		}
 		for _, h := range hs {
 			hashes[h] = true
+		}
+		for _, t := range ts {
+			tombs[t.MsgID] = append(tombs[t.MsgID], t)
 		}
 	})
 	if read == 0 {
@@ -285,9 +309,14 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 	}
 	byID := map[proto.Hash]proto.MsgCert{}
 	parallel(len(list), parallelGets, func(i int) {
-		cert, ok := c.get(ctx, list[i])
-		if !ok || cert.Msg.Community != community || cert.Msg.Ts < since.Unix() || cert.Msg.Ts > until.Unix() {
+		cert, err := c.Get(ctx, list[i])
+		if err != nil || cert.Msg.Community != community || cert.Msg.Ts < since.Unix() || cert.Msg.Ts > until.Unix() {
 			return
+		}
+		for _, t := range tombs[cert.Msg.ID()] { // unverified until checked against the message
+			if proto.VerifyTombstone(c.Sets, t, cert.Msg) == nil {
+				return
+			}
 		}
 		mu.Lock()
 		byID[cert.Msg.ID()] = cert
@@ -306,14 +335,16 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 	return out, nil
 }
 
-// indexGet unions one bucket's hashes from indexReaders of the closest nodes.
-func (c *Client) indexGet(ctx context.Context, community string, bucket int64) ([]proto.Hash, error) {
+// indexGet unions one bucket's hashes and tombstones from indexReaders of the
+// closest nodes.
+func (c *Client) indexGet(ctx context.Context, community string, bucket int64) ([]proto.Hash, []proto.Tombstone, error) {
 	cands, err := c.closest(ctx, wire.IndexKey(community, bucket))
 	if err != nil {
-		return nil, fmt.Errorf("lookup: %w", err)
+		return nil, nil, fmt.Errorf("lookup: %w", err)
 	}
 	var mu sync.Mutex
 	seen := map[proto.Hash]bool{}
+	var tombs []proto.Tombstone
 	req := wire.IndexGetReq{Community: community, Bucket: bucket}
 	ok, _ := fanout(ctx, cands, indexReaders, indexReaders, indexReaders, func(ctx context.Context, p peer.ID) bool {
 		var resp wire.IndexGetResp
@@ -321,7 +352,7 @@ func (c *Client) indexGet(ctx context.Context, community string, bucket int64) (
 			if resp.Err != "" {
 				return errors.New(resp.Err)
 			}
-			if len(resp.Hashes) > wire.MaxIndexHashes {
+			if len(resp.Hashes) > wire.MaxIndexHashes || len(resp.Tombs) > wire.MaxIndexHashes {
 				return errors.New("oversized index reply")
 			}
 			return nil
@@ -331,6 +362,7 @@ func (c *Client) indexGet(ctx context.Context, community string, bucket int64) (
 			for _, h := range resp.Hashes {
 				seen[h] = true
 			}
+			tombs = append(tombs, resp.Tombs...)
 			mu.Unlock()
 		}
 		return err == nil
@@ -342,17 +374,18 @@ func (c *Client) indexGet(ctx context.Context, community string, bucket int64) (
 		out = append(out, h)
 	}
 	if ok == 0 {
-		return nil, fmt.Errorf("none of %d closest nodes answered", len(cands))
+		return nil, nil, fmt.Errorf("none of %d closest nodes answered", len(cands))
 	}
-	return out, nil
+	return out, tombs, nil
 }
 
-// get fetches the cert stored under h from the closest nodes, accepting the first
-// copy that hashes to h and verifies; tampered or forged copies are skipped.
-func (c *Client) get(ctx context.Context, h proto.Hash) (proto.MsgCert, bool) {
+// Get fetches the cert stored under h from the closest nodes, accepting the first
+// copy that hashes to h and verifies; tampered or forged copies are skipped. It does
+// not check for removal (Feed does, through the bucket's tombstones).
+func (c *Client) Get(ctx context.Context, h proto.Hash) (proto.MsgCert, error) {
 	cands, err := c.closest(ctx, h)
 	if err != nil {
-		return proto.MsgCert{}, false
+		return proto.MsgCert{}, err
 	}
 	var cert proto.MsgCert
 	ok, _ := fanout(ctx, cands, 1, 1, 1, func(ctx context.Context, p peer.ID) bool {
@@ -371,7 +404,10 @@ func (c *Client) get(ctx context.Context, h proto.Hash) (proto.MsgCert, bool) {
 			return nil
 		}) == nil
 	})
-	return cert, ok == 1
+	if ok != 1 {
+		return proto.MsgCert{}, errors.New("no DB node returned a valid copy")
+	}
+	return cert, nil
 }
 
 // closest returns the DB nodes closest to key, nearest first.
