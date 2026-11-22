@@ -13,6 +13,7 @@ const (
 	ProtoGet      = protocol.ID("/libr/2/get")
 	ProtoIndexPut = protocol.ID("/libr/2/index/put")
 	ProtoIndexGet = protocol.ID("/libr/2/index/get")
+	ProtoVote     = protocol.ID("/libr/2/vote") // served by moderators
 )
 
 // BucketSeconds is the width of one feed index bucket.
@@ -56,6 +57,17 @@ type IndexGetReq struct {
 type IndexGetResp struct {
 	Hashes []proto.Hash `json:"hashes,omitempty"`
 	Err    string       `json:"err,omitempty"`
+}
+
+// VoteReq asks a moderator to decide on an author-signed message (a MsgCert with no
+// votes, Epoch set to the epoch the author is collecting for).
+type VoteReq = proto.MsgCert
+
+// VoteResp carries the moderator's signed decision; a rejection is a signed vote
+// with Approve false. Err is set when the request itself was refused.
+type VoteResp struct {
+	Vote *proto.Vote `json:"vote,omitempty"`
+	Err  string      `json:"err,omitempty"`
 }
 
 // Error strings carried in Err fields.
