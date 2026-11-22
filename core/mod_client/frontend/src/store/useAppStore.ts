@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TitleBarTheme } from 'wailsjs/go/main/App';
-import { types } from 'wailsjs/go/models';
 
 export interface User {
   publicKey: string;
@@ -13,10 +12,12 @@ export interface User {
 }
 
 export interface Community {
-  id: string;
+  id: string; // the community name
   name: string;
   topic: string;
-  memberCount: number;
+  modCount: number;
+  modKeys: string[]; // base64 keys of the moderator set
+  isMod: boolean; // the user moderates this community
   isJoined: boolean;
   requiresApproval: boolean;
 }
@@ -28,7 +29,7 @@ export interface Message {
   timestamp: bigint;
   communityId: string;
   status: 'pending' | 'approved' | 'rejected';
-  moderationNote?: types.ModCert[];
+  votes?: number; // moderator approvals in the certificate
   avatarSvg?:string;
   sign:string;
 }

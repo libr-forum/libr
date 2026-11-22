@@ -17,7 +17,7 @@ import { ModConfig } from './pages/ModConfig';
 import { Communities } from './pages/Communities';
 import { logger } from './logger/logger'
 
-import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, GetRelayAddr, IsIncognitoEnabled } from '../wailsjs/go/main/App';
+import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, IsIncognitoEnabled } from '../wailsjs/go/main/App';
 import { EventsOn,Quit } from 'wailsjs/runtime/runtime';
 import {
   AlertDialog,
@@ -69,7 +69,6 @@ export function useRelayConnection() {
     const tryConnect = async () => {
       logger.info("🛜 Starting relay connection...");
 
-      const relayAddrs = await fetchRelayAddrs();
       let connected = false;
 
       for (let i = 0; i < 10; i++) {
@@ -80,14 +79,11 @@ export function useRelayConnection() {
           break;
         }
 
-        const error = await Connect(relayAddrs);
-        if (error != null) {
-          const recheck = await GetRelayStatus();
-          if (recheck === 'online') {
-            useAppStore.getState().setRelayStatus('online');
-            connected = true;
-            break;
-          }
+        await Connect().catch((e) => logger.warn("connect failed", e));
+        if ((await GetRelayStatus()) === 'online') {
+          useAppStore.getState().setRelayStatus('online');
+          connected = true;
+          break;
         }
 
         await new Promise(res => setTimeout(res, 1000));
@@ -105,18 +101,6 @@ export function useRelayConnection() {
   return { relayFailed, setRelayFailed };
 }
 
-async function fetchRelayAddrs(): Promise<string[]> {
-  try {
-    const addrs = await GetRelayAddr();
-    // Only keep valid multiaddrs
-    const validAddrs = addrs.filter(addr => addr.startsWith('/'));
-    logger.debug('[RelayAddrs] Valid relay addresses:', validAddrs);
-    return validAddrs;
-  } catch (error) {
-    logger.error("Error loading relay addresses from MongoDB:", error);
-    return [];
-  }
-}
 
 
 // const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -185,9 +169,6 @@ const App: React.FC = () => {
     setLoading(true);
     setRelayFailed(false);
     try {
-      logger.debug("🔄 Fetching relay addresses...");
-      const relayAddrs = await fetchRelayAddrs();
-      
       const status = await GetRelayStatus();
       let connected = false;
       if (status === "online") {
@@ -195,7 +176,7 @@ const App: React.FC = () => {
         connected = true;
       } else {
         for (let i = 0; i < 10; i++) {
-          const error = await Connect(relayAddrs);
+          await Connect().catch((e) => logger.warn("connect failed", e));
           const recheck = await GetRelayStatus();
           if (recheck === "online") {
             setRelayStatus("online");

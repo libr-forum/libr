@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Message, User, useAppStore } from '../../store/useAppStore';
-import { Clock, Check, AlertCircle, MoreVertical, Cross, X, ImageIcon } from 'lucide-react';
+import { Clock, Check, AlertCircle, MoreVertical, X, ImageIcon } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import {
   DropdownMenu,
@@ -10,11 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { emojify } from 'node-emoji';
-import { Delete, Report, GenerateAlias } from 'wailsjs/go/main/App';
-import { types } from 'wailsjs/go/models';
-import { parseFormatting, apiService } from '@/services/api';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { TooltipContent } from '@radix-ui/react-tooltip';
+import { Delete, Report } from 'wailsjs/go/main/App';
+import { parseFormatting } from '@/services/api';
 import {
   Dialog,
   DialogContent,
@@ -109,25 +106,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       return;
     }
 
-    const msg: types.Msg = {
-      content: message.content,
-      ts: Number(message.timestamp),
-    };
-    const msgcert = new types.MsgCert({
-      public_key: message.authorPublicKey,
-      msg: msg,
-      mod_certs: message.moderationNote,
-      sign: message.sign,
-    });
-
-    const result = await Report(msgcert, reportReason || "No reason provided");
     setIsReportDialogOpen(false);
     setReportReason("");
-    toast.message("Report submitted", {
-      description: typeof result === 'string' && result.length > 0
-        ? result.replace(/:[^ ]+:/g, '').trim()
-        : "Your report has been sent to moderators for review.",
-    });
+    try {
+      const result = await Report(message.sign, reportReason || "No reason provided");
+      toast.message("Report submitted", {
+        description: result.status === 'removed'
+          ? "Moderators removed the post."
+          : result.status === 'rejected'
+            ? "Moderators decided to keep the post."
+            : "Your report is waiting for moderators to review it.",
+      });
+    } catch (err) {
+      toast.error("Report failed", { description: String(err) });
+    }
   };
 
   return (
@@ -169,78 +161,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                     </DropdownMenuItem>
                   )}
                   {message.status === 'pending' && (
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        let retried: Message;
-                        const { messages, setMessages } = useAppStore.getState();
-                        if (message.moderationNote && message.moderationNote.length > 0) {
-                          // Resend only to DB
-                          retried = await apiService.resendToDb(message);
-                        } else {
-                          // Full moderation resend
-                          retried = await apiService.sendMessage(message.communityId, message.content);
-                        }
-                        setMessages(messages.map(m => m.sign === message.sign ? retried : m));
-                      }}
-                      className="text-sm cursor-pointer hover:bg-muted px-2 py-1"
-                    >
-                      Retry Send
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                      Waiting for moderators; retried automatically
                     </DropdownMenuItem>
                   )}
-                  {message.moderationNote && (
-                    <div className="px-2 py-1 mt-2 bg-muted/20 text-foreground text-xs rounded">
-                      {message.moderationNote.map((cert, index) => (
-                        <div key={index} className='flex flex-row gap-4 items-center justify-between'>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger className="cursor-pointer text-muted-foreground">
-                                <CertAlias publicKey={cert.public_key} />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span className="break-all">{cert.public_key}</span>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <p>
-                            {cert.status === "1"
-                              ? <Check className="w-3 h-3 text-green-500" />
-                              : <Cross className="w-3 h-3 text-red-500" />}
-                          </p>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger className="cursor-pointer text-muted-foreground">
-                                sign
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <span className="break-all">{cert.sign}</span>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      ))}
-                    </div>
+                  {!!message.votes && (
+                    <DropdownMenuItem disabled className="flex items-center justify-between">
+                      <span className="text-foreground">Approved by</span>
+                      <span>{message.votes} moderators</span>
+                    </DropdownMenuItem>
                   )}
 
                   {message.authorPublicKey === user.publicKey ? (
                     <DropdownMenuItem
                       onClick={async () => {
-                        const msg: types.Msg = {
-                          content: message.content,
-                          ts: Number(message.timestamp),
+                        try {
+                          await Delete(message.sign);
+                          toast.message("Post deleted");
+                        } catch (err) {
+                          toast.error("Delete failed", { description: String(err) });
                         }
-                        const msgcert = new types.MsgCert({
-                          public_key: message.authorPublicKey,
-                          msg: msg,
-                          mod_certs: message.moderationNote,
-                          sign: message.sign,
-
-                        });
-                        const result = await Delete(msgcert);
-                        toast.message("Delete requested", {
-                          description: typeof result === 'string' && result.length > 0
-                            ? result.replace(/:[^ ]+:/g, '').trim()
-                            : "Your delete request has been sent.",
-                        });
                       }}
                       className="text-destructive cursor-pointer hover:bg-destructive/10"
                     >
@@ -401,24 +341,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       </Dialog>
     </>
   );
-};
-
-// Helper component to fetch and display alias asynchronously
-const CertAlias: React.FC<{ publicKey: string }> = ({ publicKey }) => {
-  const [alias, setAlias] = useState<string>(publicKey);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const result = await GenerateAlias(publicKey);
-        if (mounted && result) setAlias(result);
-      } catch {
-        // fallback to publicKey
-      }
-    })();
-    return () => { mounted = false; };
-  }, [publicKey]);
-
-  return <span className="font-semibold">{alias}</span>;
 };

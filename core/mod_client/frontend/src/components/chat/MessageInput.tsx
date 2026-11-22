@@ -233,6 +233,11 @@ export const MessageInput = forwardRef<HTMLDivElement, MessageInputProps>(
           ? `<HEAD>${trimmedTitle}</HEAD>${bodyWithImages}`
           : bodyWithImages;
 
+        // The whole post (images are base64, ~4/3 of the file) must fit LIBR's 1 MiB limit.
+        if (new Blob([formatted]).size > 1024 * 1024) {
+          toast.error('Post is larger than 1 MB. Use a smaller image.');
+          return;
+        }
         logger.debug('[MessageInput] Sending formatted message', { formatted });
 
         const newMsg = await apiService.sendMessage(currentCommunity.id, formatted);

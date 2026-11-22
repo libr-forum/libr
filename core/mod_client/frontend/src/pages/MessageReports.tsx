@@ -48,7 +48,7 @@ export const MsgReports: React.FC = () => {
   const loadReports = async () => {
     setIsLoading(true);
     try {
-      const moderationReports = await apiService.getMessageReports("1");
+      const moderationReports = await apiService.getMessageReports();
       setReports(moderationReports);
     } catch (error) {
       console.error('Failed to load moderation reports:', error);

@@ -5,11 +5,10 @@ import { logger } from '../../logger/logger';
 import { EventsOn } from "../../../wailsjs/runtime";
 import { toast } from "sonner";
 import {
-  GetOnlineMods,
   GenerateAlias,
   GenerateAvatar,
-  GetPendingModerationStats
 } from "../../../wailsjs/go/main/App";
+import { apiService } from '../../services/api';
 import { useAppStore, PendingModeration } from '../../store/useAppStore';
 
 type ModDisplay = {
@@ -71,7 +70,7 @@ export const Menubar: React.FC = () => {
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
   const [resolvedItems, setResolvedItems] = React.useState<ResolvedItem[]>([]);
   const [displayOrder, setDisplayOrder] = React.useState<string[]>([]);
-  const { pendingQueue, setPendingQueue } = useAppStore();
+  const { pendingQueue, setPendingQueue, currentCommunity } = useAppStore();
 
   const pendingQueueRef = React.useRef<PendingModeration[]>(pendingQueue);
   React.useEffect(() => { pendingQueueRef.current = pendingQueue; }, [pendingQueue]);
@@ -130,34 +129,21 @@ export const Menubar: React.FC = () => {
   );
 
   React.useEffect(() => {
-    GetPendingModerationStats().then((stats) => {
-      if (!stats?.items) return;
-      const queue: PendingModeration[] = stats.items.map((item: any) => ({
-        id: item.msg_sign,
-        ts: item.ts ?? 0,
-        content: item.content ?? '',
-        reason: item.reason ?? (item.is_image ? 'Image attached' : ''),
-        approved: item.approved,
-        rejected: item.rejected,
-        totalMods: item.approved + item.rejected + item.awaiting,
-        ackCount: item.approved + item.rejected,
-        awaitingMods: item.awaiting,
-      }));
-      setPendingQueue(queue);
-    }).catch(() => {});
+    const refresh = () => apiService.getPending().then(setPendingQueue).catch(() => {});
+    refresh();
+    // The node retries pending items itself; this only refreshes the counts shown.
+    const timer = setInterval(refresh, 15_000);
 
-    const unsubCronStatus = EventsOn("cron_status_update", (queue: PendingModeration[]) => {
-      setPendingQueue(queue || []);
-    });
-
-    const unsubFinalized = EventsOn("moderation_finalized", (event: { status: string; id: string }) => {
-      const finalStatus = event.status === "approved" ? 'approved' : 'rejected';
-
+    // event: app.PendingInfo with status posted | removed | rejected | expired
+    const unsubFinalized = EventsOn("moderation_finalized", (event: { status: string; id: string; kind: string }) => {
+      const finalStatus = event.status === "posted" || event.status === "removed" ? 'approved' : 'rejected';
+      const what = event.kind === 'report' ? 'Report' : 'Post';
       if (finalStatus === 'approved') {
-        toast.success(`Message Approved (${event.id.substring(0, 8)}...)`);
+        toast.success(event.kind === 'report' ? 'Reported post removed' : 'Post approved and published');
       } else {
-        toast.error(`Message Rejected (${event.id.substring(0, 8)}...)`);
+        toast.error(`${what} ${event.status}`);
       }
+      refresh();
 
       const source = pendingQueueRef.current.find(q => q.id === event.id);
       const resolved: ResolvedItem = source
@@ -172,7 +158,7 @@ export const Menubar: React.FC = () => {
     });
 
     return () => {
-      unsubCronStatus();
+      clearInterval(timer);
       unsubFinalized();
     };
   }, [setPendingQueue]);
@@ -181,7 +167,8 @@ export const Menubar: React.FC = () => {
     logger.debug('[Menubar] Component mounted.');
     async function fetchMods() {
       try {
-        const keys = await GetOnlineMods();
+        // v2 has no online list: show the community's moderator set.
+        const keys = currentCommunity?.modKeys ?? [];
         logger.debug('[Menubar] Received keys:', keys);
         const resolved = await Promise.all(
           keys.map(async (key) => {
@@ -200,7 +187,7 @@ export const Menubar: React.FC = () => {
 
     fetchMods();
     return () => logger.debug('[Menubar] Component unmounted.');
-  }, []);
+  }, [currentCommunity]);
 
   return (
     <div className="w-full p-1 bg-transparent items-center rounded-3xl h-full flex flex-col z-50">

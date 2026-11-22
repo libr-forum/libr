@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useSidebarStore } from '../../store/useSidebarStore';
 import { Shield, Cog, Hash, Plus, Settings, Moon, Sun, RefreshCcw, ChevronLeft, Eye, Menu, Wrench, User, AlertTriangle, Ghost } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DisableIncognito, EnableIncognito, RegenKeys, Connect, GetRelayAddr, GetRelayStatus } from 'wailsjs/go/main/App';
+import { DisableIncognito, EnableIncognito, RegenKeys, Connect, GetRelayStatus } from 'wailsjs/go/main/App';
 import logoSVG from '../assets/icon_transparent.svg';
 import { apiService } from '@/services/api';
 import { logger } from '../../logger/logger';
@@ -54,9 +54,7 @@ export const Sidebar: React.FC = () => {
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      const addrs = await GetRelayAddr();
-      const validAddrs = addrs.filter(addr => addr.startsWith('/'));
-      await Connect(validAddrs);
+      await Connect();
       const status = await GetRelayStatus();
       if (status) {
         useAppStore.getState().setRelayStatus(status);
