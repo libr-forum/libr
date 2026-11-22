@@ -1,48 +1,29 @@
 const crypto = require('crypto');
-const config = require('../config');
 
-// Map<publicKey, { nonce: string, expiresAt: number, timer: NodeJS.Timeout }>
-const store = new Map();
-
-/**
- * Create and store a one-time nonce for the given public key.
- * Any existing pending nonce for that key is cancelled first.
- */
-function issueNonce(publicKey) {
-  // Cancel previous nonce if any
-  const existing = store.get(publicKey);
-  if (existing) clearTimeout(existing.timer);
-
-  const nonce = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + config.nonceTtlMs;
-
-  const timer = setTimeout(() => {
-    store.delete(publicKey);
-  }, config.nonceTtlMs);
-
-  // Allow the timer not to block process exit
-  if (timer.unref) timer.unref();
-
-  store.set(publicKey, { nonce, expiresAt, timer });
-  return nonce;
-}
-
-/**
- * Consume and return the pending nonce for the given public key.
- * Returns null if no valid nonce exists or if it has expired.
- * Deletes the nonce on success (one-time use).
- */
-function consumeNonce(publicKey) {
-  const entry = store.get(publicKey);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
-    clearTimeout(entry.timer);
-    store.delete(publicKey);
-    return null;
+// One pending challenge per public key, valid for ttlMs, used once. Bounded so a
+// flood of fresh keys cannot grow memory without limit.
+class Nonces {
+  constructor({ ttlMs, max = 10_000, now = Date.now }) {
+    Object.assign(this, { ttlMs, max, now, store: new Map() });
   }
-  clearTimeout(entry.timer);
-  store.delete(publicKey);
-  return entry.nonce;
+
+  issue(publicKey) {
+    const t = this.now();
+    if (this.store.size >= this.max) {
+      for (const [k, e] of this.store) if (e.expiresAt <= t) this.store.delete(k);
+      if (this.store.size >= this.max) return null;
+    }
+    const nonce = crypto.randomBytes(32).toString('hex');
+    this.store.set(publicKey, { nonce, expiresAt: t + this.ttlMs });
+    return nonce;
+  }
+
+  consume(publicKey) {
+    const e = this.store.get(publicKey);
+    this.store.delete(publicKey);
+    if (!e || e.expiresAt <= this.now()) return null;
+    return e.nonce;
+  }
 }
 
-module.exports = { issueNonce, consumeNonce };
+module.exports = { Nonces };
