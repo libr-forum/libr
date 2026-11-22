@@ -1,6 +1,8 @@
 package wire
 
 import (
+	"crypto/ed25519"
+
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/libr-forum/Libr/core/libr/proto"
@@ -13,7 +15,9 @@ const (
 	ProtoGet      = protocol.ID("/libr/2/get")
 	ProtoIndexPut = protocol.ID("/libr/2/index/put")
 	ProtoIndexGet = protocol.ID("/libr/2/index/get")
-	ProtoVote     = protocol.ID("/libr/2/vote") // served by moderators
+	ProtoVote     = protocol.ID("/libr/2/vote")   // served by moderators
+	ProtoReport   = protocol.ID("/libr/2/report") // served by moderators
+	ProtoRemove   = protocol.ID("/libr/2/remove")
 )
 
 // BucketSeconds is the width of one feed index bucket.
@@ -53,10 +57,36 @@ type IndexGetReq struct {
 	Bucket    int64  `json:"bucket"`
 }
 
-// IndexGetResp lists cert hashes, at most MaxIndexHashes.
+// IndexGetResp lists cert hashes and the bucket's tombstones, at most MaxIndexHashes
+// of each. Readers drop any message a verified tombstone removes.
 type IndexGetResp struct {
-	Hashes []proto.Hash `json:"hashes,omitempty"`
-	Err    string       `json:"err,omitempty"`
+	Hashes []proto.Hash      `json:"hashes,omitempty"`
+	Tombs  []proto.Tombstone `json:"tombs,omitempty"`
+	Err    string            `json:"err,omitempty"`
+}
+
+// ReportReq asks a moderator to vote on removing Cert's message. The reporter signs
+// proto.ReportBytes(community, Epoch, msgID, Reason) so reports are attributable and
+// rate-limited per reporter.
+type ReportReq struct {
+	Cert     proto.MsgCert     `json:"cert"`
+	Epoch    uint64            `json:"epoch"` // epoch of the RepCert being collected
+	Reason   string            `json:"reason"`
+	Reporter ed25519.PublicKey `json:"reporter"`
+	Sig      []byte            `json:"sig"`
+}
+
+// RemoveReq asks a DB node to tombstone Msg. Msg is sent so the node can check the
+// proof (author signature, community) without holding a copy of the post.
+type RemoveReq struct {
+	Msg  proto.Msg       `json:"msg"`
+	Tomb proto.Tombstone `json:"tomb"`
+}
+
+// RemoveResp carries the node's signed ack.
+type RemoveResp struct {
+	Ack *proto.RemoveAck `json:"ack,omitempty"`
+	Err string           `json:"err,omitempty"`
 }
 
 // VoteReq asks a moderator to decide on an author-signed message (a MsgCert with no
@@ -74,4 +104,5 @@ type VoteResp struct {
 const (
 	ErrNotFound = "notfound"
 	ErrInternal = "internal"
+	ErrRemoved  = "removed" // the message has a tombstone; no new copies are accepted
 )
