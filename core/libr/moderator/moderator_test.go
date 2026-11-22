@@ -110,3 +110,57 @@ func TestAuthorRateLimit(t *testing.T) {
 		t.Fatalf("other author: %v", err)
 	}
 }
+
+func report(t *testing.T, reporter string, c proto.MsgCert, reason string) wire.ReportReq {
+	t.Helper()
+	k := key(reporter)
+	return wire.ReportReq{Cert: c, Reason: reason, Reporter: pub(k),
+		Sig: ed25519.Sign(k, proto.ReportBytes(c.Msg.Community, 0, c.Msg.ID(), reason))}
+}
+
+func published(content string) proto.MsgCert {
+	c := msg("a", content, now)
+	for i := 0; i < 3; i++ {
+		c.Votes = append(c.Votes, proto.SignModVote(key(fmt.Sprint("mod", i)), c.Msg, 0, true))
+	}
+	return c
+}
+
+func TestDecideReport(t *testing.T) {
+	failing := func(context.Context, proto.Msg) (bool, error) { return true, errors.New("llm down") }
+	unpublished := msg("a", "never approved", now)
+	forged := report(t, "r", published("spam"), "spam")
+	forged.Reason = "something else"
+	for _, tc := range []struct {
+		name   string
+		policy Policy
+		req    wire.ReportReq
+		remove bool
+		err    bool
+	}{
+		{"remove what policy rejects", Keywords("spam"), report(t, "r", published("buy spam"), "spam"), true, false},
+		{"keep what policy approves", Keywords("spam"), report(t, "r", published("hello"), "spam"), false, false},
+		{"policy error keeps the post", failing, report(t, "r", published("hello"), "spam"), false, false},
+		{"unpublished cert", ApproveAll, report(t, "r", unpublished, "spam"), false, true},
+		{"reporter signature over other reason", ApproveAll, forged, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _ := setup(t, tc.policy)
+			m.reporters = wire.NewLimiter(authorPerSecond, authorBurst)
+			v, err := m.DecideReport(context.Background(), tc.req)
+			if tc.err {
+				if err == nil {
+					t.Fatalf("want error, got %+v", v)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := proto.RepCert{MsgID: tc.req.Cert.Msg.ID(), Community: "general", Reason: tc.req.Reason}
+			if v.Approve != tc.remove || !proto.VerifyRepVote(*v, pub(key("mod0")), r) {
+				t.Fatalf("vote %+v, want remove=%v", v, tc.remove)
+			}
+		})
+	}
+}

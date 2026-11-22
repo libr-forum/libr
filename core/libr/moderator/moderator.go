@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -36,6 +37,18 @@ func Keywords(words ...string) Policy {
 	}
 }
 
+// ReportPolicy decides whether a reported message should be removed. An error means
+// it could not decide, and the vote is against removal.
+type ReportPolicy func(ctx context.Context, m proto.Msg, reason string) (bool, error)
+
+// RemoveIfRejected removes exactly what p would not have approved.
+func RemoveIfRejected(p Policy) ReportPolicy {
+	return func(ctx context.Context, m proto.Msg, _ string) (bool, error) {
+		ok, err := p(ctx, m)
+		return !ok && err == nil, err
+	}
+}
+
 // Request budgets. Per peer bounds any one connection; per author bounds one key
 // spamming through many peers, and is charged only after the author signature checks
 // out, so nobody can exhaust someone else's budget.
@@ -52,16 +65,27 @@ type Mod struct {
 	Key    ed25519.PrivateKey
 	Sets   proto.ModSets
 	Policy Policy
+	Report ReportPolicy     // nil means RemoveIfRejected(Policy)
 	Now    func() time.Time // nil means time.Now
 
-	authors *wire.Limiter
+	authors   *wire.Limiter
+	reporters *wire.Limiter
 }
 
 // Register installs /libr/2/vote on h.
 func (m *Mod) Register(h host.Host) {
 	m.authors = wire.NewLimiter(authorPerSecond, authorBurst)
-	wire.Handle(h, wire.ProtoVote, wire.NewLimiter(peerPerSecond, peerBurst), m.vote,
-		func(err error) wire.VoteResp { return wire.VoteResp{Err: err.Error()} })
+	m.reporters = wire.NewLimiter(authorPerSecond, authorBurst)
+	peers := wire.NewLimiter(peerPerSecond, peerBurst)
+	reject := func(err error) wire.VoteResp { return wire.VoteResp{Err: err.Error()} }
+	wire.Handle(h, wire.ProtoVote, peers, m.vote, reject)
+	wire.Handle(h, wire.ProtoReport, peers, func(_ peer.ID, r wire.ReportReq) wire.VoteResp {
+		v, err := m.DecideReport(context.Background(), r)
+		if err != nil {
+			return wire.VoteResp{Err: err.Error()}
+		}
+		return wire.VoteResp{Vote: v}
+	}, reject)
 }
 
 func (m *Mod) vote(_ peer.ID, c wire.VoteReq) wire.VoteResp {
@@ -72,19 +96,31 @@ func (m *Mod) vote(_ peer.ID, c wire.VoteReq) wire.VoteResp {
 	return wire.VoteResp{Vote: v}
 }
 
-// Decide checks c and returns this moderator's signed vote on it.
-func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) {
-	now := time.Now()
+func (m *Mod) now() time.Time {
 	if m.Now != nil {
-		now = m.Now()
+		return m.Now()
 	}
-	msg := c.Msg
-	set, ok := m.Sets.Get(msg.Community, c.Epoch)
+	return time.Now()
+}
+
+// member checks this moderator belongs to community's set for epoch.
+func (m *Mod) member(community string, epoch uint64) error {
+	set, ok := m.Sets.Get(community, epoch)
 	if !ok {
-		return nil, errors.New("unknown community or epoch")
+		return errors.New("unknown community or epoch")
 	}
 	if !set.IsMember(m.Key.Public().(ed25519.PublicKey)) {
-		return nil, errors.New("not a moderator of this community")
+		return errors.New("not a moderator of this community")
+	}
+	return nil
+}
+
+// Decide checks c and returns this moderator's signed vote on it.
+func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) {
+	now := m.now()
+	msg := c.Msg
+	if err := m.member(msg.Community, c.Epoch); err != nil {
+		return nil, err
 	}
 	// Both directions: a backdated message would land in an old feed bucket.
 	if d := now.Sub(time.Unix(msg.Ts, 0)); d > proto.MaxClockSkew || d < -proto.MaxClockSkew {
@@ -100,5 +136,38 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	defer cancel()
 	ok, err := m.Policy(ctx, msg)
 	v := proto.SignModVote(m.Key, msg, c.Epoch, ok && err == nil)
+	return &v, nil
+}
+
+// DecideReport checks a report and returns this moderator's signed vote on removing
+// the message. Only published (verifying) certificates can be reported, and every
+// report is signed by its reporter, who is rate-limited.
+func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, error) {
+	msg := r.Cert.Msg
+	if err := m.member(msg.Community, r.Epoch); err != nil {
+		return nil, err
+	}
+	if len(r.Reason) > proto.MaxReason {
+		return nil, errors.New("reason too long")
+	}
+	if err := proto.VerifyMsgCert(m.Sets, r.Cert, m.now()); err != nil {
+		return nil, fmt.Errorf("reported certificate does not verify: %w", err)
+	}
+	id := msg.ID()
+	if len(r.Reporter) != ed25519.PublicKeySize || len(r.Sig) != ed25519.SignatureSize ||
+		!ed25519.Verify(r.Reporter, proto.ReportBytes(msg.Community, r.Epoch, id, r.Reason), r.Sig) {
+		return nil, errors.New("bad reporter signature")
+	}
+	if m.reporters != nil && !m.reporters.Allow(string(r.Reporter)) {
+		return nil, wire.ErrRateLimited
+	}
+	policy := m.Report
+	if policy == nil {
+		policy = RemoveIfRejected(m.Policy)
+	}
+	ctx, cancel := context.WithTimeout(ctx, decideTimeout)
+	defer cancel()
+	remove, err := policy(ctx, msg, r.Reason)
+	v := proto.SignRepVote(m.Key, proto.RepCert{MsgID: id, Community: msg.Community, Epoch: r.Epoch, Reason: r.Reason}, remove && err == nil)
 	return &v, nil
 }
