@@ -10,6 +10,7 @@ require (
 	github.com/libp2p/go-libp2p-kbucket v0.8.0
 	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/multiformats/go-multiaddr v0.16.1
+	golang.org/x/time v0.12.0
 )
 
 require (
@@ -114,7 +115,6 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/telemetry v0.0.0-20250908211612-aef8a434d053 // indirect
 	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
