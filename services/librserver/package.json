@@ -1,11 +1,12 @@
 {
   "name": "librserver",
   "version": "1.0.0",
-  "description": "Libr service discovery server — mediates access to mods, relays and bootstrap DB nodes",
+  "description": "Libr service discovery server \u2014 mediates access to mods, relays and bootstrap DB nodes",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

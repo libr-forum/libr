@@ -1,8 +1,21 @@
+const crypto = require('crypto');
 const { Router } = require('express');
 const analytics = require('../db/analytics');
 const logger = require('../logger');
 
 const router = Router();
+
+// Analytics expose every registered key and its online history, so they need a token.
+// With ANALYTICS_TOKEN unset the endpoints are disabled.
+router.use('/analytics', (req, res, next) => {
+    const token = process.env.ANALYTICS_TOKEN;
+    const given = Buffer.from(req.get('authorization') || '');
+    const want = Buffer.from(`Bearer ${token}`);
+    if (!token || given.length !== want.length || !crypto.timingSafeEqual(given, want)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+});
 
 /**
  * GET /analytics/stats
