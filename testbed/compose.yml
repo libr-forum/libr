@@ -1,7 +1,8 @@
 # LIBR v2 testbed. nat1 and nat2 are isolated from each other and from the internet.
 # Relays and the two public DB nodes (which also relay) sit on both; everything else
 # sits on one, so cross-network traffic must go through a circuit relay.
-# Generated config (keys, community, env) comes from e2e.sh into ./out.
+# Generated config (keys, community, env) comes from e2e.sh into ./out. DB nodes
+# register with the seed server; mods and clients find the network only through it.
 
 x-ctl: &ctl
   image: libr-ctl
@@ -10,7 +11,7 @@ x-ctl: &ctl
   environment: &ctlenv
     LIBR_COMMUNITIES: /out/communities
     LIBR_RELAYS: ${RELAYS}
-    LIBR_BOOTSTRAP: ${BOOT}
+    LIBR_SEED_URLS: http://seed:3000
     LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001
 
 x-db: &db
@@ -21,6 +22,7 @@ x-db: &db
     LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001
     LIBR_RELAYS: ${RELAYS}
     LIBR_BOOTSTRAP: ${BOOT}
+    LIBR_SEED_URLS: http://seed:3000
     LIBR_PRIVATE: "1"
 
 x-mod: &mod
@@ -28,6 +30,9 @@ x-mod: &mod
   restart: on-failure
 
 services:
+  seed:
+    image: libr-seed
+    networks: [nat1, nat2]
   relay-a:
     image: libr-relay
     environment: { LIBP2P_PRIV_KEY: "${RELAY_A_KEY}", LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001 }
@@ -59,6 +64,12 @@ services:
     <<: *db
     volumes: ["./out:/out:ro", "./out/keys/db5.key:/data/node.key:ro"]
     networks: [nat2]
+
+  db6: # opted out of "general": must never be used to store it
+    <<: *db
+    environment: { <<: *dbenv, LIBR_OPTOUT: general }
+    volumes: ["./out:/out:ro", "./out/keys/db6.key:/data/node.key:ro"]
+    networks: [nat1]
 
   mod1: { <<: *mod, command: [mod, serve, -key, /out/keys/mod1.key, "-report-policy=keyword:remove-me"], networks: [nat1] }
   mod2: { <<: *mod, command: [mod, serve, -key, /out/keys/mod2.key, "-report-policy=keyword:remove-me"], networks: [nat1] }

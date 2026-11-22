@@ -127,3 +127,5 @@ jobs:
         run: docker build -f core/db/Dockerfile -t libr-db:ci .
       - name: Relay
         run: docker build -f services/relay/Dockerfile -t libr-relay:ci .
+      - name: Seed server
+        run: docker build -t libr-seed:ci services/librserver

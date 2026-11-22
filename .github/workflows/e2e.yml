@@ -8,9 +8,9 @@ on:
     - cron: '0 2 * * *'
   push:
     branches: [v2, staging, main]
-    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'testbed/**', '.github/workflows/e2e.yml']
+    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'services/librserver/**', 'testbed/**', '.github/workflows/e2e.yml']
   pull_request:
-    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'testbed/**', '.github/workflows/e2e.yml']
+    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'services/librserver/**', 'testbed/**', '.github/workflows/e2e.yml']
 
 permissions:
   contents: read

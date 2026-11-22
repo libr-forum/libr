@@ -12,12 +12,13 @@ if [ -z "${SKIP_BUILD:-}" ]; then
   docker build -q -t libr-ctl -f $ROOT/core/libr/cmd/librctl/Dockerfile $ROOT/core/libr >/dev/null
   docker build -q -t libr-db -f $ROOT/core/db/Dockerfile $ROOT >/dev/null
   docker build -q -t libr-relay -f $ROOT/services/relay/Dockerfile $ROOT >/dev/null
+  docker build -q -t libr-seed $ROOT/services/librserver >/dev/null
 fi
 
 # Fresh keys and genesis every run (nothing secret is committed).
 rm -rf $OUT && mkdir -p $OUT/keys $OUT/communities $OUT/trace
 ctl() { docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/$OUT:/out" libr-ctl "$@"; }
-for n in founder author relay-a relay-b db1 db2 db3 db4 db5 mod1 mod2 mod3 mod4; do
+for n in founder author relay-a relay-b db1 db2 db3 db4 db5 db6 mod1 mod2 mod3 mod4; do
   ctl keygen -out /out/keys/$n.key -libp2p > $OUT/keys/$n.id
 done
 pid() { cut -d' ' -f1 $OUT/keys/$1.id; }
@@ -33,7 +34,7 @@ BOOT=/dns4/db1/tcp/4001/p2p/$(pid db1),/dns4/db2/tcp/4001/p2p/$(pid db2)
 ENV
 
 [ -n "${KEEP:-}" ] || trap '$P --profile client down -v --remove-orphans >/dev/null 2>&1' EXIT
-$P up -d relay-a relay-b db1 db2
+$P up -d seed relay-a relay-b db1 db2
 sleep 3
 $P up -d
 echo "waiting for the DHT to settle"
@@ -53,6 +54,10 @@ expect_gone() { # client text
   local got; got=$(feed "$1") || fail "feed from $1: $got"
   if grep -qF "$2" <<<"$got"; then fail "$1 feed still shows '$2'"; fi
 }
+
+echo "== 0. seed server lists DB nodes"
+n=$($P run --rm -T --entrypoint wget client1 -qO- http://seed:3000/peers?n=32 | grep -o peerId | wc -l)
+[ "$n" -ge 6 ] || fail "seed server lists $n DB nodes, want 6"
 
 echo "== 1. post from nat1, read from nat2"
 submit client1 "hello from nat1" || fail "submit"
@@ -103,6 +108,14 @@ if $P run --rm -T client2 client report -hash "$(hash_of "$out")" -reason "disli
   fail "fine post removed"
 fi
 expect_post client2 "a fine post"
+
+echo "== 9. opted-out db6 stored nothing; db1 stored posts"
+certs() { # db -> number of stored certificates
+  rm -rf "$OUT/$1data" && docker cp -q "$($P ps -q "$1")":/data "$OUT/$1data"
+  python3 -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from certs').fetchone()[0])" "$OUT/$1data/db.sqlite"
+}
+[ "$(certs db6)" = 0 ] || fail "opted-out db6 holds certificates"
+[ "$(certs db1)" -gt 0 ] || fail "db1 holds no certificates (check is broken)"
 
 echo "== trace"
 for op in vote store index_put; do
