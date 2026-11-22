@@ -27,7 +27,15 @@ CREATE TABLE IF NOT EXISTS feed_index (
 	community TEXT NOT NULL,
 	bucket    INTEGER NOT NULL,
 	hash      BLOB NOT NULL,
+	msg_id    BLOB NOT NULL,
 	PRIMARY KEY (community, bucket, hash)
+);
+CREATE INDEX IF NOT EXISTS feed_index_msg_id ON feed_index(msg_id);
+CREATE TABLE IF NOT EXISTS tombstones (
+	msg_id    BLOB PRIMARY KEY,
+	community TEXT NOT NULL,
+	bucket    INTEGER NOT NULL,
+	body      BLOB NOT NULL
 );`
 
 // Open opens (creating if needed) the store at path.
@@ -72,9 +80,64 @@ func (s *Store) Get(h proto.Hash) (*proto.MsgCert, error) {
 	return &c, nil
 }
 
-func (s *Store) AddIndex(community string, bucket int64, h proto.Hash) error {
-	_, err := s.db.Exec(`INSERT OR IGNORE INTO feed_index(community, bucket, hash) VALUES (?, ?, ?)`, community, bucket, h[:])
+func (s *Store) AddIndex(community string, bucket int64, h, msgID proto.Hash) error {
+	_, err := s.db.Exec(`INSERT OR IGNORE INTO feed_index(community, bucket, hash, msg_id) VALUES (?, ?, ?, ?)`,
+		community, bucket, h[:], msgID[:])
 	return err
+}
+
+// Remove records the tombstone and deletes the message's certificates and index
+// entries in one transaction.
+func (s *Store) Remove(t proto.Tombstone, community string, bucket int64) error {
+	body, err := json.Marshal(t)
+	if err != nil {
+		return err
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after Commit
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT OR IGNORE INTO tombstones(msg_id, community, bucket, body) VALUES (?, ?, ?, ?)`, []any{t.MsgID[:], community, bucket, body}},
+		{`DELETE FROM certs WHERE msg_id = ?`, []any{t.MsgID[:]}},
+		{`DELETE FROM feed_index WHERE msg_id = ?`, []any{t.MsgID[:]}},
+	} {
+		if _, err := tx.Exec(q.sql, q.args...); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) Removed(msgID proto.Hash) (bool, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM tombstones WHERE msg_id = ?`, msgID[:]).Scan(&n)
+	return n > 0, err
+}
+
+func (s *Store) Tombstones(community string, bucket int64, limit int) ([]proto.Tombstone, error) {
+	rows, err := s.db.Query(`SELECT body FROM tombstones WHERE community = ? AND bucket = ? LIMIT ?`, community, bucket, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []proto.Tombstone
+	for rows.Next() {
+		var body []byte
+		if err := rows.Scan(&body); err != nil {
+			return nil, err
+		}
+		var t proto.Tombstone
+		if err := json.Unmarshal(body, &t); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) Index(community string, bucket int64, limit int) ([]proto.Hash, error) {
