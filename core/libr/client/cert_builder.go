@@ -2,9 +2,7 @@ package client
 
 import (
 	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"sort"
 
@@ -33,14 +31,10 @@ func CreateMsgCertWithPrivateKey(message string, ts int64, modcertList []types.M
 
 	jsonBytes, _ := json.Marshal(dataToSign)
 	pubKeyStr, sign, err := cryptoutils.SignMessage(privKey, string(jsonBytes))
-	fmt.Println("data to sign = ", string(jsonBytes))
-	fmt.Print("Private Key = ", base64.StdEncoding.EncodeToString(privKey))
-	fmt.Println("Public Key = ", pubKeyStr)
-	fmt.Print("Signature = ", sign)
-	fmt.Print("\n")
 	if err != nil {
+		// Not fatal: an unsigned cert is rejected by every DB node.
 		logger.LogToFile("[DEBUG]Failed to get sign message")
-		log.Fatalf("failed to sign message: %v", err)
+		log.Printf("failed to sign message: %v", err)
 	}
 
 	msgCert := types.MsgCert{
