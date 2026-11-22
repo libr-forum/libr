@@ -99,7 +99,7 @@ jobs:
       - name: Bind
         working-directory: mobile-app/go-core
         run: |
-          go tool gomobile init
+          go install golang.org/x/mobile/cmd/gobind # pinned by go.mod; 'gomobile init' would fetch @latest
           go tool gomobile bind -target=android -androidapi 21 -ldflags "-checklinkname=0" -o /tmp/libr-core.aar ./bridge
 
   librserver:
