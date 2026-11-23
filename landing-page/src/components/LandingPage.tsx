@@ -1,7 +1,7 @@
 import React from 'react';
 import { Header, Hero, TechArch, WhatIsLIBR } from './LandingPageSections';
 import { HowItWorks, Community, Footer } from './LandingPageExtended';
-import { TechModules, HowToUse, InstallGuide } from './AdditionalSections';
+import { TechModules, HowToUse } from './AdditionalSections';
 
 interface LandingPageProps {
   isDarkMode: boolean;

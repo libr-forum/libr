@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {BackgroundEffect} from './components/BackgroundEffect';
-import {Analytics} from '@vercel/analytics/react';
 import { MoveUp } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -135,7 +134,6 @@ const App: React.FC = () => {
   return (
     <>
       <BackgroundEffect />
-      <Analytics />
       <div className="min-h-screen bg-libr-primary/50 text-foreground relative overflow-x-hidden">
         <ScrollProgress />
         <BackToTop />
