@@ -3,7 +3,7 @@
 # apps on the LAN: a relay, DB nodes (one public, the rest NAT-style behind the relay)
 # and librctl moderators for community "general".
 #
-#   DEVNET_IP=10.6.0.79 testbed/devnet.sh start   # prints the env for apps
+#   DEVNET_IP=192.168.1.20 testbed/devnet.sh start   # prints the env for apps
 #   testbed/devnet.sh stop
 #
 # EXTRA_MODS=<base64 pubkey>,... adds app identities to the moderator set (fewer
