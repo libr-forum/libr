@@ -119,6 +119,13 @@ func (s *Store) Removed(msgID proto.Hash) (bool, error) {
 	return n > 0, err
 }
 
+func (s *Store) Holds(msgID proto.Hash) (bool, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT (SELECT COUNT(*) FROM certs WHERE msg_id = ?) + (SELECT COUNT(*) FROM feed_index WHERE msg_id = ?)`,
+		msgID[:], msgID[:]).Scan(&n)
+	return n > 0, err
+}
+
 func (s *Store) Tombstones(community string, bucket int64, limit int) ([]proto.Tombstone, error) {
 	rows, err := s.db.Query(`SELECT body FROM tombstones WHERE community = ? AND bucket = ? LIMIT ?`, community, bucket, limit)
 	if err != nil {

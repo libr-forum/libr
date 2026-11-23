@@ -24,6 +24,8 @@ type Store interface {
 	// certificate and index entry of t.MsgID.
 	Remove(t proto.Tombstone, community string, bucket int64) error
 	Removed(msgID proto.Hash) (bool, error)
+	// Holds reports whether a certificate or index entry of msgID is stored here.
+	Holds(msgID proto.Hash) (bool, error)
 	Tombstones(community string, bucket int64, limit int) ([]proto.Tombstone, error)
 }
 
@@ -134,13 +136,28 @@ func (n *Node) indexGet(_ peer.ID, req wire.IndexGetReq) wire.IndexGetResp {
 // remove verifies the tombstone against the message it names, records it and deletes
 // the message's certificates and index entries. Content is deleted, not just hidden.
 func (n *Node) remove(_ peer.ID, req wire.RemoveReq) wire.RemoveResp {
-	// shortcut: an author delete is accepted for any message of a known community even if
-	// this node never saw it; per-peer rate limits bound the junk. Revisit with PoSe.
 	if _, ok := n.Sets.Get(req.Msg.Community, 0); !ok {
 		return wire.RemoveResp{Err: "invalid: unknown community"}
 	}
 	if err := proto.VerifyTombstone(n.Sets, req.Tomb, req.Msg); err != nil {
 		return wire.RemoveResp{Err: "invalid: " + err.Error()}
+	}
+	// Anyone can sign an author delete for a message they just made up, so those are
+	// kept only for messages this node holds (or already removed, for idempotent
+	// retries). A moderator quorum's removal is kept regardless: it also stops later
+	// copies from being stored here.
+	if req.Tomb.Del != nil {
+		removed, err := n.Store.Removed(req.Tomb.MsgID)
+		held := false
+		if err == nil && !removed {
+			held, err = n.Store.Holds(req.Tomb.MsgID)
+		}
+		switch {
+		case err != nil:
+			return wire.RemoveResp{Err: wire.ErrInternal}
+		case !removed && !held:
+			return wire.RemoveResp{Err: wire.ErrNotFound}
+		}
 	}
 	if err := n.Store.Remove(req.Tomb, req.Msg.Community, wire.Bucket(req.Msg.Ts)); err != nil {
 		return wire.RemoveResp{Err: wire.ErrInternal}

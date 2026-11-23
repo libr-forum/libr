@@ -100,6 +100,24 @@ func (m *MemStore) Removed(msgID proto.Hash) (bool, error) {
 	return ok, nil
 }
 
+func (m *MemStore) Holds(msgID proto.Hash) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.certs {
+		if c.Msg.ID() == msgID {
+			return true, nil
+		}
+	}
+	for _, es := range m.index {
+		for _, e := range es {
+			if e.msgID == msgID {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (m *MemStore) Tombstones(community string, bucket int64, limit int) ([]proto.Tombstone, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

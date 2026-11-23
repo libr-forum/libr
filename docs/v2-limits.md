@@ -35,6 +35,7 @@ change them there and here together.
 | Opted-out communities refused (`LIBR_OPTOUT`), clients move to the next node | `dbnode.Node.OptOut` |
 | index/get returns at most 1000 hashes and 1000 tombstones | `wire.MaxIndexHashes` |
 | Removal needs a valid RepCert quorum of the message's own community, or the author's signature | `proto.VerifyTombstone` |
+| Author deletes are kept only for messages the node holds (cert or index entry); quorum removals always | `dbnode.Node.remove` |
 | Request bodies are never logged | `wire.Handle`, lint rule below |
 
 ## Moderators (`/libr/2/vote`, `/libr/2/report`)
@@ -54,7 +55,7 @@ change them there and here together.
 |---|---|
 | Every certificate is re-hashed and verified; tampered copies are skipped | `forum.Get` |
 | Receipts and removal acks must be signed by the peer actually contacted | `forum.checkReceipt`, `checkAck` |
-| Tombstones hide a post only after verifying against that post | `forum.Feed` |
+| Tombstones hide a post only after verifying against that post; fetching one post by hash checks its bucket's tombstones too (fails closed) | `forum.Feed`, `forum.Get` |
 | Feed range ≤ 1 week (672 buckets), ≤ 2000 certificate fetches per call | `forum.MaxFeedBuckets`, `MaxFeedFetches` |
 
 ## Seed server (`services/librserver`)
@@ -75,10 +76,6 @@ change them there and here together.
 
 ## Known gaps (accepted for now)
 
-- **Junk author deletes.** A DB node accepts an author-signed tombstone for any message of
-  a known community, even one it never saw; anyone can mint keys and messages. Bounded
-  only by per-peer rate limits, and peer IDs are free. Fix with contribution-based
-  admission (PoSe) or by requiring the node to know the message.
 - **Free identities.** Per-peer and per-author limits slow one identity, not a Sybil
   swarm. Per-IP connection limits and the moderator's global decision cap are the
   backstop.

@@ -85,3 +85,40 @@ func TestRemove(t *testing.T) {
 		}
 	}
 }
+
+// TestJunkAuthorDelete: an author delete for a message this node never stored is
+// refused and leaves no tombstone; a quorum removal is kept even so; retrying an
+// accepted delete still gets an ack.
+func TestJunkAuthorDelete(t *testing.T) {
+	reg, mods := community(t)
+	r := newRig(t, reg)
+	author := key("author")
+
+	unseen := cert(author, "never stored here", now, mods[0], mods[1], mods[2])
+	del := proto.SignAuthorDelete(author, unseen.Msg)
+	var resp wire.RemoveResp
+	r.call(t, string(wire.ProtoRemove), wire.RemoveReq{Msg: unseen.Msg, Tomb: proto.Tombstone{MsgID: unseen.Msg.ID(), Del: &del}}, &resp)
+	if resp.Ack != nil || resp.Err != wire.ErrNotFound {
+		t.Fatalf("junk delete: %+v", resp)
+	}
+	if ts, _ := r.store.Tombstones("general", wire.Bucket(now), 10); len(ts) != 0 {
+		t.Fatalf("junk delete left a tombstone: %+v", ts)
+	}
+
+	r.call(t, string(wire.ProtoRemove), wire.RemoveReq{Msg: unseen.Msg, Tomb: proto.Tombstone{MsgID: unseen.Msg.ID(), Rep: repCert(unseen, 0, 1, 2)}}, &resp)
+	if resp.Ack == nil {
+		t.Fatalf("quorum removal of an unseen message: %+v", resp)
+	}
+
+	held := cert(author, "stored here", now, mods[0], mods[1], mods[2])
+	var rr wire.ReceiptResp
+	r.call(t, string(wire.ProtoIndexPut), held, &rr) // index entry only, like a bucket node
+	del = proto.SignAuthorDelete(author, held.Msg)
+	req := wire.RemoveReq{Msg: held.Msg, Tomb: proto.Tombstone{MsgID: held.Msg.ID(), Del: &del}}
+	for i := 0; i < 2; i++ {
+		r.call(t, string(wire.ProtoRemove), req, &resp)
+		if resp.Ack == nil {
+			t.Fatalf("delete of an indexed message, try %d: %+v", i, resp)
+		}
+	}
+}

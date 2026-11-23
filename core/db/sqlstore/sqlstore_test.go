@@ -73,6 +73,9 @@ func TestRemove(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if h, err := s.Holds(c.Msg.ID()); !h || err != nil {
+		t.Fatalf("Holds before removal = %v %v", h, err)
+	}
 	del := proto.SignAuthorDelete(priv, c.Msg)
 	tomb := proto.Tombstone{MsgID: c.Msg.ID(), Del: &del}
 	if err := s.Remove(tomb, "general", 900); err != nil {
@@ -93,6 +96,9 @@ func TestRemove(t *testing.T) {
 	}
 	if hs, _ := s.Index("general", 900, 10); len(hs) != 1 || hs[0] != keep.Hash() {
 		t.Fatalf("index after remove: %v", hs)
+	}
+	if h, _ := s.Holds(c.Msg.ID()); h {
+		t.Fatal("Holds after removal")
 	}
 	if ok, err := s.Removed(c.Msg.ID()); !ok || err != nil {
 		t.Fatalf("Removed = %v %v", ok, err)
