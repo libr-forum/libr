@@ -342,6 +342,12 @@ func (a *App) cert(ctx context.Context, hash string) (proto.MsgCert, error) {
 	return a.client.Get(ctx, h)
 }
 
+// Network is the resolved network this node joined (relays, bootstrap peers, seed
+// servers) and its verified communities, for starting a DB node alongside it.
+func (a *App) Network() (relays, bootstrap, seedURLs []string, sets *proto.Registry) {
+	return a.cfg.Relays, a.cfg.Bootstrap, a.cfg.SeedURLs, a.reg
+}
+
 // PeerID is this node's libp2p peer ID.
 func (a *App) PeerID() string { return a.host.ID().String() }
 

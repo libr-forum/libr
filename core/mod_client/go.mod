@@ -3,8 +3,30 @@ module github.com/libr-forum/Libr/core/mod_client
 go 1.24.4
 
 require (
+	github.com/libr-forum/Libr/core/db v0.0.0-00010101000000-000000000000
 	github.com/libr-forum/Libr/core/libr v0.0.0
 	github.com/wailsapp/wails/v2 v2.11.0
+)
+
+require (
+	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/ipfs/boxo v0.35.0 // indirect
+	github.com/ipfs/go-datastore v0.9.0 // indirect
+	github.com/ipld/go-ipld-prime v0.21.0 // indirect
+	github.com/libp2p/go-cidranger v1.1.0 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.35.1 // indirect
+	github.com/libp2p/go-libp2p-kbucket v0.8.0 // indirect
+	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
+	github.com/libp2p/go-libp2p-routing-helpers v0.7.5 // indirect
+	github.com/polydawn/refmt v0.89.0 // indirect
+	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	gonum.org/v1/gonum v0.16.0 // indirect
 )
 
 require (
@@ -27,7 +49,7 @@ require (
 	github.com/koron/go-ssdp v0.0.6 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.3.0 // indirect
-	github.com/libp2p/go-libp2p v0.43.0
+	github.com/libp2p/go-libp2p v0.43.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.4.1 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-netroute v0.2.2 // indirect
@@ -97,7 +119,6 @@ require (
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect
-	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -131,3 +152,5 @@ require (
 replace github.com/libr-forum/Libr/core/libr => ../libr
 
 // replace github.com/wailsapp/wails/v2 v2.10.2 => C:\Users\Arnav\go\pkg\mod
+
+replace github.com/libr-forum/Libr/core/db => ../db
