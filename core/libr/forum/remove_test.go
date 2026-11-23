@@ -150,3 +150,32 @@ func TestSecondCertSuppressed(t *testing.T) {
 		t.Fatalf("feed shows the removed message again: %q", got)
 	}
 }
+
+// TestGetHonoursRemoval: a replica that missed the removal (or ignores it) still
+// serves the post by hash; Get must refuse it because the bucket has a tombstone.
+func TestGetHonoursRemoval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts 10 hosts")
+	}
+	w := newWorld(t, 1, 4, moderator.ApproveAll)
+	p, err := w.submit("served by a stale replica")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := ctx90()
+	defer cancel()
+	if _, err := w.client.Get(ctx, p.Hash); err != nil {
+		t.Fatalf("before removal: %v", err)
+	}
+	r, err := w.client.Delete(ctx, p.Cert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-r.Done
+	for _, st := range w.stores { // every replica "missed" it: the copy is back everywhere
+		_ = st.MemStore.Put(p.Hash, p.Cert)
+	}
+	if _, err := w.client.Get(ctx, p.Hash); !errors.Is(err, ErrRemoved) {
+		t.Fatalf("Get of a removed post: err = %v, want ErrRemoved", err)
+	}
+}

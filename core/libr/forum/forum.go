@@ -47,6 +47,8 @@ var (
 	ErrNoQuorum = errors.New("not enough moderators answered")
 	// ErrNotStored: fewer than StoredQuorum DB nodes returned a valid receipt.
 	ErrNotStored = errors.New("not enough storage receipts")
+	// ErrRemoved: the post has a verified removal (moderator quorum or author).
+	ErrRemoved = errors.New("post was removed")
 )
 
 // Event is one network request, for measurements (librctl --trace writes JSON lines).
@@ -278,7 +280,7 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 	}
 	byID := map[proto.Hash]proto.MsgCert{}
 	parallel(len(list), parallelGets, func(i int) {
-		cert, err := c.Get(ctx, list[i])
+		cert, err := c.fetch(ctx, list[i])
 		if err != nil || cert.Msg.Community != community || cert.Msg.Ts < since.Unix() || cert.Msg.Ts > until.Unix() {
 			return
 		}
@@ -349,9 +351,30 @@ func (c *Client) indexGet(ctx context.Context, community string, bucket int64) (
 }
 
 // Get fetches the cert stored under h from the closest nodes, accepting the first
-// copy that hashes to h and verifies; tampered or forged copies are skipped. It does
-// not check for removal (Feed does, through the bucket's tombstones).
+// copy that hashes to h and verifies (tampered or forged copies are skipped), and
+// returns ErrRemoved if the post has a verified removal.
 func (c *Client) Get(ctx context.Context, h proto.Hash) (proto.MsgCert, error) {
+	cert, err := c.fetch(ctx, h)
+	if err != nil {
+		return cert, err
+	}
+	// A replica that missed the removal (or lies) still serves the post, so check the
+	// tombstones its feed bucket's index nodes hold, as Feed does. Fails closed.
+	_, tombs, err := c.indexGet(ctx, cert.Msg.Community, wire.Bucket(cert.Msg.Ts))
+	if err != nil {
+		return proto.MsgCert{}, fmt.Errorf("cannot check for removal: %w", err)
+	}
+	for _, t := range tombs {
+		if t.MsgID == cert.Msg.ID() && proto.VerifyTombstone(c.Sets, t, cert.Msg) == nil {
+			return proto.MsgCert{}, ErrRemoved
+		}
+	}
+	return cert, nil
+}
+
+// fetch returns the first copy of h that hashes correctly and verifies; it does not
+// check removals (Feed checks them per bucket, Get per post).
+func (c *Client) fetch(ctx context.Context, h proto.Hash) (proto.MsgCert, error) {
 	cands, err := c.closest(ctx, h)
 	if err != nil {
 		return proto.MsgCert{}, err
