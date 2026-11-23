@@ -30,6 +30,24 @@ once is unlikely.
    coordinator (identity dialog → **Copy public key**; base64, 44 characters).
 2. Each founder runs `librctl keygen -out founder.key` on their own offline machine and
    sends the **public key** (second field) to the coordinator.
+```mermaid
+sequenceDiagram
+    participant Mods as Moderators
+    participant C as Coordinator
+    participant F1 as Founder 1 (offline key)
+    participant F2 as Founder 2 (offline key)
+    Mods->>C: public keys (desktop: Copy public key)
+    F1->>C: public key
+    F2->>C: public key
+    C->>C: librctl genesis -founder-keys ... -out general.json
+    C->>F1: general.json (unsigned)
+    F1->>F1: check moderators, librctl sign
+    F1->>F2: general.json (1 of 2 signatures)
+    F2->>F2: check moderators, librctl sign
+    F2->>C: general.json (fully signed)
+    C->>C: librctl verify, ship in apps and to every DB node
+```
+
 3. The coordinator writes the unsigned genesis:
    ```bash
    librctl genesis -community general -f 1 \
@@ -43,6 +61,34 @@ once is unlikely.
    Nodes and apps refuse the file until it does.
 
 ## 2. Deploy relays and DB nodes
+
+```mermaid
+flowchart LR
+    subgraph hostA["Public host A"]
+        rA["relay :4001"]
+        dA[("DB node :4002<br/>also relays")]
+        seed["seed server :3000<br/>behind HTTPS"]
+    end
+    subgraph hostB["Public host B"]
+        rB["relay :4001"]
+        dB[("DB node :4002")]
+    end
+    subgraph home["Behind NAT (home, campus)"]
+        dC[("DB node<br/>LIBR_PRIVATE=1")]
+        mod["moderator<br/>desktop app"]
+        user["users<br/>desktop / Android"]
+    end
+    dB -- "LIBR_BOOTSTRAP" --> dA
+    dC -. "reservation" .-> rA
+    dC -. "reservation" .-> rB
+    mod -. "reservation" .-> rA
+    mod -. "reservation" .-> rB
+    user -- "store / read" --> dA
+    user -- "store / read" --> dB
+    user -. "via relay" .-> dC
+    dA -. "register" .-> seed
+    dB -. "register" .-> seed
+```
 
 Minimum for a usable network: **2 relays** on different hosts and **at least 4 DB
 nodes** (posts are stored on the 4 closest), better 6+, run by different people.
