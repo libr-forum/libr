@@ -98,8 +98,8 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
                   <p>Your identity in libr is a cryptographically-generated pseudonym created locally on your device. Only you can use it to post content. If you reset your identity, future messages cannot be straightforwardly linked to your previous pseudonym.</p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Client Analytics (Optional)</h4>
-                  <p>Our client applications may collect anonymous usage analytics to improve performance and identify issues. This can be disabled in your client settings and does not include personal content.</p>
+                  <h4 className="font-medium text-foreground mb-2">No Analytics</h4>
+                  <p>Neither the libr apps nor this website collect usage analytics or tracking data.</p>
                 </div>
               </div>
             </section>
@@ -303,7 +303,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isDarkMode = true, toggle
               <div className="space-y-2 text-muted-foreground">
                 <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
                 <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
-                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
+                <p><strong className="text-foreground">Website:</strong> <a href="https://libr.social/" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr.social/</a></p>
                 <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
                 <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
                 <p><strong className="text-foreground">EULA:</strong> <a href="/eula" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our End User License Agreement</a></p>

@@ -43,12 +43,12 @@ const TechModules: React.FC = () => {
     {
       category: "Moderator",
       icon: ShieldCheck,
-      technologies: ["Community Ruled", "Pluggable", "Google Cloud NLP"]
+      technologies: ["2f+1 Quorum", "Human Review", "LLM / NLP Policies"]
     },
     {
       category: "Network",
       icon: Globe,
-      technologies: ["libp2p", "WebSockets", "Relayed Connections"]
+      technologies: ["libp2p", "Circuit Relay v2", "Noise Encryption"]
     }    
   ];
 
@@ -56,7 +56,7 @@ const TechModules: React.FC = () => {
     {
       category: "Database",
       icon: Database,
-      technologies: ["SQLite 3", "Kademlia", "Replicated DHT"]
+      technologies: ["SQLite 3", "Kademlia DHT", "Signed Receipts"]
     },
     {
       category: "Crypto",
