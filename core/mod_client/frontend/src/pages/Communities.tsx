@@ -131,7 +131,7 @@ export const Communities: React.FC = () => {
                     <h3 className="font-semibold text-foreground">{community.name}</h3>
                     <div className="flex items-center space-x-1 text-xs text-muted-foreground">
                       <Users className="w-3 h-3" />
-                      <span>{community.memberCount} members</span>
+                      <span>{community.modCount} moderators</span>
                     </div>
                   </div>
                 </div>

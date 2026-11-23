@@ -33,7 +33,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const insets = useSafeAreaInsets();
-  const { state } = useAppStore();
+  const { state, setCommunity } = useAppStore();
   const colors = getAppColors(state.isIncognito);
   const router = useRouter();
   const pathname = usePathname();
@@ -67,12 +67,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           setAvatarSvg(av);
 
           // Check if moderator
-          const mod = await LibrCore.amIMod();
+          const mod = await LibrCore.isMod(state.community);
           setIsModerator(mod);
         } catch { }
       })();
     }
-  }, [state.publicKey]);
+  }, [state.publicKey, state.community]);
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -205,6 +205,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </Pressable>
             ))}
           </View>
+
+          {state.communities.length > 0 && (
+            <View style={[styles.navList, { marginTop: 12 }]}>
+              {state.communities.map((c, idx) => (
+                <Pressable
+                  key={c.name}
+                  onPress={() => { setCommunity(c.name); handleNav('/(main)/'); }}
+                  style={({ pressed }) => [
+                    styles.navItem,
+                    idx === state.communities.length - 1 && styles.navItemLast,
+                    c.name === state.community && [styles.navItemActive, { backgroundColor: 'rgba(31,164,169,0.18)' }],
+                    pressed && styles.navItemPressed,
+                  ]}>
+                  <View style={styles.navIconWrap}><Hash size={20} color={colors.icon} /></View>
+                  <Text style={[styles.navText, { color: colors.text }, c.name === state.community && styles.navTextActive]}>
+                    {c.name}{c.is_mod ? '  (mod)' : ''}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* User Card moved to bottom */}

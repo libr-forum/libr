@@ -1,0 +1,9 @@
+go 1.24.4
+
+use (
+	./core/db
+	./core/libr
+	./core/mod_client
+	./mobile-app/go-core
+	./services/relay
+)

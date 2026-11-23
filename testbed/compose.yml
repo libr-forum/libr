@@ -1,0 +1,85 @@
+# LIBR v2 testbed. nat1 and nat2 are isolated from each other and from the internet.
+# Relays and the two public DB nodes (which also relay) sit on both; everything else
+# sits on one, so cross-network traffic must go through a circuit relay.
+# Generated config (keys, community, env) comes from e2e.sh into ./out. DB nodes
+# register with the seed server; mods and clients find the network only through it.
+
+x-ctl: &ctl
+  image: libr-ctl
+  user: ${HOST_USER}
+  volumes: ["./out:/out"]
+  environment: &ctlenv
+    LIBR_COMMUNITIES: /out/communities
+    LIBR_RELAYS: ${RELAYS}
+    LIBR_SEED_URLS: http://seed:3000
+    LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001
+
+x-db: &db
+  image: libr-db
+  environment: &dbenv
+    LIBR_DATA_DIR: /data
+    LIBR_COMMUNITIES: /out/communities
+    LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001
+    LIBR_RELAYS: ${RELAYS}
+    LIBR_BOOTSTRAP: ${BOOT}
+    LIBR_SEED_URLS: http://seed:3000
+    LIBR_PRIVATE: "1"
+
+x-mod: &mod
+  <<: *ctl
+  restart: on-failure
+
+services:
+  seed:
+    image: libr-seed
+    networks: [nat1, nat2]
+  relay-a:
+    image: libr-relay
+    environment: { LIBP2P_PRIV_KEY: "${RELAY_A_KEY}", LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001 }
+    networks: [nat1, nat2]
+  relay-b:
+    image: libr-relay
+    environment: { LIBP2P_PRIV_KEY: "${RELAY_B_KEY}", LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001 }
+    networks: [nat1, nat2]
+
+  db1:
+    <<: *db
+    environment: { <<: *dbenv, LIBR_PRIVATE: "0", LIBR_PUBLIC: "1" }
+    volumes: ["./out:/out:ro", "./out/keys/db1.key:/data/node.key:ro"]
+    networks: [nat1, nat2]
+  db2:
+    <<: *db
+    environment: { <<: *dbenv, LIBR_PRIVATE: "0", LIBR_PUBLIC: "1" }
+    volumes: ["./out:/out:ro", "./out/keys/db2.key:/data/node.key:ro"]
+    networks: [nat1, nat2]
+  db3:
+    <<: *db
+    volumes: ["./out:/out:ro", "./out/keys/db3.key:/data/node.key:ro"]
+    networks: [nat1]
+  db4:
+    <<: *db
+    volumes: ["./out:/out:ro", "./out/keys/db4.key:/data/node.key:ro"]
+    networks: [nat2]
+  db5:
+    <<: *db
+    volumes: ["./out:/out:ro", "./out/keys/db5.key:/data/node.key:ro"]
+    networks: [nat2]
+
+  db6: # opted out of "general": must never be used to store it
+    <<: *db
+    environment: { <<: *dbenv, LIBR_OPTOUT: general }
+    volumes: ["./out:/out:ro", "./out/keys/db6.key:/data/node.key:ro"]
+    networks: [nat1]
+
+  mod1: { <<: *mod, command: [mod, serve, -key, /out/keys/mod1.key, "-report-policy=keyword:remove-me"], networks: [nat1] }
+  mod2: { <<: *mod, command: [mod, serve, -key, /out/keys/mod2.key, "-report-policy=keyword:remove-me"], networks: [nat1] }
+  mod3: { <<: *mod, command: [mod, serve, -key, /out/keys/mod3.key, "-report-policy=keyword:remove-me"], networks: [nat2] }
+  mod4: { <<: *mod, command: [mod, serve, -key, /out/keys/mod4.key, "-policy=keyword:forbidden", "-report-policy=keyword:remove-me"], networks: [nat2] }
+
+  # One-off clients: docker compose run --rm client1 client submit ...
+  client1: { <<: *ctl, profiles: [client], networks: [nat1] }
+  client2: { <<: *ctl, profiles: [client], networks: [nat2] }
+
+networks:
+  nat1: { internal: true }
+  nat2: { internal: true }

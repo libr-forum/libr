@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { X, Image as ImageIcon, Send, XCircle } from 'lucide-react-native';
-import LibrCore, { RetMsgCert, SendResult } from '@/modules/LibrCore';
+import LibrCore, { RetMsgCert, SendResult, toSendResult } from '@/modules/LibrCore';
 import { Colors, Fonts, getAppColors } from '@/constants/theme';
 import { useAppStore } from '@/store/useAppStore';
 import * as ImagePicker from 'expo-image-picker';
@@ -147,8 +147,7 @@ export default function CreateMessageModal() {
 
     // 4. Background: Perform actual deliverya
     try {
-      const raw: string = await LibrCore.sendTextMessage(fullContent);
-      const result: SendResult = JSON.parse(raw);
+      const result: SendResult = toSendResult(await LibrCore.post(state.community, fullContent));
 
       if (result.status === 'sent' || result.status?.startsWith('sent:') || result.status === 'pending_manual') {
         if (result.status === 'pending_manual') {
@@ -164,7 +163,7 @@ export default function CreateMessageModal() {
             content: fullContent,
             ts: result.ts,
           },
-          mod_certs: result.mod_certs || [],
+          mod_certs: [],
           deleted: '0'
         };
         addMessage(realCert);

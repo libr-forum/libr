@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { SvgXml } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import LibrCore, { LibrCoreEvents, RetMsgCert, MsgCert } from '@/modules/LibrCore';
+import LibrCore, { RetMsgCert, Community, Post, Outcome, nodeConfig, parse, toRetMsgCert, toSendResult } from '@/modules/LibrCore';
 import { useAppStore } from '@/store/useAppStore';
 import { useSidebar } from './_layout';
 import { Menu, Plus, Check, Clock, Shield, Trash2, Flag, X, AlertTriangle, Hash, RotateCcw } from 'lucide-react-native';
@@ -249,9 +249,9 @@ function MessageDetailModal({ visible, onClose, cert, isMine, onDelete, onReport
           </View>
 
           <ScrollView style={styles.modList} bounces={false}>
-            {cert.mod_certs?.map((mc, i) => (
-              <ModSignatureItem key={i} modPub={mc.public_key} />
-            ))}
+            {!!cert.votes && (
+              <Text style={styles.statusLabel}>Approved by {cert.votes} moderators</Text>
+            )}
           </ScrollView>
 
           <View style={styles.modalActions}>
@@ -478,7 +478,7 @@ function ActionConfirmModal({
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { state, setPublicKey, setPeerId, setConnectionStatus, setModerator, setError, setMessages, setFetching, removeMessage, addReportedSign, showNotice, hideNotice } = useAppStore();
+  const { state, setPublicKey, setPeerId, setConnectionStatus, setModerator, setCommunities, setCommunity, setError, setMessages, setFetching, removeMessage, addReportedSign, showNotice, hideNotice } = useAppStore();
   const colors = getAppColors(state.isIncognito);
   const { toggleSidebar, isOpen } = useSidebar();
   const [input, setInput] = useState('');
@@ -509,58 +509,35 @@ export default function ChatScreen() {
     setDebugLog([]);
 
     try {
-      // 1. Init keys + discovery server
+      // 1. Keys
       log('Step 1: initApp…');
-      let pubKey = '';
-      try {
-        if (typeof (LibrCore as any).initApp === 'function') {
-          pubKey = await (LibrCore as any).initApp('');
-          log(`Step 1 OK: pubKey=${pubKey ? pubKey.slice(0, 16) + '…' : '(empty)'}`);
-        } else {
-          log('Step 1 SKIP: initApp not in AAR');
-        }
-      } catch (e: any) {
-        log(`Step 1 ERROR: ${e?.message}`);
-      }
+      const pubKey = await LibrCore.initApp();
+      log(`Step 1 OK: pubKey=${pubKey ? pubKey.slice(0, 16) + '…' : '(empty)'}`);
       if (pubKey) setPublicKey(pubKey);
 
-      // 2. Get relay addresses
-      log('Step 2: getRelayAddresses…');
-      let relayAddrs: string[] = [];
-      try {
-        if (typeof (LibrCore as any).getRelayAddresses === 'function') {
-          const relayJSON: string = await (LibrCore as any).getRelayAddresses();
-          log(`Step 2 raw: ${relayJSON?.slice(0, 80)}`);
-          if (relayJSON && !relayJSON.startsWith('error:')) {
-            relayAddrs = JSON.parse(relayJSON);
-          }
-          log(`Step 2 OK: ${relayAddrs.length} relay(s)`);
-        } else {
-          log('Step 2 SKIP: getRelayAddresses not in AAR');
-        }
-      } catch (e: any) {
-        log(`Step 2 ERROR: ${e?.message}`);
+      // 2. Join the network (relays, bootstrap peers, seed servers from EXPO_PUBLIC_LIBR_*)
+      log('Step 2: startNode…');
+      const nodeResult = await LibrCore.startNode(nodeConfig());
+      log(`Step 2 result: ${nodeResult}`);
+      if (nodeResult !== 'ok') {
+        throw new Error(`Node start failed: ${nodeResult}`);
       }
-
-      // 3. Start libp2p node
-      log(`Step 3: initNode with ${relayAddrs.length} relay(s)…`);
-      const nodeResult: string = await LibrCore.initNode(JSON.stringify(relayAddrs));
-      log(`Step 3 result: ${nodeResult}`);
-      if (nodeResult !== 'success' && nodeResult !== 'already_initialized') {
-        throw new Error(`Node init failed: ${nodeResult}`);
-      }
-
-      // 4. Get peer ID
-      log('Step 4: getPeerID…');
       const id = await LibrCore.getPeerID();
-      log(`Step 4 OK: ${id?.slice(0, 20)}…`);
+      log(`Step 2 OK: ${id?.slice(0, 20)}…`);
       setPeerId(id);
+
+      // 3. Communities and the user's role in the current one
+      const communities = parse<Community[]>(await LibrCore.listCommunities());
+      log(`Step 3: ${communities.length} communities`);
+      if (communities.length === 0) {
+        throw new Error('No communities: this build has no community files (set EXPO_PUBLIC_LIBR_COMMUNITY for a dev network).');
+      }
+      setCommunities(communities);
+      const current = communities.find(c => c.name === state.community) ?? communities[0];
+      setCommunity(current.name);
+      setModerator(current.is_mod);
       setConnectionStatus('connected');
       log('Connected!');
-
-      // Check moderator
-      const mod = await LibrCore.amIMod();
-      setModerator(mod);
 
       // 5. Initial message fetch — delayed so state settles first
       setTimeout(() => doFetch(), 500);
@@ -575,33 +552,35 @@ export default function ChatScreen() {
   // ── Message fetching ─────────────────────────────────────────────────────
 
   const doFetch = useCallback(async () => {
-    if (state.isFetching) return;
-    if (typeof (LibrCore as any).fetchMessages !== 'function') return;
+    if (state.isFetching || !state.community) return;
     setFetching(true);
     try {
-      const raw: string = await (LibrCore as any).fetchMessages();
-      if (raw && !raw.startsWith('error:')) {
-        const certs: RetMsgCert[] = JSON.parse(raw) ?? [];
-        setMessages(certs);
-      }
-    } catch { /* ignore */ } finally {
+      const posts = parse<Post[]>(await LibrCore.feed(state.community));
+      setMessages(posts.map(toRetMsgCert));
+    } catch { /* keep the current feed */ } finally {
       setFetching(false);
     }
-  }, [state.isFetching]);
+  }, [state.isFetching, state.community]);
+
+  // Switching community shows its feed.
+  useEffect(() => {
+    if (state.connectionStatus === 'connected') doFetch();
+  }, [state.community, state.connectionStatus]);
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
+  // Auto connect once on launch (re-running on every status change looped on failures).
   useEffect(() => {
-    // Listen for push messages from libp2p
-    const sub = LibrCoreEvents?.addListener('onLibrMessage', () => doFetch());
-
-    // Auto connect on launch
     initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => {
-      sub?.remove();
-    };
-  }, [initialize]);
+  // After a failure, try again every 5 s (the network may come back).
+  useEffect(() => {
+    if (state.connectionStatus !== 'error') return;
+    const t = setTimeout(() => initialize(), 5000);
+    return () => clearTimeout(t);
+  }, [state.connectionStatus, initialize]);
 
   // ── Send ─────────────────────────────────────────────────────────────────
 
@@ -611,29 +590,22 @@ export default function ChatScreen() {
 
     setSending(true);
     try {
-      if (typeof (LibrCore as any).sendTextMessage !== 'function') {
-        Alert.alert('Not supported', 'Please rebuild the Go bridge and reinstall the app.');
-        return;
-      }
-      const raw: string = await (LibrCore as any).sendTextMessage(text);
-      const result = JSON.parse(raw);
-      const status: string = result.status ?? '';
-      if (status === 'sent' || status.startsWith('sent:')) {
-        const dbStatus = status.includes(':') ? status.slice(status.indexOf(':') + 1) : '';
+      const result = toSendResult(await LibrCore.post(state.community, text));
+      if (result.status === 'sent' || result.status === 'pending_manual') {
         setInput('');
         setTimeout(() => doFetch(), 1500);
-        if (dbStatus.startsWith('db_error:')) {
-          log(`Sent but DB error: ${dbStatus}`);
+        if (result.status === 'pending_manual') {
+          showNotice('Under Review', 'Moderators are reviewing your post.', 'clock');
         }
       } else {
-        Alert.alert('Send failed', status || 'Unknown error');
+        Alert.alert('Send failed', result.status === 'rejected' ? 'Moderators rejected the post.' : result.status);
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Unknown error');
     } finally {
       setSending(false);
     }
-  }, [input, sending, state.connectionStatus]);
+  }, [input, sending, state.connectionStatus, state.community]);
 
   // ── Report ───────────────────────────────────────────────────────────────
 
@@ -656,80 +628,35 @@ export default function ChatScreen() {
       return;
     }
 
-    if (typeof (LibrCore as any).reportMessage !== 'function') {
-      Alert.alert('Not supported', 'Please rebuild the Go bridge.');
-      return;
-    }
-
     try {
-      const msgCert: MsgCert = {
-        public_key: reportMessageCert.public_key,
-        msg: reportMessageCert.msg,
-        mod_certs: reportMessageCert.mod_certs,
-        sign: reportMessageCert.sign,
-        reason: reason,
-        type: 'report'
-      };
-      const result: string = await (LibrCore as any).reportMessage(JSON.stringify(msgCert), reason);
-      if (result === 'ok') {
-        addReportedSign(reportMessageCert.sign, reportMessageCert);
-        showNotice('Reported', 'Message has been flagged for review.', 'check');
+      const out = parse<Outcome>(await LibrCore.report(reportMessageCert.sign, reason));
+      addReportedSign(reportMessageCert.sign, reportMessageCert);
+      if (out.status === 'removed') {
+        removeMessage(reportMessageCert.sign);
+        showNotice('Removed', 'Moderators removed the post.', 'check');
+      } else if (out.status === 'rejected') {
+        showNotice('Report dismissed', 'Moderators decided to keep the post.', 'info');
       } else {
-        Alert.alert('Report failed', result);
+        showNotice('Reported', 'The post is waiting for moderator review.', 'check');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Unknown error');
+      Alert.alert('Report failed', err?.message ?? 'Unknown error');
     }
   };
 
 
   const handleRetry = useCallback(async (cert: RetMsgCert) => {
-    // 1. Remove the old temporary/failed message
-    removeMessage(cert.sign);
-    
+    // The core retries pending posts by itself; this asks it to try now.
     setSending(true);
     try {
-      let raw: string;
-      
-      // OPTIMIZATION: If the message is already signed by mods, only retry the storage (DB) part.
-      if (cert.mod_certs && cert.mod_certs.length > 0) {
-        console.log('[Chat] Retrying storage only for signed message:', cert.sign);
-        // Map RetMsgCert back to MsgCert for the Go backend
-        const msgCert: MsgCert = {
-          public_key: cert.public_key,
-          msg: cert.msg,
-          mod_certs: cert.mod_certs,
-          sign: cert.sign
-        };
-        raw = await LibrCore.resendToDb(JSON.stringify(msgCert));
-      } else {
-        // FULL RETRY: Redo the moderation flow from scratch
-        console.log('[Chat] Retrying full moderation flow for unsigned message');
-        let rawContent = cert.msg.content;
-        const matchBody = rawContent.match(/<BODY>(.*?)<\/BODY>/s);
-        const plainText = (matchBody ? matchBody[1].trim() : rawContent).replace(/<\/?[^>]+(>|$)/g, '').trim();
-        raw = await (LibrCore as any).sendTextMessage(plainText);
-      }
-
-      const result = JSON.parse(raw);
-      const status: string = result.status ?? '';
-      if (status === 'sent' || status.startsWith('sent:')) {
-        setTimeout(() => doFetch(), 1500);
-      } else {
-        Alert.alert('Retry failed', status || 'Unknown error');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Unknown error');
+      await LibrCore.tick();
+      setTimeout(() => doFetch(), 1500);
     } finally {
       setSending(false);
     }
   }, [removeMessage, doFetch]);
 
   const handleDelete = useCallback(async (cert: RetMsgCert) => {
-    if (typeof (LibrCore as any).deleteMessage !== 'function') {
-      Alert.alert('Not supported', 'Please rebuild the Go bridge.');
-      return;
-    }
     setConfirmModalConfig({
       visible: true,
       title: 'Delete message',
@@ -738,13 +665,7 @@ export default function ChatScreen() {
       onConfirm: async () => {
         setConfirmModalConfig(prev => ({ ...prev, visible: false }));
         try {
-          const msgCert: MsgCert = {
-            public_key: cert.public_key,
-            msg: cert.msg,
-            mod_certs: cert.mod_certs,
-            sign: cert.sign,
-          };
-          const result: string = await (LibrCore as any).deleteMessage(JSON.stringify(msgCert));
+          const result = await LibrCore.deletePost(cert.sign);
           if (result === 'ok') {
             removeMessage(cert.sign);
             setDetailsVisible(false);
@@ -803,7 +724,7 @@ export default function ChatScreen() {
           <View style={[styles.logoWrap, { backgroundColor: state.isIncognito ? 'rgba(155,111,212,0.18)' : C.tealDim }]}>
             <Hash size={18} color={colors.tint} />
           </View>
-          <Text style={[styles.channelName, { color: colors.text }]}>libr</Text>
+          <Text style={[styles.channelName, { color: colors.text }]}>{state.community || 'libr'}</Text>
         </View>
 
       </View>

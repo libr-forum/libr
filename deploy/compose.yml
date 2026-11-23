@@ -1,0 +1,49 @@
+# LIBR v2 production node for one public host (VPS). Profiles pick what this host runs:
+#
+#   docker compose --env-file .env --profile relay --profile db up -d
+#
+# relay  stock circuit relay v2 (NATed peers reserve here)         4001 tcp+udp (host network)
+# db     public DB node, also a relay and a DHT bootstrap peer       4002 tcp+udp (host network)
+# seed   librserver seed list; put HTTPS in front of it              3000 (localhost)
+#
+# Every host needs ./communities/*.json (verified genesis files, see docs/RELEASE.md).
+# Keys live in volumes; back up relay-key and db-data/node.key, they are the peer IDs
+# everyone else has in their seed lists.
+services:
+  relay:
+    profiles: [relay]
+    build: { context: .., dockerfile: services/relay/Dockerfile }
+    environment:
+      LIBP2P_PRIV_KEY: ${RELAY_PRIV_KEY:?set RELAY_PRIV_KEY (librctl keygen -libp2p, third field)}
+      LIBR_LISTEN: /ip4/0.0.0.0/tcp/4001,/ip4/0.0.0.0/udp/4001/quic-v1
+      RELAY_ANNOUNCE: /ip4/${PUBLIC_IP:?set PUBLIC_IP}/tcp/4001,/ip4/${PUBLIC_IP}/udp/4001/quic-v1
+      HEALTH_PORT: "8080" # firewall it; only for local health checks
+    network_mode: host # peers must see the host's address, not a container's
+    restart: unless-stopped
+
+  db:
+    profiles: [db]
+    build: { context: .., dockerfile: core/db/Dockerfile }
+    environment:
+      LIBR_DATA_DIR: /data
+      LIBR_COMMUNITIES: /communities
+      LIBR_LISTEN: /ip4/0.0.0.0/tcp/4002,/ip4/0.0.0.0/udp/4002/quic-v1
+      LIBR_PUBLIC: "1"
+      LIBR_BOOTSTRAP: ${LIBR_BOOTSTRAP:-}
+      LIBR_SEED_URLS: ${LIBR_SEED_URLS:-}
+      LIBR_OPTOUT: ${LIBR_OPTOUT:-}
+    volumes: ["db-data:/data", "./communities:/communities:ro"]
+    network_mode: host
+    restart: unless-stopped
+
+  seed:
+    profiles: [seed]
+    build: ../services/librserver
+    environment:
+      ENTRY_TTL_SECONDS: "600"
+      TRUST_PROXY: "1"
+    ports: ["127.0.0.1:3000:3000"]
+    restart: unless-stopped
+
+volumes:
+  db-data:

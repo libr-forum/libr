@@ -19,35 +19,7 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
     init {
         android.util.Log.e("LibrApp", "===== LibrCoreModule init started =====")
-        try {
-            val bridgeClass = Class.forName("bridge.Bridge")
-            val handlerClass = Class.forName("bridge.MessageHandler")
-            
-            val handlerProxy = Proxy.newProxyInstance(
-                handlerClass.classLoader,
-                arrayOf(handlerClass),
-                object : InvocationHandler {
-                    override fun invoke(proxy: Any, method: Method, args: Array<out Any>?): Any? {
-                        if (method.name == "onMessage" && args != null && args.size == 2) {
-                            val peerID = args[0] as? String
-                            val msg = args[1] as? String
-                            val params = Arguments.createMap()
-                            params.putString("peerID", peerID)
-                            params.putString("message", msg)
-                            sendEvent("onLibrMessage", params)
-                        }
-                        return null
-                    }
-                }
-            )
-            
-            val setMessageHandler = bridgeClass.getMethod("setMessageHandler", handlerClass)
-            setMessageHandler.invoke(null, handlerProxy)
-            android.util.Log.e("LibrApp", "===== LibrCoreModule init SUCCESS =====")
-        } catch (e: Throwable) {
-            android.util.Log.e("LibrApp", "===== LibrCoreModule setMessageHandler failed: ${e.message} =====", e)
-        }
-
+        android.util.Log.d("LibrApp", "LibrCoreModule init")
         try {
             val bridgeClass = Class.forName("bridge.Bridge")
             val notifHandlerClass = Class.forName("bridge.NotificationHandler")
@@ -97,47 +69,18 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     }
 
     @ReactMethod
-    fun initNode(relayAddrsJson: String, promise: Promise) {
-        try {
-            promise.resolve(callBridgeString("initNode", relayAddrsJson)?.toString() ?: "")
-        } catch (e: Exception) {
-            promise.reject("ERR_INIT", e.message)
-        }
-    }
-
-    @ReactMethod
-    fun sendMessage(targetPeerID: String, message: String, promise: Promise) {
-        try {
-            promise.resolve(callBridgeString("sendMessage", targetPeerID, message)?.toString() ?: "")
-        } catch (e: Exception) {
-            promise.reject("ERR_SEND", e.message)
-        }
-    }
-
-    @ReactMethod
-    fun getPeerID(promise: Promise) {
-        try {
-            promise.resolve(callBridgeString("getPeerID")?.toString() ?: "")
-        } catch (e: Exception) {
-            promise.reject("ERR_PEER_ID", e.message)
-        }
-    }
-
-    @ReactMethod
     fun stopNode(promise: Promise) {
         try {
-            val m = Class.forName("bridge.Bridge").getMethod("stopNode")
-            m.invoke(null)
+            Class.forName("bridge.Bridge").getMethod("stopNode").invoke(null)
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("ERR_STOP", e.message)
         }
     }
 
-    // ── New methods (available after rebuilding the Go AAR with build-android.ps1) ──
-    // These use reflection so the module compiles against any AAR version.
-    // On the old AAR they resolve to null and the JS mock / guard handles it.
-
+    // Bridge calls by reflection, so the module compiles against any AAR version. Every
+    // bridge parameter is a String: getMethod matches boxed types, which never equal
+    // Go's primitive bool/int parameters.
     private fun callBridgeString(method: String, vararg args: Any?): Any? {
         return try {
             val argTypes = args.map { it?.javaClass ?: String::class.java }.toTypedArray()
@@ -148,145 +91,44 @@ class LibrCoreModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         }
     }
 
-    @ReactMethod fun initApp(serverURL: String, promise: Promise) {
+    // Quick calls answer on the JS thread; network calls run on their own thread.
+    private fun quick(promise: Promise, code: String, fallback: Any?, call: () -> Any?) {
+        try { promise.resolve(call() ?: fallback) } catch (e: Exception) { promise.reject(code, e.message) }
+    }
+
+    private fun slow(promise: Promise, code: String, fallback: Any?, call: () -> Any?) {
+        Thread { quick(promise, code, fallback, call) }.start()
+    }
+
+    @ReactMethod fun initApp(promise: Promise) {
         val keyDir = reactApplicationContext.filesDir.absolutePath + "/keys"
-        try { promise.resolve(callBridgeString("initApp", keyDir, serverURL)?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_INIT_APP", e.message) }
+        quick(promise, "ERR_INIT_APP", "") { callBridgeString("initApp", keyDir)?.toString() }
     }
+    @ReactMethod fun getPublicKey(promise: Promise) = quick(promise, "ERR_GET_KEY", "") { callBridgeString("getPublicKey")?.toString() }
+    @ReactMethod fun regenKeys(promise: Promise) = slow(promise, "ERR_REGEN_KEYS", "") { callBridgeString("regenKeys")?.toString() }
+    @ReactMethod fun enableIncognito(promise: Promise) = slow(promise, "ERR_ENABLE_INCOGNITO", "") { callBridgeString("enableIncognito")?.toString() }
+    @ReactMethod fun disableIncognito(promise: Promise) = slow(promise, "ERR_DISABLE_INCOGNITO", "") { callBridgeString("disableIncognito")?.toString() }
+    @ReactMethod fun isIncognitoEnabled(promise: Promise) = quick(promise, "ERR_IS_INCOGNITO", false) { callBridgeString("isIncognitoEnabled") as? Boolean }
 
-    @ReactMethod fun getPublicKey(promise: Promise) {
-        try { promise.resolve(callBridgeString("getPublicKey")?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_GET_KEY", e.message) }
-    }
+    @ReactMethod fun startNode(configJSON: String, promise: Promise) = slow(promise, "ERR_START", "error:not_built") { callBridgeString("startNode", configJSON)?.toString() }
+    @ReactMethod fun getPeerID(promise: Promise) = quick(promise, "ERR_PEER_ID", "") { callBridgeString("getPeerID")?.toString() }
+    @ReactMethod fun networkStatus(promise: Promise) = quick(promise, "ERR_STATUS", "{}") { callBridgeString("networkStatus")?.toString() }
+    @ReactMethod fun listCommunities(promise: Promise) = quick(promise, "ERR_COMMUNITIES", "[]") { callBridgeString("listCommunities")?.toString() }
+    @ReactMethod fun isMod(community: String, promise: Promise) = quick(promise, "ERR_IS_MOD", false) { callBridgeString("isMod", community) as? Boolean }
 
-    @ReactMethod fun regenKeys(promise: Promise) {
-        try { promise.resolve(callBridgeString("regenKeys")?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_REGEN_KEYS", e.message) }
-    }
+    @ReactMethod fun post(community: String, content: String, promise: Promise) = slow(promise, "ERR_POST", "error:not_built") { callBridgeString("post", community, content)?.toString() }
+    @ReactMethod fun feed(community: String, promise: Promise) = slow(promise, "ERR_FEED", "[]") { callBridgeString("feed", community)?.toString() }
+    @ReactMethod fun report(hash: String, reason: String, promise: Promise) = slow(promise, "ERR_REPORT", "error:not_built") { callBridgeString("report", hash, reason)?.toString() }
+    @ReactMethod fun deletePost(hash: String, promise: Promise) = slow(promise, "ERR_DELETE", "error:not_built") { callBridgeString("delete", hash)?.toString() }
+    @ReactMethod fun tick(promise: Promise) = slow(promise, "ERR_TICK", "error:not_built") { callBridgeString("tick")?.toString() }
+    @ReactMethod fun pendingStatus(promise: Promise) = quick(promise, "ERR_PENDING", "{}") { callBridgeString("pendingStatus")?.toString() }
+    @ReactMethod fun dismissReport(key: String, promise: Promise) = quick(promise, "ERR_DISMISS", "ok") { callBridgeString("dismissReport", key)?.toString() }
 
-    @ReactMethod fun enableIncognito(promise: Promise) {
-        try { promise.resolve(callBridgeString("enableIncognito")?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_ENABLE_INCOGNITO", e.message) }
-    }
+    @ReactMethod fun modQueue(promise: Promise) = quick(promise, "ERR_MOD_QUEUE", "[]") { callBridgeString("modQueue")?.toString() }
+    @ReactMethod fun modDecide(key: String, decision: String, promise: Promise) = slow(promise, "ERR_MOD_DECIDE", "error:not_built") { callBridgeString("modDecide", key, decision)?.toString() }
 
-    @ReactMethod fun disableIncognito(promise: Promise) {
-        try { promise.resolve(callBridgeString("disableIncognito")?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_DISABLE_INCOGNITO", e.message) }
-    }
-
-    @ReactMethod fun isIncognitoEnabled(promise: Promise) {
-        try { promise.resolve((callBridgeString("isIncognitoEnabled") as? Boolean) ?: false) }
-        catch (e: Exception) { promise.reject("ERR_IS_INCOGNITO", e.message) }
-    }
-
-    @ReactMethod fun getRelayAddresses(promise: Promise) {
-        try { promise.resolve(callBridgeString("getRelayAddresses")?.toString() ?: "[]") }
-        catch (e: Exception) { promise.reject("ERR_RELAY_ADDRS", e.message) }
-    }
-
-    @ReactMethod fun getOnlineMods(promise: Promise) {
-        try { promise.resolve(callBridgeString("getOnlineMods")?.toString() ?: "[]") }
-        catch (e: Exception) { promise.reject("ERR_ONLINE_MODS", e.message) }
-    }
-
-    @ReactMethod fun amIMod(promise: Promise) {
-        try { promise.resolve((callBridgeString("amIMod") as? Boolean) ?: false) }
-        catch (e: Exception) { promise.reject("ERR_AM_I_MOD", e.message) }
-    }
-
-    @ReactMethod fun sendTextMessage(content: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("sendTextMessage", content)?.toString() ?: "{\"status\":\"error:not_built\"}") }
-            catch (e: Exception) { promise.reject("ERR_SEND_TEXT", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun fetchMessages(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("fetchMessages")?.toString() ?: "[]") }
-            catch (e: Exception) { promise.reject("ERR_FETCH", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun deleteMessage(msgCertJSON: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("deleteMessage", msgCertJSON)?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_DELETE", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun reportMessage(msgCertJSON: String, reason: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("reportMessage", msgCertJSON, reason)?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_REPORT", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun startCron(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("startCron")?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_START_CRON", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun stopCron(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("stopCron")?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_STOP_CRON", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun tickCron(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("tickCron")?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_TICK_CRON", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun fetchReports(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("fetchReports")?.toString() ?: "[]") }
-            catch (e: Exception) { promise.reject("ERR_FETCH_REPORTS", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun getPendingReports(promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("getPendingReports")?.toString() ?: "{}") }
-            catch (e: Exception) { promise.reject("ERR_GET_PENDING_REPORTS", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun dismissReport(msgSign: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("dismissReport", msgSign)?.toString() ?: "ok") }
-            catch (e: Exception) { promise.reject("ERR_DISMISS_REPORT", e.message) }
-        }.start()
-    }
-
-        @ReactMethod fun resendToDb(msgCertJSON: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("resendToDb", msgCertJSON)?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_RESEND", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun moderateMessage(msgCertJSON: String, action: String, promise: Promise) {
-        Thread {
-            try { promise.resolve(callBridgeString("moderateMessage", msgCertJSON, action)?.toString() ?: "error:not_built") }
-            catch (e: Exception) { promise.reject("ERR_MODERATE", e.message) }
-        }.start()
-    }
-
-    @ReactMethod fun generateAlias(key: String, promise: Promise) {
-        try { promise.resolve(callBridgeString("generateAlias", key)?.toString() ?: key.take(8)) }
-        catch (e: Exception) { promise.reject("ERR_ALIAS", e.message) }
-    }
-
-    @ReactMethod fun generateAvatar(key: String, promise: Promise) {
-        try { promise.resolve(callBridgeString("generateAvatar", key)?.toString() ?: "") }
-        catch (e: Exception) { promise.reject("ERR_AVATAR", e.message) }
-    }
+    @ReactMethod fun generateAlias(key: String, promise: Promise) = quick(promise, "ERR_ALIAS", key.take(8)) { callBridgeString("generateAlias", key)?.toString() }
+    @ReactMethod fun generateAvatar(key: String, promise: Promise) = quick(promise, "ERR_AVATAR", "") { callBridgeString("generateAvatar", key)?.toString() }
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "libr_moderation_alerts"

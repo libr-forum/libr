@@ -1,0 +1,60 @@
+name: E2E
+
+# Multi-container network tests (Docker) and fuzzing. Slower than CI, so run nightly, on demand,
+# and when the shared v2 core changes.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+  push:
+    branches: [v2, staging, main]
+    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'services/librserver/**', 'testbed/**', '.github/workflows/e2e.yml']
+  pull_request:
+    paths: ['core/libr/**', 'core/db/**', 'services/relay/**', 'services/librserver/**', 'testbed/**', '.github/workflows/e2e.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  dht-spike:
+    name: DHT over circuit relays (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run spike topology
+        run: core/libr/internal/testnet/dhtspike/run.sh
+
+  testbed:
+    name: v2 testbed (post, read, mod/DB/relay faults)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run testbed/e2e.sh
+        run: testbed/e2e.sh
+
+  fuzz:
+    name: Fuzz proto (60s per target)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: core/libr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/libr/go.mod
+          cache-dependency-path: core/libr/go.sum
+      - name: Fuzz
+        run: |
+          for t in FuzzEncodeInjective FuzzVerifyMsgCert FuzzDecodeMsgCert; do
+            go test ./proto -run '^$' -fuzz "^$t\$" -fuzztime 60s
+          done
+      - name: Keep failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus
+          path: core/libr/proto/testdata/fuzz

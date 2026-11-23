@@ -1,0 +1,145 @@
+// Package p2p builds LIBR v2 libp2p hosts and the routing DHT. Every peer is Noise-
+// secured end to end; NATed peers are reachable through circuit relay v2 and upgrade to
+// direct connections with hole punching where the NAT allows it.
+package p2p
+
+import (
+	"context"
+	"crypto/ed25519"
+	"time"
+
+	"github.com/libp2p/go-libp2p"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	"github.com/libp2p/go-libp2p/p2p/security/noise"
+	"github.com/libp2p/go-libp2p/x/rate"
+)
+
+// DHTPrefix keeps LIBR's DHT separate from the public IPFS DHT.
+const DHTPrefix = protocol.ID("/libr")
+
+// Config describes a host.
+type Config struct {
+	// Key is the app Ed25519 key. DB nodes and moderators set it so their peer ID is
+	// derived from it; ordinary clients leave it nil (fresh peer ID per run).
+	Key ed25519.PrivateKey
+	// Listen multiaddrs, e.g. "/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic-v1".
+	Listen []string
+	// Relays this host reserves on when it is behind NAT.
+	Relays []peer.AddrInfo
+	// RelayService makes a publicly reachable node relay for others.
+	RelayService bool
+	// Private marks a host behind NAT: it reserves on Relays itself and advertises
+	// only its circuit addresses. Otherwise relays are used through AutoRelay, which
+	// only engages when AutoNAT finds the host unreachable and only uses public relays.
+	Private bool
+}
+
+// BaseOptions are the options every LIBR host uses (production and tests).
+func BaseOptions(cfg Config) ([]libp2p.Option, error) {
+	rm, err := ResourceManager()
+	if err != nil {
+		return nil, err
+	}
+	opts := []libp2p.Option{
+		libp2p.ListenAddrStrings(cfg.Listen...),
+		libp2p.Security(noise.ID, noise.New),
+		libp2p.ResourceManager(rm),
+		libp2p.EnableHolePunching(),
+	}
+	if cfg.Key != nil {
+		k, err := crypto.UnmarshalEd25519PrivateKey(cfg.Key)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, libp2p.Identity(k))
+	}
+	if cfg.RelayService {
+		opts = append(opts, libp2p.EnableRelayService(relayv2.WithResources(RelayResources())))
+	}
+	return opts, nil
+}
+
+// NewHost starts a host. A Private host returns once it has tried every relay once;
+// it keeps (re)reserving in the background until closed. extra are added last.
+func NewHost(cfg Config, extra ...libp2p.Option) (host.Host, error) {
+	opts, err := BaseOptions(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.Private {
+		if len(cfg.Relays) > 0 {
+			opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(cfg.Relays))
+		}
+		return libp2p.New(append(append(opts, libp2p.NATPortMap()), extra...)...)
+	}
+	r := &reservations{relays: cfg.Relays, expiry: map[peer.ID]time.Time{}}
+	h, err := libp2p.New(append(append(opts, libp2p.ForceReachabilityPrivate(), libp2p.AddrsFactory(r.addrs)), extra...)...)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	r.h = h
+	r.refresh(ctx)
+	go r.run(ctx)
+	return &privateHost{Host: h, cancel: cancel}, nil
+}
+
+// NewDHT starts the routing DHT. DB nodes are servers (they appear in routing tables,
+// so the closest peers to any key are always DB nodes); clients and mods are clients.
+func NewDHT(ctx context.Context, h host.Host, server bool, bootstrap []peer.AddrInfo) (*dht.IpfsDHT, error) {
+	mode := dht.ModeClient
+	if server {
+		mode = dht.ModeServer
+	}
+	return dht.New(ctx, LimitedOK{h}, dht.Mode(mode), dht.ProtocolPrefix(DHTPrefix), dht.BootstrapPeers(bootstrap...))
+}
+
+// RelayResources are the limits a relay (stock relay or relaying DB node) enforces.
+// Circuits are bounded so a relay cannot be used as a free bulk pipe; DHT and LIBR
+// requests are small, and peers move to direct connections when hole punching works.
+func RelayResources() relayv2.Resources {
+	rc := relayv2.DefaultResources()
+	rc.Limit = &relayv2.RelayLimit{Duration: 10 * time.Minute, Data: 8 << 20}
+	rc.MaxCircuits = 64
+	return rc
+}
+
+// MaxConnsPerIP replaces libp2p's default of 8 concurrent connections per IPv4 address
+// (/56 for IPv6). Everyone behind one campus or carrier NAT shares an address, and
+// with 8 only eight of them could hold a connection (and so a relay reservation) to a
+// given relay or DB node; the rest got CONNECTION_FAILED (found on the LAN devnet:
+// loopback is exempt, so in-process tests cannot show it). The rate limit below still
+// bounds churn.
+const MaxConnsPerIP = 256
+
+// ResourceManager is libp2p's default resource manager with a looser connection-rate
+// limit and per-IP connection cap. The default allows 0.2 new connections/s per IP after a burst of 16, and a
+// relayed connection is charged to the relay's IP, so a peer that opens circuits to
+// several mods and DB nodes through one relay gets "rate limit exceeded" (found by the
+// Docker DHT spike; localhost is exempt, so in-process tests cannot show it).
+func ResourceManager() (network.ResourceManager, error) {
+	limiter := &rate.Limiter{SubnetRateLimiter: rate.SubnetLimiter{
+		IPv4SubnetLimits: []rate.SubnetLimit{{PrefixLength: 32, Limit: rate.Limit{RPS: 20, Burst: 200}}},
+		IPv6SubnetLimits: []rate.SubnetLimit{{PrefixLength: 56, Limit: rate.Limit{RPS: 20, Burst: 200}}},
+		GracePeriod:      time.Minute,
+	}}
+	return rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale()), rcmgr.WithConnRateLimiters(limiter),
+		rcmgr.WithLimitPerSubnet(
+			[]rcmgr.ConnLimitPerSubnet{{PrefixLength: 32, ConnCount: MaxConnsPerIP}},
+			[]rcmgr.ConnLimitPerSubnet{{PrefixLength: 56, ConnCount: MaxConnsPerIP}, {PrefixLength: 48, ConnCount: 4 * MaxConnsPerIP}}))
+}
+
+// LimitedOK lets every outbound stream use a limited (relayed) connection. kad-dht does
+// not opt in itself, and NATed peers are only reachable over circuits.
+type LimitedOK struct{ host.Host }
+
+func (h LimitedOK) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (network.Stream, error) {
+	return h.Host.NewStream(network.WithAllowLimitedConn(ctx, "libr"), p, pids...)
+}

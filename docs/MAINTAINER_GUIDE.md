@@ -9,7 +9,7 @@ We've made LIBR beginner-friendly with:
 - **Beginner Guide** with step-by-step instructions
 - **Automated tools** for commit message validation
 - **Setup script** for quick project setup
-- **Clear project structure** under `src/` directory
+- **Clear project structure** (see the table in CONTRIBUTING.md)
 
 ## 📋 Maintainer Checklist for New Contributors
 
@@ -23,10 +23,10 @@ We've made LIBR beginner-friendly with:
 
 3. **Suggest appropriate tasks** based on their background:
    - **Beginners**: Documentation, UI improvements, simple bug fixes
-   - **Web developers**: `src/web-client/` (React/TypeScript)
-   - **Mobile developers**: `src/mobile-client/` (Flutter)
-   - **Backend developers**: `src/core-protocol/` or `src/network/` (Go)
-   - **Blockchain developers**: `src/contracts/` (Solidity)
+   - **Web developers**: `core/mod_client/frontend/` (React/TypeScript desktop UI)
+   - **Mobile developers**: `mobile-app/` (Expo / React Native)
+   - **Backend developers**: `core/libr/` (Go protocol core), `core/db/`, `services/`
+   - **Ops / testing**: `testbed/`, `deploy/`
 
 ### When Reviewing First PRs:
 
@@ -48,7 +48,7 @@ We've made LIBR beginner-friendly with:
 
 #### ❌ Not Following Project Structure
 **Instead of:** "Wrong directory"
-**Say:** "Thanks for the contribution! This code should go in `src/web-client/` since it's React code. Check our [project structure guide](README.md#project-structure) for reference."
+**Say:** "Thanks for the contribution! This code belongs in `core/mod_client/frontend/` since it's desktop UI code. Check the [project structure](../CONTRIBUTING.md#project-structure) for reference."
 
 ## 🏷️ Issue Labeling for Beginners
 
@@ -126,6 +126,11 @@ When new contributors need extra help:
 1. **First try** - Point to documentation and guides
 2. **Second try** - Offer to pair program or have a call
 3. **Third try** - Assign a mentor for one-on-one support
+
+## 🚢 Releases and network operations
+
+Cutting a release, deploying relays and DB nodes, and custody of community founder
+keys are covered in [RELEASE.md](RELEASE.md).
 
 ## 📞 Contact Information
 

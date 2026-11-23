@@ -65,12 +65,12 @@ export default function ProfileScreen() {
                     const av = await LibrCore.generateAvatar(state.publicKey);
                     setAvatarSvg(av);
 
-                    const mod = await LibrCore.amIMod();
+                    const mod = await LibrCore.isMod(state.community);
                     setIsModerator(mod);
                 } catch { }
             })();
         }
-    }, [state.publicKey]);
+    }, [state.publicKey, state.community]);
 
     useEffect(() => {
         LibrCore.isIncognitoEnabled()
