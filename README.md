@@ -87,7 +87,7 @@ sequenceDiagram
     R->>D: fetch each post by hash
     D-->>R: certificate
     Note over R: keep only posts that hash correctly, carry 2f+1 valid<br/>moderator signatures and have no verified tombstone
-    Note over R,D: Removal: a moderator quorum (after a report) or the author signs a<br/>tombstone; DB nodes delete the post and refuse new copies of it
+    Note over R,D: Removal: a moderator quorum (after a report) or the author signs a<br/>tombstone, DB nodes delete the post and refuse new copies of it
 ```
 
 Details: [`core/libr`](core/libr) packages, [`docs/v2-limits.md`](docs/v2-limits.md)
