@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/libr-forum/Libr/core/db/node"
 	"github.com/libr-forum/Libr/core/libr/alias"
 	libr "github.com/libr-forum/Libr/core/libr/app"
 	"github.com/libr-forum/Libr/core/libr/avatar"
@@ -36,6 +37,7 @@ type App struct {
 
 	mu   sync.Mutex
 	node *libr.App
+	db   *node.Node // "contribute storage" DB node, when enabled
 }
 
 func NewApp() *App {
@@ -91,6 +93,11 @@ func (a *App) Connect() error {
 	}
 	a.node = n
 	a.emit("relay_status_changed", "online")
+	go func() {
+		if err := a.startStorage(); err != nil {
+			log.Printf("contribute storage: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -114,6 +121,7 @@ func hasPending(identityID string) bool {
 }
 
 func (a *App) stop() {
+	a.stopStorage()
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.node != nil {

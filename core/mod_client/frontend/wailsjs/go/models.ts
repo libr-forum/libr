@@ -42,6 +42,7 @@ export namespace app {
 	}
 	export class PendingInfo {
 	    id: string;
+	    key: string;
 	    kind: string;
 	    community: string;
 	    content: string;
@@ -60,6 +61,7 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.key = source["key"];
 	        this.kind = source["kind"];
 	        this.community = source["community"];
 	        this.content = source["content"];
@@ -145,6 +147,22 @@ export namespace main {
 	        this.received = source["received"];
 	        this.decided = source["decided"];
 	        this.approved = source["approved"];
+	    }
+	}
+	export class StorageStatus {
+	    enabled: boolean;
+	    running: boolean;
+	    peer_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StorageStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.running = source["running"];
+	        this.peer_id = source["peer_id"];
 	    }
 	}
 

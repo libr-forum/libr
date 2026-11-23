@@ -136,7 +136,9 @@ LIBR_RELAYS=... LIBR_BOOTSTRAP=... LIBR_COMMUNITIES=... wails dev -tags webkit2_
 wails build -tags webkit2_41        # binary in build/bin/
 ```
 
-Drop `-tags webkit2_41` outside Ubuntu 24.04-style WebKitGTK 4.1 systems. Moderators
+Drop `-tags webkit2_41` outside Ubuntu 24.04-style WebKitGTK 4.1 systems. Anyone can
+help store posts: **Contribute Storage** (identity dialog) runs a DB node inside the
+app while it is open, with its own key, reachable through relays. Moderators
 configure automated review (forbidden words, LLM provider: Groq, Gemini, OpenAI,
 DeepSeek, or Google NLP) under **Mod Config**; API keys stay in the local config
 directory. If the classifier is unavailable, posts go to the human review queue.

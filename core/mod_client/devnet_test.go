@@ -9,9 +9,14 @@ package main
 //	  go test -tags 'devnet webkit2_41' -run TestDevnet -v .
 
 import (
+	"database/sql"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestDevnet(t *testing.T) {
@@ -70,5 +75,48 @@ func TestDevnet(t *testing.T) {
 	}
 	if p := a.GetPending(); len(p) != 0 {
 		t.Fatalf("unexpected pending %+v", p)
+	}
+}
+
+// TestDevnetStorage: turning on "contribute storage" starts a DB node that joins the
+// dev network through its relay and receives some of the posts made afterwards.
+func TestDevnetStorage(t *testing.T) {
+	a := NewApp()
+	if err := a.Connect(); err != nil {
+		t.Fatal(err)
+	}
+	defer a.stop()
+	if err := a.SetStorageContribution(true); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = a.SetStorageContribution(false) }()
+	st := a.GetStorageStatus()
+	if !st.Enabled || !st.Running {
+		t.Fatalf("storage status %+v", st)
+	}
+	for start := time.Now(); a.db.DHT.RoutingTable().Size() < 2; time.Sleep(200 * time.Millisecond) {
+		if time.Since(start) > 30*time.Second {
+			t.Fatalf("DB node joined with routing table %d", a.db.DHT.RoutingTable().Size())
+		}
+	}
+	t.Logf("desktop DB node %s, routing table %d, addrs %v", st.PeerID, a.db.DHT.RoutingTable().Size(), a.db.Host.Addrs())
+	time.Sleep(5 * time.Second) // let the other peers' routing tables pick it up
+	for i := 0; i < 3; i++ { // moderators allow an author a burst of 5 (TestDevnet uses 2)
+		if out, err := a.SendInput("general", fmt.Sprintf("storage test %d %d", i, time.Now().UnixNano())); err != nil || out.Status != "posted" {
+			t.Fatalf("post %d: %+v %v", i, out, err)
+		}
+	}
+	db, err := sql.Open("sqlite3", filepath.Join(storageDir(), "db.sqlite")+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM certs`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("desktop DB node holds %d certificates", n)
+	if n == 0 {
+		t.Fatal("desktop DB node received no posts")
 	}
 }
