@@ -148,145 +148,70 @@ This helps ensure your commits will be properly included in the automated change
 
 #### Go
 
-* Follow the [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
-* Follow the [Go Style Guide](https://golang.org/doc/effective_go.html)
-* Document all functions and packages
+* `gofmt`; follow [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments).
+* Lint: `golangci-lint run --config=.golangci.yml ./...` (v1.64.8, as in CI). It checks only code changed since `origin/staging`.
+* Network handler packages (`core/libr/{app,dbnode,moderator,wire,forum,p2p,proto,seeds}`) must not print: stray prints can log request bodies.
+* Anything signed goes through `proto.Encode` with its own domain string; never concatenate fields by hand.
 
-#### JavaScript/React
+#### TypeScript / React (desktop frontend, mobile app)
 
-* Use semicolons
-* 2 spaces for indentation
-* Prefer `'` over `"`
-* Use [Prettier](https://prettier.io/) for formatting
-
-#### Solidity
-
-* Follow the [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html)
-* Document all functions and contracts with NatSpec
-
-#### Flutter/Dart
-
-* Follow the [Dart Style Guide](https://dart.dev/guides/language/effective-dart/style)
-* Use the Dart formatter (`dart format`)
+* ESLint as configured in each package (`npm run lint`, `npx expo lint`); TypeScript must typecheck.
+* Call the Go core only through the typed wrappers (`frontend/src/services/api.ts`, `mobile-app/modules/LibrCore.ts`), never with `as any`.
 
 ## Setting Up Development Environment
 
 ### Project Structure
 
-All source code is organized under the `src/` directory with specific language requirements:
+| Path | What | Stack |
+|---|---|---|
+| `core/libr` | Shared Go core: protocol objects, networking, DB node logic, moderator, client, `librctl` CLI | Go |
+| `core/db` | DB (storage) node binary, SQLite store | Go |
+| `core/mod_client` | Desktop app (Wails) | Go + React/Vite |
+| `mobile-app` | Android app (Expo / React Native) and its gomobile bridge (`go-core/`) | TS + Go |
+| `services/relay` | Circuit relay | Go |
+| `services/librserver` | Bootstrap seed list | Node |
+| `testbed/` | Docker end-to-end network, LAN dev network | shell + compose |
+| `deploy/` | Production compose for relays, DB nodes, seed server | compose |
 
-```
-src/
-├── core/           # Go (1.21+) - Core protocol implementation
-├── web-client/     # React/TypeScript - Web interface  
-├── mobile-client/  # Flutter/Dart - Mobile application
-├── contracts/      # Solidity - Smart contracts
-└── tests/          # Integration and end-to-end tests
-```
+See [README.md](README.md#architecture) for how the pieces talk to each other.
 
-### Language Guidelines by Directory
+### Toolchain
 
-- **`src/core-protocol/`**: 
-  - **Language**: Go 1.21+
-  - **Purpose**: Core LIBR protocol implementation, moderation logic, consensus mechanisms
-  - **Standards**: Follow Go official style guide and effective Go practices
+* Go 1.24.4 (the root `go.work` ties the Go modules together)
+* Node 22
+* Docker (testbed, images)
+* Desktop: Wails v2 CLI; on Ubuntu 24.04 build with `-tags webkit2_41`
+* Mobile: JDK 17, Android SDK + NDK 26.3.11579264. gomobile is pinned in `mobile-app/go-core/go.mod`; install `gobind` with `go install golang.org/x/mobile/cmd/gobind` from that directory and **do not** run `gomobile init` (it fetches `@latest`).
 
-- **`src/network/`**: 
-  - **Language**: Go 1.21+
-  - **Purpose**: Peer-to-peer networking, DHT operations, node discovery, message routing
-  - **Standards**: Follow Go official style guide and effective Go practices
-
-- **`src/web-client/`**: 
-  - **Language**: React with TypeScript
-  - **Purpose**: User-facing web application with modern UI/UX
-  - **Standards**: Use TypeScript strict mode, React functional components with hooks
-
-- **`src/mobile-client/`**: 
-  - **Language**: Flutter/Dart
-  - **Purpose**: Cross-platform mobile application
-  - **Standards**: Follow Flutter/Dart style guide, use provider for state management
-
-- **`src/contracts/`**: 
-  - **Language**: Solidity 0.8.20+
-  - **Purpose**: Ethereum smart contracts for global state management
-  - **Standards**: Follow Solidity style guide, comprehensive NatSpec documentation
-
-- **`src/tests/`**: 
-  - **Languages**: Mixed (Go/JS/Dart based on component being tested)
-  - **Purpose**: Integration tests and test utilities
-  - **Standards**: Follow testing best practices for each respective language
-
-### Core Protocol
-
-```bash
-cd src/core-protocol
-go mod download
-```
-
-### Network Layer
-
-```bash
-cd src/network
-go mod download
-```
-
-### Web Client
-
-```bash
-cd src/web-client
-npm install
-```
-
-### Mobile Client
-
-```bash
-cd src/mobile-client
-flutter pub get
-```
-
-### Smart Contracts
-
-```bash
-cd src/contracts
-npm install
-```
+`./scripts/setup.sh` checks the toolchain and installs the npm dependencies.
 
 ## Testing
 
-### Core Protocol
+Run what CI runs for the parts you touched:
 
 ```bash
-cd src/core-protocol
-go test -v ./...
+# Go: in each of core/libr, core/db, core/mod_client, mobile-app/go-core, services/relay
+go vet ./... && go test -race ./...
+# (core/mod_client embeds frontend/dist: `mkdir -p frontend/dist && touch frontend/dist/.keep` first)
+
+# Desktop frontend
+cd core/mod_client/frontend && npm ci && npm run lint && npm run typecheck && npm test
+
+# Mobile
+cd mobile-app && npm ci && npx expo lint && npx tsc --noEmit
+
+# Seed server
+cd services/librserver && npm ci && npm test
+
+# Whole network in Docker (relays, NATed DB nodes, moderators, clients, faults)
+testbed/e2e.sh
 ```
 
-### Network Layer
+API pins that fail on purpose when you change an interface:
+* `core/mod_client/app_api_test.go`: Go `App` methods vs `frontend/wailsjs/go/main/App.d.ts` (regenerate with `wails generate module -tags webkit2_41`).
+* `mobile-app/go-core/bridge/api_test.go`: the bridge API golden file (`UPDATE_GOLDEN=1 go test ./bridge`) and every Kotlin `callBridgeString` call.
 
-```bash
-cd src/network
-go test -v ./...
-```
-
-### Web Client
-
-```bash
-cd src/web-client
-npm test
-```
-
-### Mobile Client
-
-```bash
-cd src/mobile-client
-flutter test
-```
-
-### Smart Contracts
-
-```bash
-cd src/contracts
-npx hardhat test
-```
+To try the apps against a real network on your LAN: `DEVNET_IP=<your ip> testbed/devnet.sh start` (see the script header).
 
 ## Additional Notes
 
@@ -306,7 +231,7 @@ LIBR follows [Semantic Versioning](https://semver.org/) and automated changelog 
 For maintainers creating releases:
 1. Ensure all PRs use conventional commit messages
 2. Review and merge PRs following the pull request guidelines
-3. Create releases through GitHub's release interface
+3. Create releases by pushing a `v*` tag; follow [docs/RELEASE.md](docs/RELEASE.md)
 4. The changelog will be automatically updated with properly categorized changes
 
 **📚 For detailed maintainer guidance:** See [docs/MAINTAINER_GUIDE.md](docs/MAINTAINER_GUIDE.md) for best practices on working with new contributors.

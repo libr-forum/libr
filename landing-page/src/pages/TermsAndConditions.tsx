@@ -410,8 +410,8 @@ const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ isDarkMode = tr
                 </p>
                 <p>
                   <strong className="text-foreground">Website: </strong>
-                  <a href="https://libr-ashen.vercel.app/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
-                    https://libr-ashen.vercel.app/
+                  <a href="https://libr.social/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">
+                    https://libr.social/
                   </a>
                 </p>
                 <p>

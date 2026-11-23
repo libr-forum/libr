@@ -27,7 +27,7 @@ export const TopBar: React.FC = () => {
           </h2>
           {/* <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Users className="w-4 h-4" />
-            <span>{currentCommunity.memberCount} members</span>
+            <span>{currentCommunity.modCount} moderators</span>
           </div> */}
         </div>
       </div>

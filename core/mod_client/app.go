@@ -1,81 +1,289 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
+	"strings"
+	"sync"
 	"time"
 
-	"github.com/libr-forum/Libr/core/crypto/cryptoutils"
-	"github.com/libr-forum/Libr/core/mod_client/alias"
-	"github.com/libr-forum/Libr/core/mod_client/avatar"
-	cache "github.com/libr-forum/Libr/core/mod_client/cache_handler"
-	"github.com/libr-forum/Libr/core/mod_client/config"
-	"github.com/libr-forum/Libr/core/mod_client/core"
-	moddb "github.com/libr-forum/Libr/core/mod_client/internal/mod_db"
-	service "github.com/libr-forum/Libr/core/mod_client/internal/service"
-	"github.com/libr-forum/Libr/core/mod_client/keycache"
-	"github.com/libr-forum/Libr/core/mod_client/logger"
-	"github.com/libr-forum/Libr/core/mod_client/models"
-	Peers "github.com/libr-forum/Libr/core/mod_client/peers"
-	"github.com/libr-forum/Libr/core/mod_client/types"
-	util "github.com/libr-forum/Libr/core/mod_client/util"
+	"github.com/libr-forum/Libr/core/libr/alias"
+	libr "github.com/libr-forum/Libr/core/libr/app"
+	"github.com/libr-forum/Libr/core/libr/avatar"
+	cache "github.com/libr-forum/Libr/core/libr/cache"
+	"github.com/libr-forum/Libr/core/libr/crypto/cryptoutils"
+	"github.com/libr-forum/Libr/core/libr/identity"
+	"github.com/libr-forum/Libr/core/libr/keycache"
+	"github.com/libr-forum/Libr/core/libr/logger"
+	service "github.com/libr-forum/Libr/core/libr/mod/service"
+	"github.com/libr-forum/Libr/core/libr/models"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// App is the Wails adapter over the shared v2 node (core/libr/app).
 type App struct {
-	ctx         context.Context
-	relayStatus string
+	ctx context.Context
+
+	mu   sync.Mutex
+	node *libr.App
 }
 
 func NewApp() *App {
 	cache.InitCacheFile()
 	keycache.InitKeys()
-	config.LoadConfig()
-	util.SetupMongo(config.MongoURI)
-	amImod, _ := util.AmIMod(base64.StdEncoding.EncodeToString(keycache.PubKey))
-	if amImod {
-		config.InitDB()
+	_ = identity.EnsureInitialized()
+	return &App{}
+}
+
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	logger.LogToFile("App started")
+	runtime.WindowMaximise(ctx)
+	go func() {
+		runtime.EventsEmit(ctx, "navigate-to-root")
+	}()
+}
+
+// shutdown is called by Wails before the window closes.
+func (a *App) shutdown(_ context.Context) bool {
+	a.stop()
+	return false // do not prevent the window from closing
+}
+
+func (a *App) emit(name string, data ...interface{}) {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, name, data...)
 	}
-	core.MaybeStartCron()
-	return &App{relayStatus: "offline"}
+}
+
+// Connect joins the LIBR network as the active identity. Relays, bootstrap peers and
+// seed servers come from LIBR_RELAYS, LIBR_BOOTSTRAP and LIBR_SEED_URLS (plus the
+// peer cache and the seeds shipped in the binary).
+func (a *App) Connect() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.node != nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	n, err := libr.Start(ctx, libr.Config{
+		DataDir: dataDir(activeIdentity()),
+		Key:     keycache.PrivKey,
+		Policy:  postPolicy,
+		OnFinalized: func(p libr.PendingInfo) {
+			a.emit("moderation_finalized", p)
+		},
+	})
+	if err != nil {
+		a.emit("relay_status_changed", "offline")
+		return err
+	}
+	a.node = n
+	a.emit("relay_status_changed", "online")
+	return nil
+}
+
+// dataDir is per identity, so pending reports of an incognito identity are never
+// resumed (signed) by the main one.
+func dataDir(identityID string) string {
+	return filepath.Join(cache.GetCacheDir(), "v2", identityID)
+}
+
+func activeIdentity() string {
+	id, err := identity.GetActiveIdentityID()
+	if err != nil {
+		return identity.MainIdentityID
+	}
+	return id
+}
+
+func hasPending(identityID string) bool {
+	files, _ := filepath.Glob(filepath.Join(dataDir(identityID), "pending", "*.json"))
+	return len(files) > 0
+}
+
+func (a *App) stop() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.node != nil {
+		a.node.Close()
+		a.node = nil
+	}
+}
+
+// restart reconnects after the identity changed (moderator duties follow the key).
+func (a *App) restart() {
+	a.stop()
+	go func() {
+		if err := a.Connect(); err != nil {
+			log.Printf("reconnect: %v", err)
+		}
+	}()
+}
+
+var errOffline = errors.New("not connected to the LIBR network")
+
+func (a *App) n() (*libr.App, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.node == nil {
+		return nil, errOffline
+	}
+	return a.node, nil
+}
+
+func opCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 90*time.Second)
+}
+
+// GetRelayStatus is "online" or "offline" for the status badge.
+func (a *App) GetRelayStatus() string {
+	n, err := a.n()
+	if err != nil || !n.Status().Online {
+		return "offline"
+	}
+	return "online"
+}
+
+// GetNetworkStatus is the detailed network state.
+func (a *App) GetNetworkStatus() libr.Status {
+	n, err := a.n()
+	if err != nil {
+		return libr.Status{}
+	}
+	return n.Status()
+}
+
+func (a *App) TitleBarTheme(isDark bool) {
+	if isDark {
+		runtime.WindowSetDarkTheme(a.ctx)
+	} else {
+		runtime.WindowSetLightTheme(a.ctx)
+	}
 }
 
 func (a *App) FetchPubKey() string {
-	pubStr := keycache.LoadPubKey()
-	return pubStr
+	return keycache.LoadPubKey()
 }
 
-func (a *App) ModAuthentication(myKey string) bool {
-	val, err := util.AmIMod(myKey)
+// ListCommunities lists the communities this build knows, with the user's role.
+func (a *App) ListCommunities() ([]libr.Community, error) {
+	n, err := a.n()
 	if err != nil {
-		return false
+		return nil, err
 	}
-	return val
+	return n.Communities(), nil
 }
 
-func (a *App) GetOnlineMods() []string {
-	onlineMods, err := util.GetOnlineMods()
+// IsMod reports whether the active identity moderates community.
+func (a *App) IsMod(community string) bool {
+	n, err := a.n()
+	return err == nil && n.IsMod(community)
+}
+
+// SendInput posts text or an image (an <img src="data:..."> tag, at most 1 MiB in
+// total) to community.
+func (a *App) SendInput(community, input string) (libr.Outcome, error) {
+	n, err := a.n()
+	if err != nil {
+		return libr.Outcome{}, err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	return n.Post(ctx, community, input)
+}
+
+// FetchAll returns the last 24 hours of community's verified posts, newest first.
+func (a *App) FetchAll(community string) ([]libr.Post, error) {
+	n, err := a.n()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	return n.Feed(ctx, community, 24*time.Hour)
+}
+
+// Report asks the community's moderators to remove the post with hash.
+func (a *App) Report(hash, reason string) (libr.Outcome, error) {
+	n, err := a.n()
+	if err != nil {
+		return libr.Outcome{}, err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	return n.Report(ctx, hash, reason)
+}
+
+// Delete withdraws one of the user's own posts.
+func (a *App) Delete(hash string) error {
+	n, err := a.n()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := opCtx()
+	defer cancel()
+	return n.Delete(ctx, hash)
+}
+
+// GetPending lists the user's posts and reports waiting for moderators.
+func (a *App) GetPending() []libr.PendingInfo {
+	n, err := a.n()
 	if err != nil {
 		return nil
 	}
-
-	var publicKeys []string
-	for _, mod := range onlineMods {
-		publicKeys = append(publicKeys, mod.PublicKey)
-	}
-
-	return publicKeys
+	return n.Pending()
 }
 
-func (a *App) GetRelayAddr() ([]string, error) {
-	return util.GetRelayAddr()
+// QueueItem is one entry of the moderator's human review queue.
+type QueueItem struct {
+	Key       string `json:"key"`
+	Kind      string `json:"kind"` // post | report
+	Community string `json:"community"`
+	Content   string `json:"content"`
+	Reason    string `json:"reason"`
+	Received  int64  `json:"received"`
+	Decided   bool   `json:"decided"`
+	Approved  bool   `json:"approved"`
+}
+
+// GetModQueue lists posts and reports waiting for this moderator's decision.
+func (a *App) GetModQueue() []QueueItem {
+	n, err := a.n()
+	if err != nil {
+		return nil
+	}
+	var out []QueueItem
+	for _, it := range n.ModQueue() {
+		q := QueueItem{Key: it.Key, Kind: it.Kind, Community: it.Cert.Msg.Community, Content: string(it.Cert.Msg.Content),
+			Reason: it.Reason, Received: it.Received, Decided: it.Vote != nil}
+		if it.Vote != nil {
+			q.Approved = it.Vote.Approve
+		}
+		out = append(out, q)
+	}
+	return out
+}
+
+// ModDecide records this moderator's decision. For a post, approve publishes; for a
+// report, approve removes the post.
+func (a *App) ModDecide(key string, approve bool) error {
+	n, err := a.n()
+	if err != nil {
+		return err
+	}
+	return n.ModDecide(key, approve)
 }
 
 func (a *App) GenerateAvatar(key string) string {
@@ -123,176 +331,55 @@ func (a *App) GenerateAlias(key string) string {
 	return genAlias
 }
 
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-	runtime.WindowMaximise(ctx)
-	go func() {
-		runtime.EventsEmit(ctx, "navigate-to-root")
-	}()
-}
-
 func (a *App) RegenKeys() string {
 	pub, _, _ := cryptoutils.GenerateKeyPair()
 	keycache.InitKeys()
+	_ = identity.SyncActiveIdentity()
+	a.restart()
 	return base64.StdEncoding.EncodeToString(pub)
 }
 
-func (a *App) Connect(relayAdds []string) error {
-	err := Peers.StartNode(relayAdds)
+func (a *App) IsIncognitoEnabled() bool {
+	activeID, err := identity.GetActiveIdentityID()
+	return err == nil && activeID != identity.MainIdentityID
+}
+
+func (a *App) EnableIncognito() string {
+	if a.IsIncognitoEnabled() {
+		return base64.StdEncoding.EncodeToString(keycache.PubKey)
+	}
+	incognitoID, _, err := identity.CreateIncognitoIdentity()
 	if err != nil {
-		a.relayStatus = "offline"
-		return err
+		return fmt.Sprintf("error:create incognito identity: %v", err)
 	}
-	a.relayStatus = "online"
-	return nil
-}
-
-func (a *App) GetRelayStatus() string {
-	return a.relayStatus
-}
-
-func (a *App) TitleBarTheme(isDark bool) {
-	if isDark {
-		runtime.WindowSetDarkTheme(a.ctx)
-	} else {
-		runtime.WindowSetLightTheme(a.ctx)
-	}
-}
-
-func (a *App) SendInput(input string) (string, []types.ModCert) {
-	if a.relayStatus != "online" {
-		return "Offline", nil
-	}
-
-	ts := time.Now().Unix()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancel()
-
-	// Run SendToMods with timeout
-	modChan := make(chan []types.ModCert, 1)
-	var err error
-	go func() {
-		var modcerts []types.ModCert
-		modcerts, err = core.AutoSendToMods(input, ts)
-		modChan <- modcerts
-	}()
-
+	pubKey, err := identity.ActivateIdentity(incognitoID)
 	if err != nil {
-		return ":x: Moderator timeout", nil
+		_ = identity.DeleteIdentity(incognitoID)
+		return fmt.Sprintf("error:activate incognito identity: %v", err)
 	}
-
-	var modcertlist []types.ModCert
-	select {
-	case modcertlist = <-modChan:
-	case <-ctx.Done():
-		return ":x: Moderator timeout", nil
-	}
-
-	if len(modcertlist) == 0 {
-		return ":x: Message rejected by moderators.", nil
-	}
-
-	fmt.Println("ModCerts received:", modcertlist)
-
-	msgCert := core.CreateMsgCert(input, ts, modcertlist)
-	tsmin := msgCert.Msg.Ts - (msgCert.Msg.Ts % 60)
-	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	core.SendToDb(key, msgCert, "/route=store")
-
-	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d Sign: %s", msgCert.Msg.Ts, msgCert.Sign), modcertlist
+	a.restart()
+	return pubKey
 }
 
-func (a *App) Report(msgcert types.MsgCert, reason *string) string {
-	if a.relayStatus != "online" {
-		return "Offline"
+func (a *App) DisableIncognito() string {
+	if !a.IsIncognitoEnabled() {
+		keycache.InitKeys()
+		return base64.StdEncoding.EncodeToString(keycache.PubKey)
 	}
-
-	// ✅ Check if msgcert already exists in pending moderation files
-	dir := filepath.Join(cache.GetCacheDir(), "pending_mods", "*.json")
-	files, err := filepath.Glob(dir)
+	activeID, err := identity.GetActiveIdentityID()
 	if err != nil {
-		logger.LogToFile("[DEBUG] Failed to list pending moderation files")
-		log.Printf("Failed to list pending moderation files: %v", err)
-	} else {
-		for _, filePath := range files {
-			pending, err := cache.LoadPendingModeration(filePath)
-			if err != nil {
-				logger.LogToFile(fmt.Sprintf("[DEBUG] Failed to load pending moderation file %s: %v", filePath, err))
-				continue
-			}
-			if pending.MsgSign == msgcert.Sign {
-				return ":white_check_mark: Already reported and pending moderation."
-			}
-		}
+		return fmt.Sprintf("error:read active identity: %v", err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancel()
-
-	modChan := make(chan []types.ModCert, 1)
-	mods, _ := util.GetOnlineMods()
-	go func() {
-		modcerts := core.ManualSendToMods(msgcert, mods, *reason, true)
-		modChan <- modcerts
-	}()
-
-	var modcertlist []types.ModCert
-	select {
-	case modcertlist = <-modChan:
-	case <-ctx.Done():
-		return ":x: Moderator timeout"
-	}
-
-	if len(modcertlist) == 0 {
-		return ":x: Message rejected by moderators."
-	}
-
-	return fmt.Sprintf(":white_check_mark: Sent to Mods for approval. Time: %d", time.Now().Unix())
-}
-
-func (a *App) Delete(msgcert types.MsgCert) string {
-	if a.relayStatus != "online" {
-		return "Offline"
-	}
-	fmt.Println("Preparing to delete message with cert:", msgcert)
-	payload := msgcert.Sign
-	pubkey, sign, err := cryptoutils.SignMessage(keycache.PrivKey, payload)
+	pubKey, err := identity.ActivateIdentity(identity.MainIdentityID)
 	if err != nil {
-		log.Println("Error signing delete cert: ", err)
+		return fmt.Sprintf("error:restore main identity: %v", err)
 	}
-	delcert := []types.ModCert{{
-		Sign:      sign,
-		PublicKey: string(pubkey),
-		Status:    "",
-	},
+	a.restart()
+	if activeID != identity.MainIdentityID && !hasPending(activeID) {
+		_ = identity.DeleteIdentity(activeID)
+		_ = os.RemoveAll(dataDir(activeID))
 	}
-	fmt.Println("msgcert:", msgcert)
-	repCert := core.CreateRepCert(msgcert, delcert, "delete")
-	tsmin := msgcert.Msg.Ts - (msgcert.Msg.Ts % 60)
-	key := util.GenerateNodeID(strconv.FormatInt(tsmin, 10))
-	core.SendToDb(key, repCert, "/route=delete")
-
-	return fmt.Sprintf(":white_check_mark: Sent to DB. Time: %d", time.Now().Unix())
-}
-
-func (a *App) FetchAll() []types.RetMsgCert {
-	messages := core.FetchRecent(context.Background())
-	return messages
-}
-
-func (a *App) FetchMessageReports() []models.MsgCert {
-	reports, err := moddb.GetUnmoderatedMsgs()
-	if err != nil {
-		log.Printf("Error fetching unmoderated messages: %v", err)
-		return nil
-	}
-	return reports
-}
-
-func (a *App) ManualModerate(cert types.MsgCert, moderated int) {
-	modsign, _ := moddb.ReportModSign(&cert, strconv.Itoa(moderated), keycache.PrivKey, keycache.PubKey)
-	moddb.UpdateModerationStatus(cert.Sign, modsign, moderated)
+	return pubKey
 }
 
 func (a *App) GetModerationLogs() ([]models.ModLogEntry, error) {
@@ -345,29 +432,91 @@ func (a *App) SaveModConfig(cfg models.ModConfig) error {
 }
 
 func (a *App) SaveGoogleApiKey(key string) error {
-	path := service.GetModKeysPath()
+	return service.WriteModKey("GOOGLE_NLP_API_KEY", key)
+}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("failed to create modkeys directory: %w", err)
-	}
-
-	data := map[string]string{
-		"GOOGLE_NLP_API_KEY": key,
-	}
-
-	content, err := json.MarshalIndent(data, "", "  ")
+func (a *App) GetModKeys() (map[string]string, error) {
+	keys, err := service.ReadModKeys()
 	if err != nil {
-		return fmt.Errorf("failed to encode API key as JSON: %w", err)
+		return nil, err
 	}
-
-	err = os.WriteFile(path, content, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write modkeys.json: %w", err)
+	masked := make(map[string]string)
+	for k, v := range keys {
+		if len(v) > 8 {
+			masked[k] = v[:4] + "..." + v[len(v)-4:]
+		} else if len(v) > 0 {
+			masked[k] = "********"
+		} else {
+			masked[k] = ""
+		}
 	}
+	return masked, nil
+}
 
-	return nil
+func (a *App) SaveModKey(keyName, keyValue string) error {
+	return service.WriteModKey(keyName, keyValue)
+}
+
+func (a *App) TestLLMConnection(provider, model, apiKey string) (string, error) {
+	return a.TestDirectCloudConnection(provider, model, apiKey)
 }
 
 func (a *App) LogToFile(msg string) {
 	logger.LogToFile(msg)
+}
+
+func (a *App) TestDirectCloudConnection(provider, model, apiKey string) (string, error) {
+	if apiKey == "" {
+		keys, _ := service.ReadModKeys()
+		if keys != nil {
+			providerKeyName := strings.ToUpper(provider) + "_API_KEY"
+			if k, ok := keys[providerKeyName]; ok && k != "" {
+				apiKey = k
+			} else if k, ok := keys["LLM_API_KEY"]; ok && k != "" {
+				apiKey = k
+			} else if k, ok := keys["GOOGLE_NLP_API_KEY"]; ok && (provider == "gemini" || provider == "google") {
+				apiKey = k
+			}
+		}
+	}
+
+	url, reqModel := service.ResolveCloudEndpoint(provider, model)
+	if url == "" {
+		return "", fmt.Errorf("direct cloud endpoint for provider '%s' is not mapped (supported: groq, gemini, openai, deepseek)", provider)
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("missing API key for %s", provider)
+	}
+
+	payload := map[string]interface{}{
+		"model": reqModel,
+		"messages": []map[string]string{
+			{"role": "user", "content": "ping"},
+		},
+		"max_tokens": 5,
+	}
+	jsonBody, _ := json.Marshal(payload)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("direct cloud connection error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	elapsed := time.Since(start).Milliseconds()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("cloud provider returned %d: %s", resp.StatusCode, string(b))
+	}
+
+	return fmt.Sprintf("Direct connection verified! %s responded in %dms", reqModel, elapsed), nil
 }

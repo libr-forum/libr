@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: librserver
+    runtime: node
+    region: oregon        # change to the region closest to your users
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /health
+
+    envVars:
+      # Seconds a seed registration lives; DB nodes re-register at half this.
+      - key: ENTRY_TTL_SECONDS
+        value: "600"
+
+      # Render sits behind a proxy: rate-limit by the real client IP.
+      - key: TRUST_PROXY
+        value: "1"
+
+      # Pino log level: trace | debug | info | warn | error | fatal
+      - key: LOG_LEVEL
+        value: "info"
+
+      # Render automatically injects PORT — do not add it here

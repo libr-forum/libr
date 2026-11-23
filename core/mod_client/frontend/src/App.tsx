@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from 'sonner';
 import logotransparent from "./components/assets/logo_transparent_noname-01.png";
 
 import { useAppStore } from './store/useAppStore';
@@ -16,7 +17,7 @@ import { ModConfig } from './pages/ModConfig';
 import { Communities } from './pages/Communities';
 import { logger } from './logger/logger'
 
-import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, GetRelayAddr } from '../wailsjs/go/main/App';
+import { Connect,GetRelayStatus,FetchPubKey,TitleBarTheme, IsIncognitoEnabled } from '../wailsjs/go/main/App';
 import { EventsOn,Quit } from 'wailsjs/runtime/runtime';
 import {
   AlertDialog,
@@ -33,17 +34,13 @@ import { MsgReports } from './pages/MessageReports';
 
 const queryClient = new QueryClient();
 
-const baseURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDDE0x6LttdW13zLUwodMcVBsqk8fpnUsv-5SIJifZKWRehFpSKuJZawhswGMHSI2fZJDuENQ8SX1v/pub?output=csv';
-
 interface RelayErrorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRetry: () => void;
 }
 
-export const RelayErrorDialog: React.FC<RelayErrorDialogProps> = ({ open, onOpenChange }) => {
-  const closeApp = () => {
-    window.close(); // Wails window close
-  };
+export const RelayErrorDialog: React.FC<RelayErrorDialogProps> = ({ open, onOpenChange, onRetry }) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -54,8 +51,11 @@ export const RelayErrorDialog: React.FC<RelayErrorDialogProps> = ({ open, onOpen
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          {/* <AlertDialogCancel onClick={() => onOpenChange(false)}>Cancel</AlertDialogCancel> */}
-          <AlertDialogAction onClick={() => Quit()}>Close App</AlertDialogAction>
+          <AlertDialogCancel onClick={() => Quit()}>Close App</AlertDialogCancel>
+          <AlertDialogAction onClick={() => {
+            onOpenChange(false);
+            onRetry();
+          }}>Try Again</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -69,23 +69,21 @@ export function useRelayConnection() {
     const tryConnect = async () => {
       logger.info("🛜 Starting relay connection...");
 
-      const relayAddrs = await fetchRelayAddrs();
       let connected = false;
 
       for (let i = 0; i < 10; i++) {
         const status = await GetRelayStatus();
         if (status === 'online') {
+          useAppStore.getState().setRelayStatus('online');
           connected = true;
           break;
         }
 
-        const error = await Connect(relayAddrs);
-        if (error != null) {
-          const recheck = await GetRelayStatus();
-          if (recheck === 'online') {
-            connected = true;
-            break;
-          }
+        await Connect().catch((e) => logger.warn("connect failed", e));
+        if ((await GetRelayStatus()) === 'online') {
+          useAppStore.getState().setRelayStatus('online');
+          connected = true;
+          break;
         }
 
         await new Promise(res => setTimeout(res, 1000));
@@ -103,18 +101,6 @@ export function useRelayConnection() {
   return { relayFailed, setRelayFailed };
 }
 
-async function fetchRelayAddrs(): Promise<string[]> {
-  try {
-    const addrs = await GetRelayAddr();
-    // Only keep valid multiaddrs
-    const validAddrs = addrs.filter(addr => addr.startsWith('/'));
-    logger.debug('[RelayAddrs] Valid relay addresses:', validAddrs);
-    return validAddrs;
-  } catch (error) {
-    logger.error("Error loading relay addresses from MongoDB:", error);
-    return [];
-  }
-}
 
 
 // const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -132,10 +118,13 @@ const App: React.FC = () => {
   const {
     isAuthenticated,
     setUser,
+    setIncognito,
     setCommunities,
     isDarkMode,
+    isIncognito,
     setCurrentCommunity,
-    communities
+    communities,
+    setRelayStatus
   } = useAppStore();
 
   const [relayFailed, setRelayFailed] = useState(false);
@@ -144,6 +133,10 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("incognito-theme", isIncognito);
+  }, [isIncognito]);
   
   useEffect(() => {
     TitleBarTheme(isDarkMode);
@@ -153,61 +146,79 @@ const App: React.FC = () => {
     EventsOn("navigate-to-root", () => {
       window.location.href = "/";
     });
-  }, []);
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        logger.debug("🔄 Fetching relay addresses...");
-        const relayAddrs = await fetchRelayAddrs();
-        // const relayAddrs = ["/dns4/libr-relay007.onrender.com/tcp/443/wss/p2p/12D3KooWCG3Jp3Jm3AeD9WgUVAVeze71X3mPaCz2jfQAAGnCDgku"]
-        const status = await GetRelayStatus();
-        let connected = false;
+    EventsOn("relay_status_changed", (status: string) => {
+      logger.info(`🌐 Relay status changed: ${status}`);
+      setRelayStatus(status);
+      if (status === 'offline') {
+        toast.error("Relay Disconnected", {
+          description: "Attempting to reconnect...",
+        });
+      } else if (status === 'online') {
+        toast.success("Relay Reconnected", {
+          description: "Secure connection established.",
+        });
+      }
+    });
+
+    // Initial status sync
+    GetRelayStatus().then(setRelayStatus);
+  }, [setRelayStatus]);
+
+  const initializeApp = React.useCallback(async () => {
+    setLoading(true);
+    setRelayFailed(false);
+    try {
+      const status = await GetRelayStatus();
+      let connected = false;
+      if (status === "online") {
+        setRelayStatus("online");
+        connected = true;
+      } else {
         for (let i = 0; i < 10; i++) {
-          if (status === "online") {
-            connected = true;
-            break;
-          }
-
-        const error = await Connect(relayAddrs);
+          await Connect().catch((e) => logger.warn("connect failed", e));
           const recheck = await GetRelayStatus();
           if (recheck === "online") {
+            setRelayStatus("online");
             connected = true;
             break;
           }
 
           await new Promise(res => setTimeout(res, 1000));
         }
-
-        if (!connected) {
-          logger.error("❌ Could not connect to relay.");
-          setRelayFailed(true);
-          return;
-        }
-
-        logger.info("✅ Relay connected. Authenticating...");
-        
-        const publicKey = await FetchPubKey();
-        const user = await apiService.authenticate(publicKey);
-        setUser(user);
-
-        const fetchedCommunities = await apiService.getCommunities();
-        setCommunities(fetchedCommunities);
-
-        const firstJoined = fetchedCommunities.find(c => c.isJoined);
-        if (firstJoined) {
-          setCurrentCommunity(firstJoined);
-        }
-      } catch (err) {
-        logger.error("🔥 App initialization failed:", err);
-        setRelayFailed(true);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      if (!connected) {
+        logger.error("❌ Could not connect to relay.");
+        setRelayFailed(true);
+        return;
+      }
+
+      logger.info("✅ Relay connected. Authenticating...");
+      
+      const publicKey = await FetchPubKey();
+      const user = await apiService.authenticate(publicKey);
+      setUser(user);
+      setIncognito(await IsIncognitoEnabled());
+
+      const fetchedCommunities = await apiService.getCommunities();
+      setCommunities(fetchedCommunities);
+
+      const firstJoined = fetchedCommunities.find(c => c.isJoined);
+      if (firstJoined) {
+        setCurrentCommunity(firstJoined);
+      }
+    } catch (err) {
+      logger.error("🔥 App initialization failed:", err);
+      setRelayFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser, setIncognito, setCommunities, setCurrentCommunity]);
+
+  useEffect(() => {
     initializeApp();
-  }, []);
+  }, [initializeApp]);
 
   if (loading) {
     return (
@@ -233,7 +244,7 @@ const App: React.FC = () => {
             </p>
           </motion.div>
         </div>
-        <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
+        <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} onRetry={initializeApp} />
       </>
     );
   }
@@ -261,7 +272,7 @@ const App: React.FC = () => {
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
-      <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} />
+      <RelayErrorDialog open={relayFailed} onOpenChange={setRelayFailed} onRetry={initializeApp} />
     </>
   );
 };

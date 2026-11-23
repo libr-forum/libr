@@ -264,7 +264,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span>Messages and posts are published to independent relay servers with their own privacy policies</span>
+                    <span>Posts are stored on independent database nodes run by other people; relays forward encrypted traffic but can see which peers connect to each other</span>
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
@@ -272,7 +272,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
                   </li>
                   <li className="flex items-start">
                     <div className="w-2 h-2 bg-libr-secondary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span>Third-party relay operators may have their own data collection practices</span>
+                    <span>Third-party node and relay operators may log connection metadata such as IP addresses</span>
                   </li>
                 </ul>
                 <p className="mt-4">
@@ -414,7 +414,7 @@ const EULA: React.FC<EULAProps> = ({ isDarkMode = true, toggleTheme = () => {} }
               <div className="space-y-2 text-muted-foreground">
                 <p><strong className="text-foreground">Email:</strong> <a href="mailto:libr.forum@gmail.com" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">libr.forum@gmail.com</a></p>
                 <p><strong className="text-foreground">GitHub:</strong> <a href="https://github.com/libr-forum/libr" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://github.com/libr-forum/libr</a></p>
-                <p><strong className="text-foreground">Website:</strong> <a href="https://libr-ashen.vercel.app/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr-ashen.vercel.app/</a></p>
+                <p><strong className="text-foreground">Website:</strong> <a href="https://libr.social/" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">https://libr.social/</a></p>
                 <p><strong className="text-foreground">Apache 2.0 License:</strong> <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View Full License Text</a></p>
                 <p><strong className="text-foreground">Terms & Conditions:</strong> <a href="/terms-and-conditions" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Terms & Conditions</a></p>
                 <p><strong className="text-foreground">Privacy Policy:</strong> <a href="/privacy-policy" className="text-libr-accent1 hover:text-libr-accent2 hover:underline">View our Privacy Policy</a></p>

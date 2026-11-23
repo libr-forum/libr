@@ -1,0 +1,20 @@
+{
+  "name": "librserver",
+  "version": "1.0.0",
+  "description": "LIBR bootstrap seed server: key-bound, expiring registrations of DB node addresses",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

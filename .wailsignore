@@ -1,0 +1,77 @@
+# ==============================================================================
+# Wails Watcher & Build Ignore Configuration (.wailsignore)
+# Tells Wails what to ignore during 'wails dev' watching & packaging.
+# ==============================================================================
+
+# ── Non-Desktop Subprojects & External Services ───────────────────────────────
+mobile-app/
+services/
+services/librserver/
+services/relay/
+core/db/
+landing-page/
+packaging/
+scripts/
+docs/
+
+# ── Logs & Debug Output ───────────────────────────────────────────────────────
+DEBUG_LOGS.log
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+
+# ── Compiled Binaries & Build Outputs ─────────────────────────────────────────
+/build/
+/bin/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.syso
+*.out
+*.test
+libr-mod.exe
+mod_client.exe
+mod_client
+
+# ── Cryptographic Keys & Local Credentials ────────────────────────────────────
+*.key
+*.pem
+*.keystore
+keys/
+private_keys/
+secrets/
+.env
+.env.*
+
+# ── Runtime State, Databases & Local Caches ───────────────────────────────────
+data/
+cache/
+pending_mods/
+finalized_moderations/
+modconfig.json
+modkeys.json
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Frontend Dependencies & Transpiled Outputs ────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+package.json.md5
+bun.lockb
+
+# ── IDE & Operating System Metadata ───────────────────────────────────────────
+.vscode/
+.idea/
+.settings/
+.project
+.classpath
+*.iml
+.DS_Store
+Thumbs.db
+ehthumbs.db

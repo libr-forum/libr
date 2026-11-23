@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {BackgroundEffect} from './components/BackgroundEffect';
-import {Analytics} from '@vercel/analytics/react';
 import { MoveUp } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import EULA from './pages/EULA';
+import Install from './pages/Install';
 
 const ScrollProgress: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -134,7 +134,6 @@ const App: React.FC = () => {
   return (
     <>
       <BackgroundEffect />
-      <Analytics />
       <div className="min-h-screen bg-libr-primary/50 text-foreground relative overflow-x-hidden">
         <ScrollProgress />
         <BackToTop />
@@ -144,6 +143,7 @@ const App: React.FC = () => {
             <Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
             <Route path="/eula" element={<EULA isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+            <Route path="/install" element={<Install isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
           </Routes>
         </main>
       </div>

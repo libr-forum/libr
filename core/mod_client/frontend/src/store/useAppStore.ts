@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TitleBarTheme } from 'wailsjs/go/main/App';
-import { types } from 'wailsjs/go/models';
 
 export interface User {
   publicKey: string;
@@ -13,10 +12,12 @@ export interface User {
 }
 
 export interface Community {
-  id: string;
+  id: string; // the community name
   name: string;
   topic: string;
-  memberCount: number;
+  modCount: number;
+  modKeys: string[]; // base64 keys of the moderator set
+  isMod: boolean; // the user moderates this community
   isJoined: boolean;
   requiresApproval: boolean;
 }
@@ -28,7 +29,7 @@ export interface Message {
   timestamp: bigint;
   communityId: string;
   status: 'pending' | 'approved' | 'rejected';
-  moderationNote?: types.ModCert[];
+  votes?: number; // moderator approvals in the certificate
   avatarSvg?:string;
   sign:string;
 }
@@ -38,6 +39,7 @@ export interface ReportedMessage {
   communityId: string;
   sign:string;
   note:string;
+  type?: string;
 }
 
 export interface ModLogEntry {
@@ -46,11 +48,23 @@ export interface ModLogEntry {
   status: string;
 }
 
+export interface PendingModeration {
+  id: string;
+  ts: number;
+  content: string;
+  reason: string;
+  approved: number;
+  rejected: number;
+  totalMods: number;
+  ackCount: number;
+  awaitingMods: number;
+}
 
 interface AppState {
   // User state
   user: User | null;
   isAuthenticated: boolean;
+  isIncognito: boolean;
   
   // Theme state
   isDarkMode: boolean;
@@ -62,9 +76,16 @@ interface AppState {
   // Messages state
   messages: Message[];
   isLoading: boolean;
-  
+
+  // Pending moderation queue (persists across tab switches)
+  pendingQueue: PendingModeration[];
+
+  // Network state
+  relayStatus: string;
+
   // Actions
   setUser: (user: User) => void;
+  setIncognito: (value: boolean) => void;
   logout: () => void;
   toggleTheme: () => void;
   setCommunities: (communities: Community[]) => void;
@@ -73,6 +94,8 @@ interface AppState {
   addMessage: (message: Message) => void;
   setLoading: (loading: boolean) => void;
   joinCommunity: (communityId: string) => void;
+  setPendingQueue: (queue: PendingModeration[]) => void;
+  setRelayStatus: (status: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -81,18 +104,23 @@ export const useAppStore = create<AppState>()(
       // Initial state
       user: null,
       isAuthenticated: false,
+      isIncognito: false,
       isDarkMode: true,
       communities: [],
       currentCommunity: null,
       messages: [],
       isLoading: false,
+      pendingQueue: [],
+      relayStatus: 'offline',
 
       // Actions
       setUser: (user) => set({ user, isAuthenticated: true }),
+      setIncognito: (value) => set({ isIncognito: value }),
       
       logout: () => set({ 
         user: null, 
         isAuthenticated: false,
+        isIncognito: false,
         currentCommunity: null,
         messages: [] 
       }),
@@ -124,6 +152,9 @@ export const useAppStore = create<AppState>()(
           c.id === communityId ? { ...c, isJoined: true } : c
         )
       })),
+
+      setPendingQueue: (queue) => set({ pendingQueue: queue }),
+      setRelayStatus: (status) => set({ relayStatus: status }),
     }),
     {
       name: 'libr-storage',

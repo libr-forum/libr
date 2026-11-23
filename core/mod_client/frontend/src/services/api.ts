@@ -1,172 +1,70 @@
-import { SendInput,FetchAll,GenerateAvatar,GenerateAlias,GetModerationLogs,GetModConfig,SaveModConfig,ModAuthentication,SaveGoogleApiKey,ManualModerate,FetchMessageReports } from "../../wailsjs/go/main/App"; 
-import axios from 'axios';
-import { Community, Message, User, ModLogEntry, useAppStore,ReportedMessage } from '../store/useAppStore';
-import {types} from '../../wailsjs/go/models'
-import {emojify} from 'node-emoji';
+import { SendInput, FetchAll, GenerateAvatar, GenerateAlias, GetModerationLogs, GetModConfig, SaveModConfig, SaveGoogleApiKey, GetModQueue, ModDecide, GetPending, ListCommunities, GetModKeys, SaveModKey, TestLLMConnection } from "../../wailsjs/go/main/App";
+import { Community, Message, User, ModLogEntry, useAppStore, ReportedMessage, PendingModeration } from '../store/useAppStore';
+import { app } from '../../wailsjs/go/models';
+import { emojify } from 'node-emoji';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+export function toCommunity(c: app.Community): Community {
+  return {
+    id: c.name,
+    name: c.name,
+    topic: `${c.threshold} of ${c.mods} moderators approve each post`,
+    modCount: c.mods,
+    modKeys: c.mod_keys ?? [],
+    isMod: c.is_mod,
+    isJoined: true, // every community is readable; there is no membership list
+    requiresApproval: false,
+  };
+}
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-});
+export function toStatus(s: string): Message['status'] {
+  return s === 'posted' ? 'approved' : s === 'pending' ? 'pending' : 'rejected';
+}
 
-// Mock data for demo purposes
-const mockCommunities: Community[] = [
-  {
-    id: '0',
-    name: 'libr',
-    topic: '',
-    memberCount: 1247,
-    isJoined: true,
-    requiresApproval: false,
-  },
-  {
-    id: '1',
-    name: 'cryptography',
-    topic: 'Discussion about cryptographic protocols and implementations',
-    memberCount: 1247,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '2',
-    name: 'privacy-tech',
-    topic: 'Privacy technologies and digital rights',
-    memberCount: 892,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '3',
-    name: 'decentralized-web',
-    topic: 'Building the decentralized internet',
-    memberCount: 567,
-    isJoined: false,
-    requiresApproval: true,
-  },
-  {
-    id: '4',
-    name: 'blockchain-dev',
-    topic: 'Blockchain development and smart contracts',
-    memberCount: 2341,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '5',
-    name: 'web3-gaming',
-    topic: 'Web3 gaming and NFT discussions',
-    memberCount: 876,
-    isJoined: false,
-    requiresApproval: true,
-  },
-  {
-    id: '6',
-    name: 'defi-protocols',
-    topic: 'Decentralized Finance protocols and analysis',
-    memberCount: 1654,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '7',
-    name: 'zero-knowledge',
-    topic: 'Zero-knowledge proofs and privacy solutions',
-    memberCount: 432,
-    isJoined: false,
-    requiresApproval: true,
-  },
-  {
-    id: '8',
-    name: 'dao-governance',
-    topic: 'DAO governance and tokenomics',
-    memberCount: 987,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '9',
-    name: 'layer2-scaling',
-    topic: 'Layer 2 scaling solutions and optimizations',
-    memberCount: 723,
-    isJoined: false,
-    requiresApproval: true,
-  },
-  {
-    id: '10',
-    name: 'censorship-resistance',
-    topic: 'Building censorship-resistant systems',
-    memberCount: 1123,
-    isJoined: false,
-    requiresApproval: false,
-  },
-  {
-    id: '11',
-    name: 'peer-to-peer',
-    topic: 'P2P networking and distributed systems',
-    memberCount: 645,
-    isJoined: false,
-    requiresApproval: true,
-  },
-  {
-    id: '12',
-    name: 'digital-identity',
-    topic: 'Self-sovereign identity and digital credentials',
-    memberCount: 498,
-    isJoined: false,
-    requiresApproval: false,
-  },
-];
+export function toPending(p: app.PendingInfo): PendingModeration {
+  return {
+    id: p.id,
+    ts: p.created,
+    content: p.content,
+    reason: p.kind === 'report' ? p.reason : (/<img\s/i.test(p.content) ? 'Image attached' : ''),
+    approved: p.approved,
+    rejected: p.rejected,
+    totalMods: p.approved + p.rejected + p.waiting,
+    ackCount: p.approved + p.rejected,
+    awaitingMods: p.waiting,
+  };
+}
 
 export const apiService = {
-  // Auth
+  // The role is per community: moderator where the user's key is in the moderator set.
   async authenticate(publicKey: string): Promise<User> {
-    const avatar = await GenerateAvatar(publicKey)
-    const alias = await GenerateAlias(publicKey)
-    const isMod = await ModAuthentication(publicKey)
-    const role: 'member' | 'moderator' | 'admin' = isMod ? 'moderator' : 'member';
-    return {
-      publicKey,
-      alias,
-      role,
-      avatarSvg: avatar,
-    };
+    const [avatar, alias, communities] = await Promise.all([
+      GenerateAvatar(publicKey), GenerateAlias(publicKey), ListCommunities(),
+    ]);
+    const communityRoles: Record<string, 'member' | 'moderator'> = {};
+    for (const c of communities ?? []) communityRoles[c.name] = c.is_mod ? 'moderator' : 'member';
+    const role = Object.values(communityRoles).includes('moderator') ? 'moderator' : 'member';
+    return { publicKey, alias, role, communityRoles, avatarSvg: avatar };
   },
 
-  // Communities
   async getCommunities(): Promise<Community[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockCommunities;
+    return ((await ListCommunities()) ?? []).map(toCommunity);
   },
 
-  async joinCommunity(communityId: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log(`Joined community: ${communityId}`);
-  },
-
-  // Messages
-  async getMessages(_communityId: string): Promise<Message[]> {
+  async getMessages(communityId: string): Promise<Message[]> {
     try {
-      const fetched = await FetchAll();
-      // No caching: always return fresh mapped messages
+      const posts = (await FetchAll(communityId)) ?? [];
       return await Promise.all(
-        fetched.map(async (message: any) => {
-          const alias = await GenerateAlias(message.public_key);
-          const svg = await GenerateAvatar(message.public_key);
-          return {
-            content: message.msg.content,
-            authorAlias: alias,
-            authorPublicKey: message.public_key,
-            timestamp: BigInt(message.msg.ts),
-            communityId: "1",
-            status: "approved",
-            moderationNote: message.mod_certs,
-            avatarSvg: svg,
-            sign: message.sign,
-          } as Message;
-        })
+        posts.map(async (p) => ({
+          content: p.content,
+          authorAlias: await GenerateAlias(p.author),
+          authorPublicKey: p.author,
+          timestamp: BigInt(p.ts),
+          communityId: p.community,
+          status: 'approved',
+          votes: p.votes,
+          avatarSvg: await GenerateAvatar(p.author),
+          sign: p.hash,
+        } as Message))
       );
     } catch (err) {
       console.error("Failed to fetch messages:", err);
@@ -174,95 +72,93 @@ export const apiService = {
     }
   },
 
-  async getMessageReports(_communityId: string): Promise<ReportedMessage[]> {
-    try {
-      const reports = await FetchMessageReports();
-      return reports.map((msg: any) => ({
-        sign: msg.sign,
-        content: msg.msg.content,
-        note: msg.reason || '',
-        communityId: _communityId,
+  // Human review queue of this moderator: image posts and reports.
+  async getMessageReports(communityId?: string): Promise<ReportedMessage[]> {
+    const items = (await GetModQueue()) ?? [];
+    return items
+      .filter((it) => !it.decided && (!communityId || it.community === communityId))
+      .map((it) => ({
+        sign: it.key,
+        content: it.content,
+        note: it.reason || '',
+        type: it.kind === 'post' ? 'manual_mod' : 'report',
+        communityId: it.community,
       }));
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-      return [];
-    }
   },
 
-  async manualModerate(cert: types.MsgCert, moderated: number): Promise<void> {
-    try {
-      await ManualModerate(cert, moderated);
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-    }
+  // value 1: publish the post / remove the reported post; 0: the opposite.
+  async moderateBySign(key: string, value: number): Promise<void> {
+    await ModDecide(key, value === 1);
+  },
+
+  async getPending(): Promise<PendingModeration[]> {
+    return ((await GetPending()) ?? []).map(toPending);
   },
 
   async sendMessage(communityId: string, content: string): Promise<Message> {
-    let response: string = '';
-    let modcerts: types.ModCert[] = [];
-
-    const result = await SendInput(content);
-
-    if (typeof result === 'string') {
-      response = result;
-    } else if (Array.isArray(result)) {
-      modcerts = result;
-    }
-
-    const approved = response.includes("Sent");
-    const rejected = response.includes("rejected");
-    const timeout = response.includes("timeout");
-
-    const user = useAppStore.getState().user;
-    const signMatch = response.match(/Sign:\s*(\S+)/);
-    const tsMatch = response.match(/Time:\s*(\d+)/);
-
-    // No caching: just return the new message object
-    const newMessage: Message = {
+    const result = await SendInput(communityId, content);
+    const user = useAppStore.getState().user!;
+    return {
       content,
       authorPublicKey: user.publicKey,
       authorAlias: user.alias,
-      timestamp: BigInt(tsMatch?.[1] ?? Date.now()),
+      timestamp: BigInt(result.ts > 0 ? result.ts : Math.floor(Date.now() / 1000)),
       communityId,
-      status: approved ? 'approved' : timeout ? 'pending' : 'rejected',
+      status: toStatus(result.status),
       avatarSvg: user.avatarSvg,
-      moderationNote: modcerts,
-      sign: signMatch?.[1] ?? '',
+      sign: result.hash || result.id || '',
     };
-
-    return newMessage;
   },
 
-  // Moderation
   async getModerationLogs(): Promise<ModLogEntry[]> {
-    const logs = await GetModerationLogs();
-    return logs;
+    return await GetModerationLogs();
   },
 
-  async moderateMessage(action: 'approve' | 'reject', note?: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log(`Message ${action}ed with note: ${note}`);
-  },
-
-  async GetModConfig(): Promise<{ forbidden: string[]; thresholds: string }> {
+  async GetModConfig(): Promise<{
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }> {
     return await GetModConfig();
   },
 
-  async SaveModConfig(data: { forbidden: string[]; thresholds: string }): Promise<void> {
-    await SaveModConfig(data)
+  async SaveModConfig(data: {
+    forbidden: string[];
+    thresholds: string;
+    image_auto_mod?: boolean;
+    llm_enabled?: boolean;
+    llm_provider?: string;
+    llm_model?: string;
+  }): Promise<void> {
+    await SaveModConfig(data as any);
   },
 
   async SaveGoogleApiKey(key: string) {
-    await SaveGoogleApiKey(key)
-  }
+    await SaveGoogleApiKey(key);
+  },
+
+  async GetModKeys(): Promise<Record<string, string>> {
+    return await GetModKeys();
+  },
+
+  async SaveModKey(keyName: string, keyValue: string): Promise<void> {
+    await SaveModKey(keyName, keyValue);
+  },
+
+  async TestLLMConnection(provider: string, model: string, apiKey: string): Promise<string> {
+    return await TestLLMConnection(provider, model, apiKey);
+  },
 };
 
 export function parseFormatting(text: string): string {
   // Escape HTML to prevent injection
   const escapeHTML = (str: string) =>
     str.replace(/&/g, '&amp;')
-       .replace(/</g, '&lt;')
-       .replace(/>/g, '&gt;');
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
 
   // Apply emoji replacements first
   let formatted = emojify(text);

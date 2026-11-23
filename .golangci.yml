@@ -1,0 +1,26 @@
+# golangci-lint v1 config. Kept small: the codebase has no lint history, so only
+# checks that catch real bugs are on; tighten as packages are rewritten for v2.
+run:
+  timeout: 5m
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - unused
+    - forbidigo
+linters-settings:
+  forbidigo:
+    # Network handlers must not print: stray prints end up logging request bodies.
+    forbid:
+      - p: '^fmt\.Print.*$'
+      - p: '^print(ln)?$'
+issues:
+  exclude-rules:
+    - linters: [forbidigo]
+      path-except: '(^|/)(app|dbnode|moderator|wire|forum|p2p|proto|seeds)/' # relative to the module dir
+
+  # Only code changed since staging is checked; legacy v1 code is replaced in later v2 steps.
+  new-from-merge-base: origin/staging

@@ -85,11 +85,42 @@ body,
     /* --libr-accent1: 166 84 95; */
     --libr-accent2: 0 252 223;
   }
+
+  .dark.incognito-theme {
+    --background: 267 36% 8%;
+    --foreground: 270 40% 96%;
+
+    --card: 267 32% 11%;
+    --card-foreground: 270 40% 96%;
+
+    --popover: 267 32% 11%;
+    --popover-foreground: 270 40% 96%;
+
+    --secondary: 268 24% 18%;
+    --secondary-foreground: 270 40% 96%;
+
+    --muted: 268 24% 18%;
+    --muted-foreground: 264 22% 72%;
+
+    --accent: 268 24% 18%;
+    --accent-foreground: 270 40% 96%;
+
+    --border: 268 30% 22%;
+    --input: 268 30% 22%;
+    --ring: 269 52% 72%;
+
+    --libr-primary: 15 10 24;
+    --libr-secondary: 242 238 252;
+    --libr-accent1: 155 112 212;
+    --libr-accent2: 215 181 255;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 220, 200, 0.25) transparent;
   }
 
   body {
@@ -122,8 +153,31 @@ body,
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Custom Webkit Scrollbars for global aesthetic */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 220, 200, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 220, 200, 0.6);
+  box-shadow: 0 0 6px rgba(100, 220, 200, 0.4);
+}
+::-webkit-scrollbar-button {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+  display: none !important;
 }
 
 .prose-mirror-editor .ProseMirror {
@@ -135,4 +189,14 @@ body,
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Remove default arrows from number inputs */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
