@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # Version tags only (v2.0.0, v2.1.0-beta): marker tags like v1-final must not publish a release.
+      - 'v*.*.*'
 
 permissions:
   contents: write
