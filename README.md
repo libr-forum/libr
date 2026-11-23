@@ -8,20 +8,34 @@ only when a quorum of the community's moderators has signed it, and it is remove
 by a quorum (or by its author). Every reader checks those signatures itself, so a
 storage node or relay that lies is caught, not trusted.
 
+**Website:** [libr.social](https://libr.social) · **Status:** v2 (this code) is complete
+and tested but its public network has not launched yet; see
+[#78](https://github.com/libr-forum/libr/issues/78). Want to run a relay or DB node, or
+moderate a community? Open an issue, the setup is in [`docs/RELEASE.md`](docs/RELEASE.md).
+
 ## Architecture
 
-```
- desktop app (Wails)          Android app (Expo + gomobile)        librctl (CLI)
-        └──────────────┬───────────────┴───────────────┬──────────────┘
-                       │  core/libr/app: the LIBR node every client runs
-                       ▼
-   ┌──────────── libp2p (Noise-encrypted, peer IDs authenticated) ────────────┐
-   │  circuit relays ── forward encrypted bytes for peers behind NAT          │
-   │  DB nodes ──────── store signed posts, feed index, removals (Kademlia DHT)│
-   │  moderators ────── sign approve/reject votes (any user whose key is in    │
-   │                    the community's moderator set, using the desktop app)│
-   └──────────────────────────────────────────────────────────────────────────┘
-   librserver: optional seed list of DB node addresses (bootstrap only)
+```mermaid
+flowchart TB
+    subgraph clients["Clients: each runs the LIBR node (core/libr/app)"]
+        desktop["Desktop app<br/>(Wails; also moderator workstation)"]
+        android["Android app<br/>(Expo + gomobile)"]
+        cli["librctl<br/>(CLI)"]
+    end
+    subgraph net["libp2p: Noise-encrypted, peer IDs authenticated"]
+        relays["Circuit relays<br/>forward encrypted bytes<br/>for peers behind NAT"]
+        dbs[("DB nodes<br/>signed posts, feed index,<br/>removals · Kademlia DHT")]
+        mods["Moderators<br/>3f+1 keys per community<br/>sign approve / reject"]
+    end
+    seed["librserver<br/>optional seed list"]
+    founders["Founders<br/>sign the community genesis"]
+
+    clients -- "votes" --> mods
+    clients -- "store · read · remove" --> dbs
+    clients -. "reserve, when behind NAT" .-> relays
+    mods -. "reachable through" .-> relays
+    clients -. "bootstrap" .-> seed
+    founders -- "genesis file, shipped in apps" --> clients
 ```
 
 * **Communities** are defined by a genesis file: the moderator set (3f+1 keys, f faulty
@@ -35,6 +49,46 @@ storage node or relay that lies is caught, not trusted.
   DB nodes delete the content and refuse new copies of that message.
 * **Reading**: a client fetches the feed index from two nodes, then every post by
   hash, and keeps only posts that hash correctly and carry a valid quorum.
+
+### Posting a message
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Author's app
+    participant M as Moderators (3f+1)
+    participant D as 4 closest DB nodes
+    participant I as Feed-bucket DB nodes
+    A->>A: sign post (community, time, content)
+    par ask every moderator
+        A->>M: vote request
+        M-->>A: signed approve / reject, or "pending" (human review)
+    end
+    Note over A: 2f+1 approvals = certificate<br/>(pending: retried every 30 s, up to a week)
+    par store and index
+        A->>D: store certificate
+        D-->>A: signed receipt (verified against the node's peer ID)
+        A->>I: index under community + 15-minute bucket
+        I-->>A: signed receipt
+    end
+    Note over A: stored after 3 of 4 receipts for each
+```
+
+### Reading and removal
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant R as Reader's app
+    participant I as Feed-bucket DB nodes
+    participant D as DB nodes holding posts
+    R->>I: index for each 15-minute bucket (2 nodes)
+    I-->>R: post hashes + tombstones
+    R->>D: fetch each post by hash
+    D-->>R: certificate
+    Note over R: keep only posts that hash correctly, carry 2f+1 valid<br/>moderator signatures and have no verified tombstone
+    Note over R,D: Removal: a moderator quorum (after a report) or the author signs a<br/>tombstone; DB nodes delete the post and refuse new copies of it
+```
 
 Details: [`core/libr`](core/libr) packages, [`docs/v2-limits.md`](docs/v2-limits.md)
 (abuse limits and known gaps), [`docs/RELEASE.md`](docs/RELEASE.md) (deploying a
