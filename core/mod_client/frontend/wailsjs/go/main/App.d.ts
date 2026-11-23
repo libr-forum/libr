@@ -34,6 +34,8 @@ export function GetPending():Promise<Array<app.PendingInfo>>;
 
 export function GetRelayStatus():Promise<string>;
 
+export function GetStorageStatus():Promise<main.StorageStatus>;
+
 export function IsIncognitoEnabled():Promise<boolean>;
 
 export function IsMod(arg1:string):Promise<boolean>;
@@ -55,6 +57,8 @@ export function SaveModConfig(arg1:models.ModConfig):Promise<void>;
 export function SaveModKey(arg1:string,arg2:string):Promise<void>;
 
 export function SendInput(arg1:string,arg2:string):Promise<app.Outcome>;
+
+export function SetStorageContribution(arg1:boolean):Promise<void>;
 
 export function TestDirectCloudConnection(arg1:string,arg2:string,arg3:string):Promise<string>;
 

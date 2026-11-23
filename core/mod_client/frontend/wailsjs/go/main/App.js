@@ -62,6 +62,10 @@ export function GetRelayStatus() {
   return window['go']['main']['App']['GetRelayStatus']();
 }
 
+export function GetStorageStatus() {
+  return window['go']['main']['App']['GetStorageStatus']();
+}
+
 export function IsIncognitoEnabled() {
   return window['go']['main']['App']['IsIncognitoEnabled']();
 }
@@ -104,6 +108,10 @@ export function SaveModKey(arg1, arg2) {
 
 export function SendInput(arg1, arg2) {
   return window['go']['main']['App']['SendInput'](arg1, arg2);
+}
+
+export function SetStorageContribution(arg1) {
+  return window['go']['main']['App']['SetStorageContribution'](arg1);
 }
 
 export function TestDirectCloudConnection(arg1, arg2, arg3) {

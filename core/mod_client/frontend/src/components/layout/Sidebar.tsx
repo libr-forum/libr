@@ -2,9 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { useSidebarStore } from '../../store/useSidebarStore';
-import { Shield, Cog, Hash, Plus, Settings, Moon, Sun, RefreshCcw, ChevronLeft, Eye, Menu, Wrench, User, AlertTriangle, Ghost } from 'lucide-react';
+import { Shield, Cog, Hash, Plus, Settings, Moon, Sun, RefreshCcw, ChevronLeft, Eye, Menu, Wrench, User, AlertTriangle, Ghost, HardDrive } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DisableIncognito, EnableIncognito, RegenKeys, Connect, GetRelayStatus } from 'wailsjs/go/main/App';
+import { DisableIncognito, EnableIncognito, RegenKeys, Connect, GetRelayStatus, GetStorageStatus, SetStorageContribution } from 'wailsjs/go/main/App';
 import logoSVG from '../assets/icon_transparent.svg';
 import { apiService } from '@/services/api';
 import { logger } from '../../logger/logger';
@@ -41,6 +41,26 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const [isReloadingCommunities, setIsReloadingCommunities] = React.useState(false);
   const [isIncognitoLoading, setIsIncognitoLoading] = React.useState(false);
+  const [storage, setStorage] = React.useState({ enabled: false, running: false });
+  const [isStorageLoading, setIsStorageLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    GetStorageStatus().then(setStorage).catch(() => {});
+  }, []);
+
+  const handleStorageToggle = async () => {
+    setIsStorageLoading(true);
+    try {
+      await SetStorageContribution(!storage.enabled);
+      setStorage(await GetStorageStatus());
+      toast.success(storage.enabled ? 'Stopped contributing storage' : 'Contributing storage to the network');
+    } catch (error) {
+      toast.error('Could not change storage contribution', { description: String(error) });
+      setStorage(await GetStorageStatus().catch(() => storage));
+    } finally {
+      setIsStorageLoading(false);
+    }
+  };
   const [isRetrying, setIsRetrying] = React.useState(false);
 
   React.useEffect(() => {
@@ -497,6 +517,28 @@ export const Sidebar: React.FC = () => {
                     {isIncognito
                       ? 'Using a temporary identity until you switch back.'
                       : 'Temporarily switch to a stealth identity.'}
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleStorageToggle}
+                disabled={isStorageLoading}
+                className={`mt-3 flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                  storage.enabled
+                    ? 'border-libr-accent1/60 bg-libr-accent1/20 text-libr-accent1'
+                    : 'border-border/60 bg-muted/20 text-foreground hover:bg-muted/40'
+                } ${isStorageLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                <HardDrive className={`mt-0.5 h-4 w-4 ${storage.enabled ? 'text-libr-accent1' : 'text-muted-foreground'}`} />
+                <div className="flex-1">
+                  <div className="font-medium">
+                    {isStorageLoading ? 'Switching…' : storage.enabled ? (storage.running ? 'Contributing Storage' : 'Storage On (starts when online)') : 'Contribute Storage'}
+                  </div>
+                  <div className={`mt-1 text-xs ${storage.enabled ? 'text-libr-accent1/80' : 'text-muted-foreground'}`}>
+                    {storage.enabled
+                      ? 'This computer stores posts for the network while the app runs.'
+                      : 'Help keep posts available: run a storage node while the app is open. Uses its own key, not your identity.'}
                   </div>
                 </div>
               </button>
