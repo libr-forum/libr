@@ -76,6 +76,9 @@ change them there and here together.
 
 ## Known gaps (accepted for now)
 
+- **No re-replication.** A post lives on the K=4 nodes closest to it at posting time;
+  if they all leave for good it is lost. Matters most with churny DB nodes such as
+  desktops contributing storage. Tracked in #85.
 - **Free identities.** Per-peer and per-author limits slow one identity, not a Sybil
   swarm. Per-IP connection limits and the moderator's global decision cap are the
   backstop.
