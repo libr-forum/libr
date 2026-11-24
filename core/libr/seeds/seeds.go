@@ -95,7 +95,12 @@ func Merge(a, b []peer.AddrInfo) []peer.AddrInfo {
 // Resolve gathers bootstrap peers from every source. Seed servers are asked only when
 // the other sources give fewer than want peers.
 func Resolve(ctx context.Context, config []peer.AddrInfo, cachePath string, servers []string, want int) []peer.AddrInfo {
-	out := Merge(append([]peer.AddrInfo(nil), config...), Shipped())
+	// The network built into the binary applies only when nothing is configured, so a
+	// dev network, testbed or test never mixes with production peers.
+	out := append([]peer.AddrInfo(nil), config...)
+	if len(config) == 0 {
+		out = Merge(out, Shipped())
+	}
 	if cachePath != "" {
 		if cached, err := LoadCache(cachePath); err == nil {
 			out = Merge(out, cached)

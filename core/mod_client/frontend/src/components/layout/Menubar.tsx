@@ -10,6 +10,7 @@ import {
 } from "../../../wailsjs/go/main/App";
 import { apiService } from '../../services/api';
 import { useAppStore, PendingModeration } from '../../store/useAppStore';
+import { StorageControl } from './StorageControl';
 
 type ModDisplay = {
   key: string;
@@ -22,20 +23,18 @@ type DisplayQueueItem =
   | { kind: 'pending'; item: PendingModeration }
   | { kind: 'resolved'; item: ResolvedItem };
 
-const ComingSoonDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+const HostDatabaseDialog: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-card border border-border/50 rounded-2xl shadow-xl text-foreground p-6 w-[90%] max-w-md flex flex-col ">
-        <span className="text-lg font-semibold mb-4 text-libr-secondary">Feature Coming Soon</span>
-        <p className="text-muted-foreground mb-6 text-left">
-          This feature is not available yet. Stay tuned for updates!
+      <div className="bg-card border border-border/50 rounded-2xl shadow-xl text-foreground p-6 w-[90%] max-w-md flex flex-col">
+        <span className="text-lg font-semibold mb-2 text-libr-secondary">Host a database</span>
+        <p className="text-muted-foreground text-sm text-left">
+          Store posts for the communities you choose while LIBR is open. Your storage node has its own key, so it is not linked to your posts.
         </p>
-        <div className="flex justify-end space-x-2">
-          <button
-            onClick={onClose}
-            className="libr-button bg-muted hover:bg-muted/70 text-foreground px-6 py-2"
-          >
+        <StorageControl />
+        <div className="flex justify-end mt-4">
+          <button onClick={onClose} className="libr-button bg-muted hover:bg-muted/70 text-foreground px-6 py-2">
             Close
           </button>
         </div>
@@ -191,8 +190,8 @@ export const Menubar: React.FC = () => {
 
   return (
     <div className="w-full p-1 bg-transparent items-center rounded-3xl h-full flex flex-col z-50">
-      <ComingSoonDialog open={dialogOpen} onClose={() => {
-        logger.info('[ComingSoonDialog] Closed.');
+      <HostDatabaseDialog open={dialogOpen} onClose={() => {
+        logger.info('[HostDatabaseDialog] Closed.');
         setDialogOpen(false);
       }} />
       <div className="flex-1 overflow-y-auto flex flex-col w-full items-center gap-4 px-1 pt-2">

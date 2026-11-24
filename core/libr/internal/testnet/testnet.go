@@ -109,11 +109,14 @@ func NewRelay(listen string, opts ...libp2p.Option) (host.Host, error) {
 	rc.Limit = &relayv2.RelayLimit{Duration: 30 * time.Minute, Data: 1 << 24}
 	// Every test peer shares 127.0.0.1, so the per-IP caps must not apply.
 	rc.MaxReservationsPerIP, rc.MaxReservationsPerASN = 1<<10, 1<<10
-	rc.MaxCircuits = 64
+	rc.MaxCircuits = 1024 // experiments add dozens of NATed nodes
 	return libp2p.New(append([]libp2p.Option{
 		libp2p.ListenAddrStrings(listen),
 		libp2p.ForceReachabilityPublic(),
 		libp2p.EnableRelayService(relayv2.WithResources(rc)),
+		// One process runs every peer; the relay's own resource manager would otherwise
+		// cap the circuits dozens of in-process peers open through it.
+		libp2p.ResourceManager(&network.NullResourceManager{}),
 	}, opts...)...)
 }
 

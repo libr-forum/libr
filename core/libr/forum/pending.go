@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/libr-forum/Libr/core/libr/proto"
 	"github.com/libr-forum/Libr/core/libr/wire"
@@ -85,7 +86,9 @@ func (c *Client) advance(ctx context.Context, p *Pending) (*Posted, *Removed, er
 		return nil, nil, fmt.Errorf("unknown pending kind %q", p.Kind)
 	}
 
+	start := time.Now()
 	votes, waiting, err := c.quorum(ctx, set, p.Votes, ask)
+	c.span("quorum", start, err)
 	p.Votes, p.Waiting = votes, waiting
 	if errors.Is(err, ErrPending) || errors.Is(err, ErrNoQuorum) {
 		return nil, nil, &QuorumError{Pending: p, Err: err}

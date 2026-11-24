@@ -46,9 +46,12 @@ type Config struct {
 	Bootstrap []string           // else LIBR_BOOTSTRAP; seeds.json peers are always added
 	SeedURLs  []string           // else LIBR_SEED_URLS; else seeds.json
 	// Policy and Report decide for a moderator (return moderator.ErrDefer to queue an
-	// item for human review). Nil: approve posts, queue every report.
+	// item for human review). Nil: queue every post and every report for a human.
 	Policy moderator.Policy
 	Report moderator.ReportPolicy
+	// NoModerate: never serve votes, even when Key is in a moderator set (mobile:
+	// a phone is not online often enough to moderate, and runs no content policy).
+	NoModerate bool
 	// OnFinalized is called when a pending post or report completes, is rejected or
 	// expires.
 	OnFinalized func(PendingInfo)
@@ -127,7 +130,7 @@ func Start(ctx context.Context, cfg Config) (*App, error) {
 	envList(&cfg.Bootstrap, "LIBR_BOOTSTRAP")
 	envList(&cfg.SeedURLs, "LIBR_SEED_URLS")
 	// Nothing configured: use the network built into this binary. Bootstrap peers
-	// from seeds.json are added by seeds.Resolve in any case.
+	// from seeds.json are added by seeds.Resolve when none are configured.
 	built := seeds.Built()
 	if len(cfg.Relays) == 0 {
 		cfg.Relays = built.Relays
@@ -139,6 +142,9 @@ func Start(ctx context.Context, cfg Config) (*App, error) {
 	pub := cfg.Key.Public().(ed25519.PublicKey)
 	isMod := false
 	for _, c := range reg.Communities() {
+		if cfg.NoModerate {
+			break
+		}
 		if s, _ := reg.Head(c); s.IsMember(pub) {
 			isMod = true
 		}
@@ -159,6 +165,13 @@ func Start(ctx context.Context, cfg Config) (*App, error) {
 		return fail(err)
 	}
 	a.client = &forum.Client{Host: h, DHT: a.dht, Sets: reg, Key: cfg.Key}
+	if path := os.Getenv("LIBR_TRACE"); path != "" { // debugging: one JSON line per network request
+		if f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); err == nil {
+			var mu sync.Mutex
+			enc := json.NewEncoder(f)
+			a.client.Trace = func(e forum.Event) { mu.Lock(); defer mu.Unlock(); _ = enc.Encode(e) }
+		}
+	}
 	if a.store, err = openPending(filepath.Join(cfg.DataDir, "pending")); err != nil {
 		return fail(err)
 	}
@@ -167,9 +180,10 @@ func Start(ctx context.Context, cfg Config) (*App, error) {
 		if err != nil {
 			return fail(err)
 		}
-		a.mod = &moderator.Mod{Key: cfg.Key, Sets: reg, Policy: cfg.Policy, Report: cfg.Report, Queue: q}
-		if a.mod.Policy == nil {
-			a.mod.Policy = moderator.ApproveAll
+		a.mod = &moderator.Mod{Key: cfg.Key, Sets: reg, Policy: cfg.Policy, Report: cfg.Report, Queue: q,
+			VoteLog: filepath.Join(cfg.DataDir, "modvotes.jsonl")}
+		if a.mod.Policy == nil { // no policy: a human decides every post
+			a.mod.Policy = func(context.Context, proto.Msg) (bool, error) { return false, moderator.ErrDefer }
 		}
 		if a.mod.Report == nil {
 			a.mod.Report = func(context.Context, proto.Msg, string) (bool, error) { return false, moderator.ErrDefer }
@@ -238,6 +252,9 @@ func (a *App) Communities() []Community {
 
 // IsMod reports whether the user is in community's current moderator set.
 func (a *App) IsMod(community string) bool {
+	if a.mod == nil {
+		return false
+	}
 	s, ok := a.reg.Head(community)
 	return ok && s.IsMember(a.cfg.Key.Public().(ed25519.PublicKey))
 }

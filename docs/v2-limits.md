@@ -47,7 +47,10 @@ change them there and here together.
 | At most 16 policy (LLM) decisions at once; more get `busy` | `moderator.maxDeciding` |
 | Membership, epoch, timestamp within ±5 min, author signature: all checked before the policy runs | `moderator.Decide` |
 | Reports: only verifying certificates, reporter signature over community/epoch/msg/reason, reason ≤ 1 KiB | `moderator.DecideReport` |
-| Policy errors: a post is rejected, a reported post is kept | `moderator.Decide`, `DecideReport` |
+| Policy errors: a post is rejected, a reported post is kept (desktop: classifier errors and timeouts go to the human queue instead) | `moderator.Decide`, `DecideReport`, `mod_client/policy.go` |
+| One vote per message: a repeated request gets the vote already signed, also after a restart (`modvotes.jsonl`), so an author cannot retry until the policy approves | `moderator.votes` |
+| Who moderates: the desktop app (LLM pipeline + human queue) or `librctl mod serve` (keyword rules; with `-queue`, `-review` words and images go to a human, decided with `librctl mod queue`). Phones never serve votes (`app.Config.NoModerate`); an app with no policy queues every post for a human | `app.Start`, `cmd/librctl` |
+| Human queue: ≤ 1000 undecided items, ≤ 2 undecided reports per message, items dropped after 7 days | `moderator.maxQueued`, `maxReportsPerMsg` |
 
 ## Clients (`forum`)
 
@@ -55,6 +58,7 @@ change them there and here together.
 |---|---|
 | Every certificate is re-hashed and verified; tampered copies are skipped | `forum.Get` |
 | Receipts and removal acks must be signed by the peer actually contacted | `forum.checkReceipt`, `checkAck` |
+| Each feed bucket is read from the K closest index nodes and the union is used | `forum.IndexReaders` |
 | Tombstones hide a post only after verifying against that post; fetching one post by hash checks its bucket's tombstones too (fails closed) | `forum.Feed`, `forum.Get` |
 | Feed range ≤ 1 week (672 buckets), ≤ 2000 certificate fetches per call | `forum.MaxFeedBuckets`, `MaxFeedFetches` |
 
@@ -87,5 +91,18 @@ change them there and here together.
 - **Feed truncation.** Buckets with more than 1000 posts, and feeds with more than 2000,
   are cut arbitrarily; junk index entries can crowd out real ones within those caps.
 - **Relay metadata.** Relays see who talks to whom, and how much (no content).
+- **Predictable index keys.** A bucket's index key is a public hash of (community,
+  bucket). Sybil DB nodes with ground IDs closest to it can hide the bucket and its
+  tombstones from readers. Reading all K narrows this, it does not close it.
+- **Removal reaches the reported certificate's replicas and the index nodes.** Other
+  certificates of the same message (other vote subsets) stay on their replicas;
+  readers hide them through the bucket's tombstones.
+- **Store receipts are checked, then dropped.** "Stored" means ⌈(K+1)/2⌉ nodes
+  signed a receipt at posting time, not that they still hold the post.
+- **Trust in a genesis comes from where the file came from.** Founder keys are read
+  from the community file itself; a file in the data dir or `LIBR_COMMUNITIES`
+  replaces the shipped one of the same name.
+- **No revocation before epoch hand-off (#70).** A leaked moderator key stays valid
+  until a new genesis ships.
 - **Seed servers can lie about addresses.** That costs a failed dial, not an
   impersonation: Noise authenticates the peer ID.

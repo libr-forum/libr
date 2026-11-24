@@ -71,10 +71,10 @@ services:
     volumes: ["./out:/out:ro", "./out/keys/db6.key:/data/node.key:ro"]
     networks: [nat1]
 
-  mod1: { <<: *mod, command: [mod, serve, -key, /out/keys/mod1.key, "-report-policy=keyword:remove-me"], networks: [nat1] }
-  mod2: { <<: *mod, command: [mod, serve, -key, /out/keys/mod2.key, "-report-policy=keyword:remove-me"], networks: [nat1] }
-  mod3: { <<: *mod, command: [mod, serve, -key, /out/keys/mod3.key, "-report-policy=keyword:remove-me"], networks: [nat2] }
-  mod4: { <<: *mod, command: [mod, serve, -key, /out/keys/mod4.key, "-policy=keyword:forbidden", "-report-policy=keyword:remove-me"], networks: [nat2] }
+  mod1: { <<: *mod, command: [mod, serve, -key, /out/keys/mod1.key, -votes, /out/mod1.votes, "-report-policy=keyword:remove-me"], networks: [nat1] }
+  mod2: { <<: *mod, command: [mod, serve, -key, /out/keys/mod2.key, -votes, /out/mod2.votes, "-report-policy=keyword:remove-me"], networks: [nat1] }
+  mod3: { <<: *mod, command: [mod, serve, -key, /out/keys/mod3.key, -votes, /out/mod3.votes, "-report-policy=keyword:remove-me"], networks: [nat2] }
+  mod4: { <<: *mod, command: [mod, serve, -key, /out/keys/mod4.key, -votes, /out/mod4.votes, "-policy=keyword:forbidden", "-report-policy=keyword:remove-me"], networks: [nat2] }
 
   # One-off clients: docker compose run --rm client1 client submit ...
   client1: { <<: *ctl, profiles: [client], networks: [nat1] }

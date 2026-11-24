@@ -58,6 +58,8 @@ export function SaveModKey(arg1:string,arg2:string):Promise<void>;
 
 export function SendInput(arg1:string,arg2:string):Promise<app.Outcome>;
 
+export function SetStorageCommunities(arg1:Array<string>):Promise<void>;
+
 export function SetStorageContribution(arg1:boolean):Promise<void>;
 
 export function TestDirectCloudConnection(arg1:string,arg2:string,arg3:string):Promise<string>;

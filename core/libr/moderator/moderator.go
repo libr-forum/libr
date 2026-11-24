@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -18,7 +19,8 @@ import (
 )
 
 // Policy decides whether a message may be published. An error means the policy could
-// not decide (e.g. the LLM is unreachable), and the message is rejected.
+// not decide (e.g. the LLM is unreachable), and the message is rejected. A moderator
+// asks its policy at most once per message: the vote it signs is final.
 type Policy func(ctx context.Context, m proto.Msg) (bool, error)
 
 // ApproveAll approves everything (testbeds).
@@ -63,6 +65,15 @@ const (
 	maxDeciding = 16
 )
 
+// How long decisions are kept. A post vote outlives the timestamp window by
+// clockMargin; a rejected content hash is kept for contentFor; a report decision is
+// kept for as long as the moderator runs (reports have no timestamp window).
+var (
+	clockMargin = time.Hour
+	contentFor  = 30 * 24 * time.Hour
+	forever     = time.Unix(1<<40, 0)
+)
+
 // ErrBusy is returned when maxDeciding decisions are already running.
 var ErrBusy = errors.New("busy")
 
@@ -76,6 +87,15 @@ type Mod struct {
 	// Resolve. Nil: deferrals are rejections.
 	Queue *Queue
 	Now   func() time.Time // nil means time.Now
+	// VoteLog is the file of every vote this moderator signed; a repeated request
+	// gets the same vote. Empty: kept in memory only (a restart forgets it).
+	VoteLog string
+
+	locksMu   sync.Mutex
+	locks     map[string]*keyLock
+	votesOnce sync.Once
+	votes     *votes
+	votesErr  error
 
 	authors   *wire.Limiter
 	reporters *wire.Limiter
@@ -125,49 +145,107 @@ func voteResp(v *proto.Vote, err error) wire.VoteResp {
 	return wire.VoteResp{Vote: v}
 }
 
-// queued answers a repeated request from the queue: the human's vote once decided,
-// ErrPending until then. ok is false for items never queued.
-func (m *Mod) queued(key string) (*proto.Vote, bool, error) {
-	if m.Queue == nil {
-		return nil, false, nil
+// lock serializes everything about one decision key (a post or a report on a post),
+// so two concurrent requests cannot both run the policy, or one sign while the other
+// queues the item: a moderator's decision on a key is made once.
+func (m *Mod) lock(key string) func() {
+	m.locksMu.Lock()
+	if m.locks == nil {
+		m.locks = map[string]*keyLock{}
 	}
-	it, ok := m.Queue.get(key)
-	if !ok {
-		return nil, false, nil
+	l := m.locks[key]
+	if l == nil {
+		l = &keyLock{}
+		m.locks[key] = l
 	}
-	if it.Vote == nil {
-		return nil, true, ErrPending
-	}
-	return it.Vote, true, nil
-}
-
-// deferOr queues it when the policy deferred; otherwise signs sign(approve).
-func (m *Mod) deferOr(it Item, approve bool, err error, sign func(bool) proto.Vote) (*proto.Vote, error) {
-	if errors.Is(err, ErrDefer) && m.Queue != nil {
-		if qerr := m.Queue.add(it); qerr != nil {
-			return nil, qerr
+	l.refs++
+	m.locksMu.Unlock()
+	l.mu.Lock()
+	return func() {
+		l.mu.Unlock()
+		m.locksMu.Lock()
+		if l.refs--; l.refs == 0 {
+			delete(m.locks, key)
 		}
-		return nil, ErrPending
+		m.locksMu.Unlock()
 	}
-	v := sign(approve && err == nil)
-	return &v, nil
 }
 
-// Resolve records a human decision on a queued item and signs the vote that every
-// later request for it receives.
+type keyLock struct {
+	mu   sync.Mutex
+	refs int
+}
+
+// voteLog opens the vote log once.
+func (m *Mod) voteLog() (*votes, error) {
+	m.votesOnce.Do(func() { m.votes, m.votesErr = openVotes(m.VoteLog, m.now()) })
+	return m.votes, m.votesErr
+}
+
+// decided returns this moderator's decision on key: from the vote log, or from a
+// human decision in the queue. pending is true while a human has not decided yet.
+func (m *Mod) decided(key string) (approve, ok, pending bool, err error) {
+	log, err := m.voteLog()
+	if err != nil {
+		return false, false, false, err
+	}
+	if v, found := log.get(key, m.now()); found {
+		return v.Approve, true, false, nil
+	}
+	if m.Queue != nil {
+		if it, found := m.Queue.get(key); found {
+			if it.Vote == nil {
+				return false, false, true, nil
+			}
+			return it.Vote.Approve, true, false, nil
+		}
+	}
+	return false, false, false, nil
+}
+
+// record makes a decision final: it is written (and synced) to the vote log before any
+// vote carrying it leaves this moderator.
+func (m *Mod) record(key string, until time.Time, v proto.Vote) error {
+	log, err := m.voteLog()
+	if err != nil {
+		return err
+	}
+	_, err = log.put(key, until, v, m.now())
+	return err
+}
+
+// Resolve records a human decision on a queued item. Every later request for the
+// item receives a vote with this decision.
 func (m *Mod) Resolve(key string, approve bool) error {
+	unlock := m.lock(key)
+	defer unlock()
 	it, ok := m.Queue.get(key)
 	if !ok {
 		return fmt.Errorf("no queued item %q", key)
 	}
+	if _, done, _, err := m.decided(key); err != nil {
+		return err
+	} else if done {
+		return errors.New("already decided")
+	}
 	var v proto.Vote
+	until := m.now().Add(keepFor)
 	switch it.Kind {
 	case "post":
 		v = proto.SignModVote(m.Key, it.Cert.Msg, it.Epoch, approve)
+		if !approve {
+			if err := m.record(ContentKey(it.Cert.Msg, it.Epoch), m.now().Add(contentFor), v); err != nil {
+				return err
+			}
+		}
 	case "report":
 		v = proto.SignRepVote(m.Key, repCert(it.Cert.Msg, it.Epoch, it.Reason), approve)
+		until = forever
 	default:
 		return fmt.Errorf("unknown item kind %q", it.Kind)
+	}
+	if err := m.record(key, until, v); err != nil {
+		return err
 	}
 	return m.Queue.decide(key, v)
 }
@@ -205,14 +283,35 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	if err := proto.VerifyAuthor(c); err != nil {
 		return nil, err
 	}
-	// A queued post is answered before the timestamp check: the author re-asks later.
+	// A decided or queued post is answered before the timestamp check: the author
+	// re-asks later, and gets the same decision.
 	key := PostKey(msg, c.Epoch)
-	if v, ok, err := m.queued(key); ok {
-		return v, err
+	unlock := m.lock(key)
+	defer unlock()
+	sign := func(approve bool) *proto.Vote { v := proto.SignModVote(m.Key, msg, c.Epoch, approve); return &v }
+	if approve, ok, pending, err := m.decided(key); err != nil {
+		return nil, err
+	} else if pending {
+		return nil, ErrPending
+	} else if ok {
+		return sign(approve), nil
 	}
 	// Both directions: a backdated message would land in an old feed bucket.
 	if d := now.Sub(time.Unix(msg.Ts, 0)); d > proto.MaxClockSkew || d < -proto.MaxClockSkew {
 		return nil, errors.New("timestamp too far from now")
+	}
+	// Content this moderator rejected before stays rejected, whoever signs it and
+	// whenever: re-signing a post must not buy a fresh policy decision.
+	ckey := ContentKey(msg, c.Epoch)
+	// Held across the policy call: concurrent re-signed copies of the same content
+	// (new timestamps or author keys) wait, then see a rejection recorded by the first.
+	unlockContent := m.lock(ckey)
+	defer unlockContent()
+	if approve, ok, _, err := m.decided(ckey); err != nil {
+		return nil, err
+	} else if ok && !approve {
+		v := sign(false)
+		return v, m.record(key, postUntil(msg), *v)
 	}
 	if m.authors != nil && !m.authors.Allow(string(msg.Author)) {
 		return nil, wire.ErrRateLimited
@@ -224,8 +323,25 @@ func (m *Mod) Decide(ctx context.Context, c proto.MsgCert) (*proto.Vote, error) 
 	if busy := m.decide(func() { ok, err = m.Policy(ctx, msg) }); busy != nil {
 		return nil, busy
 	}
-	return m.deferOr(Item{Key: key, Kind: "post", Cert: proto.MsgCert{Msg: msg, AuthorSig: c.AuthorSig}, Epoch: c.Epoch}, ok, err,
-		func(approve bool) proto.Vote { return proto.SignModVote(m.Key, msg, c.Epoch, approve) })
+	if errors.Is(err, ErrDefer) && m.Queue != nil {
+		if qerr := m.Queue.add(Item{Key: key, Kind: "post", Cert: proto.MsgCert{Msg: msg, AuthorSig: c.AuthorSig}, Epoch: c.Epoch}); qerr != nil {
+			return nil, qerr
+		}
+		return nil, ErrPending
+	}
+	v := sign(ok && err == nil)
+	if !v.Approve {
+		if err := m.record(ckey, m.now().Add(contentFor), *v); err != nil {
+			return nil, err
+		}
+	}
+	return v, m.record(key, postUntil(msg), *v)
+}
+
+// postUntil is how long a post vote is kept: past the end of the window in which the
+// timestamp check admits the post, with a margin for clock adjustments.
+func postUntil(msg proto.Msg) time.Time {
+	return time.Unix(msg.Ts, 0).Add(proto.MaxClockSkew + clockMargin)
 }
 
 // DecideReport checks a report and returns this moderator's signed vote on removing
@@ -247,9 +363,21 @@ func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, 
 		!ed25519.Verify(r.Reporter, proto.ReportBytes(msg.Community, r.Epoch, id, r.Reason), r.Sig) {
 		return nil, errors.New("bad reporter signature")
 	}
-	key := ReportKey(msg, r.Epoch, r.Reason)
-	if v, ok, err := m.queued(key); ok {
-		return v, err
+	// One decision per reported post, whatever the reason: a reporter cannot buy a fresh
+	// policy decision with a new reason string. The vote is signed over the reason asked.
+	key := ReportKey(msg, r.Epoch)
+	unlock := m.lock(key)
+	defer unlock()
+	sign := func(remove bool) *proto.Vote {
+		v := proto.SignRepVote(m.Key, repCert(msg, r.Epoch, r.Reason), remove)
+		return &v
+	}
+	if remove, ok, pending, err := m.decided(key); err != nil {
+		return nil, err
+	} else if pending {
+		return nil, ErrPending
+	} else if ok {
+		return sign(remove), nil
 	}
 	if m.reporters != nil && !m.reporters.Allow(string(r.Reporter)) {
 		return nil, wire.ErrRateLimited
@@ -265,8 +393,12 @@ func (m *Mod) DecideReport(ctx context.Context, r wire.ReportReq) (*proto.Vote, 
 	if busy := m.decide(func() { remove, err = policy(ctx, msg, r.Reason) }); busy != nil {
 		return nil, busy
 	}
-	return m.deferOr(Item{Key: key, Kind: "report", Cert: r.Cert, Epoch: r.Epoch, Reason: r.Reason}, remove, err,
-		func(approve bool) proto.Vote {
-			return proto.SignRepVote(m.Key, repCert(msg, r.Epoch, r.Reason), approve)
-		})
+	if errors.Is(err, ErrDefer) && m.Queue != nil {
+		if qerr := m.Queue.add(Item{Key: key, Kind: "report", Cert: r.Cert, Epoch: r.Epoch, Reason: r.Reason}); qerr != nil {
+			return nil, qerr
+		}
+		return nil, ErrPending
+	}
+	v := sign(remove && err == nil)
+	return v, m.record(key, forever, *v)
 }

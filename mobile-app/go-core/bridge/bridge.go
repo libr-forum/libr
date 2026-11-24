@@ -164,6 +164,7 @@ func StartNode(configJSON string) string {
 		DataDir: dir, Key: keycache.PrivKey,
 		Relays: cfg.Relays, Bootstrap: cfg.Bootstrap, SeedURLs: cfg.SeedURLs,
 		OnFinalized: finalized,
+		NoModerate:  true, // phones do not moderate; moderators use the desktop app or librctl
 	})
 	if err != nil {
 		return errStr(err)
@@ -447,7 +448,9 @@ func finalized(p libr.PendingInfo) {
 	}
 }
 
-// ── Moderation (when the active identity is in a moderator set) ───────────────
+// ── Moderation ────────────────────────────────────────────────────────────────
+// Phones never moderate (StartNode sets NoModerate): IsMod is false, ModQueue is
+// empty and ModDecide fails. The calls stay so the Kotlin module keeps resolving.
 
 // ModQueue returns the human review queue: [{key,kind,cert,epoch,reason,received,vote}].
 func ModQueue() string {

@@ -6,11 +6,14 @@
 //	librctl genesis -community NAME -f 1 -mods PUBKEY,... (-founders KEYFILE,... | -founder-keys PUBKEY,... -out FILE)
 //	librctl sign    -key FOUNDERKEY -in FILE     (each founder, on their own machine)
 //	librctl verify  -in FILE
-//	librctl mod serve -key FILE -communities DIR -policy approve-all|keyword:w1,w2 [net flags]
+//	librctl mod serve -key FILE -communities DIR -policy approve-all|keyword:w1,w2 -votes FILE [-queue FILE -review w1,w2] [net flags]
+//	librctl mod queue [-admin ADDR] list | approve KEY | reject KEY
 //	librctl client submit -communities DIR -community NAME -text TEXT [net flags]
 //	librctl client feed   -communities DIR -community NAME [-since 1h] [-json] [net flags]
 //	librctl client report -communities DIR -hash HEX -reason TEXT [net flags]
 //	librctl client delete -communities DIR -hash HEX -key AUTHORKEY [net flags]
+//	librctl client bench  -communities DIR -community NAME [-n 20] [-reads 10] [-index-readers K] -trace FILE [net flags]
+//	librctl client check  -communities DIR -in BENCH_OUTPUT [net flags]
 //
 // Net flags: -relays, -bootstrap (comma-separated multiaddrs with /p2p/ID), -listen,
 // -communities, -seeds URLS, -cache FILE, -private, -trace FILE. Bootstrap peers come
@@ -30,10 +33,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -57,7 +64,7 @@ func main() {
 	}
 }
 
-const usage = "usage: librctl keygen | genesis | mod serve | client submit | client feed (see -h of each)"
+const usage = "usage: librctl keygen | genesis | mod serve | mod queue | client submit | client feed | client report | client delete | client bench | client check (see -h of each)"
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
@@ -78,7 +85,9 @@ func run(args []string, out io.Writer) error {
 		return verifyGenesis(args, out)
 	case "mod serve":
 		return modServe(args)
-	case "client submit", "client feed", "client report", "client delete":
+	case "mod queue":
+		return modQueue(args, out)
+	case "client submit", "client feed", "client report", "client delete", "client bench", "client check":
 		return clientCmd(cmd, args, out)
 	}
 	return errors.New(usage)
@@ -123,7 +132,7 @@ func keygen(args []string, out io.Writer) error {
 func genesis(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("genesis", flag.ContinueOnError)
 	name := fs.String("community", "", "community name")
-	f := fs.Uint64("f", 1, "faulty moderators tolerated (needs >= 3f+1 mods)")
+	f := fs.Uint64("f", 1, "faulty moderators tolerated (needs exactly 3f+1 mods)")
 	founders := fs.String("founders", "", "comma-separated founder seed files (all keys on this machine: dev only)")
 	founderKeys := fs.String("founder-keys", "", "comma-separated founder public keys (base64): write an unsigned file for `sign`")
 	outPath := fs.String("out", "", "with -founder-keys: file to write")
@@ -347,25 +356,49 @@ func (n *node) close() {
 func modServe(args []string) error {
 	fs := flag.NewFlagSet("mod serve", flag.ContinueOnError)
 	nf := addNetFlags(fs, true)
-	policy := fs.String("policy", "approve-all", "posts: approve-all | keyword:w1,w2 (deterministic; no LLM)")
+	policy := fs.String("policy", "approve-all", "posts: approve-all | keyword:w1,w2 | llm:FILE (local Ollama model, rules per community; see llm.go)")
 	reportPolicy := fs.String("report-policy", "", "reports: remove what this policy would reject (default: -policy)")
+	voteLog := fs.String("votes", "", "file of every decision this moderator signs (required; a restart must never sign twice). \"memory\": keep in memory only (tests)")
+	review := fs.String("review", "", "posts containing any of these comma-separated words, or images, go to the human queue (needs -queue)")
+	queuePath := fs.String("queue", "", "human review queue file; with it, every report goes to a human unless -report-policy is set")
+	admin := fs.String("admin", "127.0.0.1:7070", "with -queue: loopback address for `librctl mod queue` (list and decide)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *nf.key == "" {
 		return errors.New("mod serve: -key is required (the moderator's identity)")
 	}
-	pol, err := parsePolicy(*policy)
+	pol, judgesImages, err := parsePolicy(*policy)
 	if err != nil {
 		return err
 	}
-	mod := &moderator.Mod{Policy: pol}
+	switch *voteLog {
+	case "":
+		return errors.New("mod serve: -votes FILE is required (use -votes memory only for throwaway tests)")
+	case "memory":
+		*voteLog = ""
+	}
+	mod := &moderator.Mod{Policy: pol, VoteLog: *voteLog}
 	if *reportPolicy != "" {
-		rp, err := parsePolicy(*reportPolicy)
+		rp, _, err := parsePolicy(*reportPolicy)
 		if err != nil {
 			return err
 		}
 		mod.Report = moderator.RemoveIfRejected(rp)
+	}
+	if *queuePath != "" {
+		if mod.Queue, err = moderator.NewQueue(*queuePath); err != nil {
+			return err
+		}
+		mod.Policy = withReview(pol, split(*review), !judgesImages)
+		if mod.Report == nil {
+			mod.Report = func(context.Context, proto.Msg, string) (bool, error) { return false, moderator.ErrDefer }
+		}
+		if err := serveAdmin(*admin, mod); err != nil {
+			return err
+		}
+	} else if *review != "" {
+		return errors.New("mod serve: -review needs -queue")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -382,14 +415,121 @@ func modServe(args []string) error {
 	return nil
 }
 
-func parsePolicy(spec string) (moderator.Policy, error) {
+// withReview defers to the human queue posts that p approves but that hold one of
+// words, or an image unless p judges images itself; p's rejections stand.
+func withReview(p moderator.Policy, words []string, images bool) moderator.Policy {
+	if images {
+		words = append(words, "data:image/")
+	}
+	if len(words) == 0 {
+		return p
+	}
+	review := moderator.Keywords(words...)
+	return func(ctx context.Context, m proto.Msg) (bool, error) {
+		ok, err := p(ctx, m)
+		if err != nil || !ok {
+			return ok, err
+		}
+		if clean, _ := review(ctx, m); !clean {
+			return false, moderator.ErrDefer
+		}
+		return true, nil
+	}
+}
+
+// serveAdmin lists the queue (GET /queue) and records decisions
+// (POST /decide?key=K&approve=true|false) on a loopback address only.
+func serveAdmin(addr string, mod *moderator.Mod) error {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return err
+	}
+	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+		return fmt.Errorf("-admin %s: must be a loopback address", addr)
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /queue", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(mod.Queue.Items())
+	})
+	mux.HandleFunc("POST /decide", func(w http.ResponseWriter, r *http.Request) {
+		if err := mod.Resolve(r.URL.Query().Get("key"), r.URL.Query().Get("approve") == "true"); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fmt.Fprintln(w, "ok")
+	})
+	go func() { _ = http.Serve(ln, mux) }()
+	return nil
+}
+
+// modQueue is the human side of a server moderator: list the queue, or approve or
+// reject one item (for a report, approve means remove the post).
+func modQueue(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("mod queue", flag.ContinueOnError)
+	admin := fs.String("admin", "127.0.0.1:7070", "the -admin address of mod serve")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	base := "http://" + *admin
+	var resp *http.Response
+	var err error
+	switch a := fs.Args(); {
+	case len(a) == 0 || a[0] == "list":
+		resp, err = http.Get(base + "/queue")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		var items []moderator.Item
+		if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
+			return err
+		}
+		for _, it := range items {
+			state := "undecided"
+			if it.Vote != nil {
+				state = map[bool]string{true: "approved", false: "rejected"}[it.Vote.Approve]
+			}
+			fmt.Fprintf(out, "%s\t%s\t%s\t%q\t%q\n", it.Key, it.Kind, state, it.Reason, trim(string(it.Cert.Msg.Content), 80))
+		}
+		return nil
+	case len(a) == 2 && (a[0] == "approve" || a[0] == "reject"):
+		resp, err = http.Post(base+"/decide?key="+url.QueryEscape(a[1])+"&approve="+fmt.Sprint(a[0] == "approve"), "", nil)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			return errors.New(strings.TrimSpace(string(b)))
+		}
+		fmt.Fprint(out, string(b))
+		return nil
+	}
+	return errors.New("usage: librctl mod queue [-admin ADDR] list | approve KEY | reject KEY")
+}
+
+func trim(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "…"
+	}
+	return s
+}
+
+// parsePolicy also reports whether the policy judges attached images itself.
+func parsePolicy(spec string) (moderator.Policy, bool, error) {
 	switch {
 	case spec == "approve-all":
-		return moderator.ApproveAll, nil
+		return moderator.ApproveAll, false, nil
 	case strings.HasPrefix(spec, "keyword:"):
-		return moderator.Keywords(split(strings.TrimPrefix(spec, "keyword:"))...), nil
+		return moderator.Keywords(split(strings.TrimPrefix(spec, "keyword:"))...), false, nil
+	case strings.HasPrefix(spec, "llm:"):
+		return loadLLMPolicy(strings.TrimPrefix(spec, "llm:"))
 	}
-	return nil, fmt.Errorf("unknown policy %q", spec)
+	return nil, false, fmt.Errorf("unknown policy %q", spec)
 }
 
 func clientCmd(cmd string, args []string, out io.Writer) error {
@@ -402,6 +542,10 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 	since := fs.Duration("since", time.Hour, "feed: how far back")
 	asJSON := fs.Bool("json", false, "feed: print certificates as JSON lines")
 	timeout := fs.Duration("timeout", 2*time.Minute, "overall timeout")
+	benchN := fs.Int("n", 20, "bench: posts to make, one after another")
+	benchReads := fs.Int("reads", 10, "bench: feed reads after posting")
+	readers := fs.Int("index-readers", 0, "index nodes read per feed bucket (0: default)")
+	checkIn := fs.String("in", "", "check: bench output whose posts to fetch again by hash")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -412,7 +556,9 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 		return err
 	}
 	defer n.close()
-	c := &forum.Client{Host: n.host, DHT: n.dht, Sets: n.reg, Key: n.key}
+	c := &forum.Client{Host: n.host, DHT: n.dht, Sets: n.reg, Key: n.key, IndexReaders: *readers}
+	var tag atomic.Value // bench: which operation trace events belong to
+	tag.Store("")
 	if *nf.trace != "" {
 		f, err := os.OpenFile(*nf.trace, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -424,8 +570,18 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 		c.Trace = func(e forum.Event) {
 			mu.Lock()
 			defer mu.Unlock()
-			_ = enc.Encode(e)
+			_ = enc.Encode(struct {
+				Tag string `json:"tag,omitempty"`
+				forum.Event
+			}{tag.Load().(string), e})
 		}
+	}
+
+	if cmd == "client bench" {
+		return bench(ctx, c, *community, *benchN, *benchReads, func(t string) { tag.Store(t) }, out)
+	}
+	if cmd == "client check" {
+		return check(ctx, c, *checkIn, out)
 	}
 
 	if cmd == "client submit" {
@@ -487,6 +643,105 @@ func clientCmd(cmd string, args []string, out io.Writer) error {
 		}
 		author, _ := proto.PeerIDFor(cert.Msg.Author)
 		fmt.Fprintf(out, "%s\t%s\t%s\n", time.Unix(cert.Msg.Ts, 0).UTC().Format(time.RFC3339), shortID(author), cert.Msg.Content)
+	}
+	return nil
+}
+
+// bench posts n times, one after another (each waits for full replication, so trace
+// events belong to one post), then reads the feed `reads` times. One JSON line per
+// operation: its tag, outcome, end-to-end milliseconds and, for reads, posts seen.
+func bench(ctx context.Context, c *forum.Client, community string, n, reads int, setTag func(string), out io.Writer) error {
+	enc := json.NewEncoder(out)
+	type result struct {
+		Tag   string  `json:"tag"`
+		Ms    float64 `json:"ms"`
+		Err   string  `json:"err,omitempty"`
+		Seen  int     `json:"seen,omitempty"`
+		Votes int     `json:"votes,omitempty"`
+		Bytes int     `json:"cert_bytes,omitempty"`
+		Hash  string  `json:"hash,omitempty"`
+	}
+	emit := func(r result, start time.Time, err error) error {
+		r.Ms = float64(time.Since(start).Microseconds()) / 1000
+		if err != nil {
+			r.Err = err.Error()
+		}
+		return enc.Encode(r)
+	}
+	since := time.Now().Add(-time.Minute)
+	for i := 0; i < n && ctx.Err() == nil; i++ {
+		tag := fmt.Sprintf("post-%d", i)
+		setTag(tag)
+		// A fresh author per post: moderators allow one author 0.2 posts/s.
+		if _, k, err := ed25519.GenerateKey(nil); err == nil {
+			c.Key = k
+		}
+		start := time.Now()
+		p, err := c.Submit(ctx, community, []byte(fmt.Sprintf("bench %d %d", i, start.UnixNano())))
+		r := result{Tag: tag}
+		if err == nil {
+			r.Votes, r.Hash = len(p.Cert.Votes), hex.EncodeToString(p.Hash[:])
+			if b, jerr := json.Marshal(p.Cert); jerr == nil {
+				r.Bytes = len(b)
+			}
+		}
+		if err := emit(r, start, err); err != nil {
+			return err
+		}
+		if err == nil {
+			select {
+			case <-p.Done:
+			case <-ctx.Done():
+			}
+		}
+		// Moderators allow one peer 5 requests/s: stay under it.
+		time.Sleep(time.Until(start.Add(250 * time.Millisecond)))
+	}
+	for i := 0; i < reads && ctx.Err() == nil; i++ {
+		tag := fmt.Sprintf("feed-%d", i)
+		setTag(tag)
+		start := time.Now()
+		certs, err := c.Feed(ctx, community, since, time.Now())
+		if err := emit(result{Tag: tag, Seen: len(certs)}, start, err); err != nil {
+			return err
+		}
+	}
+	return ctx.Err()
+}
+
+// check fetches every post listed in a bench output by its hash and prints one JSON
+// line per post: whether a verified copy came back, and how long it took.
+func check(ctx context.Context, c *forum.Client, in string, out io.Writer) error {
+	b, err := os.ReadFile(in)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(out)
+	for _, line := range strings.Split(string(b), "\n") {
+		var r struct {
+			Hash string `json:"hash"`
+		}
+		var h proto.Hash
+		if json.Unmarshal([]byte(line), &r) != nil || r.Hash == "" {
+			continue
+		}
+		if raw, err := hex.DecodeString(r.Hash); err != nil || copy(h[:], raw) != len(h) {
+			continue
+		}
+		start := time.Now()
+		_, err := c.Get(ctx, h)
+		res := struct {
+			Hash string  `json:"hash"`
+			OK   bool    `json:"ok"`
+			Ms   float64 `json:"ms"`
+			Err  string  `json:"err,omitempty"`
+		}{Hash: r.Hash, OK: err == nil, Ms: float64(time.Since(start).Microseconds()) / 1000}
+		if err != nil {
+			res.Err = err.Error()
+		}
+		if err := enc.Encode(res); err != nil {
+			return err
+		}
 	}
 	return nil
 }

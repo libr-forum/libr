@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/libr-forum/Libr/core/libr/proto"
 	"os"
 	"path/filepath"
 	"strings"
@@ -135,8 +136,11 @@ func (a *App) Tick(ctx context.Context) {
 		var posted *forum.Posted
 		var removed *forum.Removed
 		var err error
-		if r.P.Kind == forum.KindPost && len(r.P.Votes) == 0 && r.P.Waiting == 0 {
-			// No moderator has it queued, and they refuse an old timestamp: sign afresh.
+		stale := time.Since(time.Unix(r.P.Cert.Msg.Ts, 0)) > proto.MaxClockSkew
+		if r.P.Kind == forum.KindPost && r.P.Waiting == 0 && (len(r.P.Votes) == 0 || stale) {
+			// No moderator has it queued, and moderators who have not voted yet refuse an
+			// old timestamp: sign afresh. Votes on the old message are dropped; content a
+			// moderator rejected stays rejected (moderator.ContentKey).
 			posted, err = a.client.Submit(ctx, r.P.Cert.Msg.Community, []byte(r.Content))
 			var qe *forum.QuorumError
 			if errors.As(err, &qe) {

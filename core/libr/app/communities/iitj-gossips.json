@@ -1,0 +1,44 @@
+{
+  "founders": [
+    "y2vaHnXA+Uvl6UFN2QUMu/dGJRxe1sdF49ABXexyLF8=",
+    "A9MGEMikXW/0lZ9qcNVD/tZ/x0pDEXzEej566H0GnWk="
+  ],
+  "chain": [
+    {
+      "community": "IITJ Gossips",
+      "epoch": 0,
+      "mods": [
+        {
+          "pubkey": "v2XYSkHdaZZei9p+KfHGQOJt4e9RqurqIZfcnh4Hl+M=",
+          "peer_id": "12D3KooWNhW7QNmg9dva95Z1g2Si8VuLK16NDMP15UHFUC5CkCAe"
+        },
+        {
+          "pubkey": "a2SkRe4Bd6334LeOBrBAORnr1Ytdvl70HbI/ofBb6YY=",
+          "peer_id": "12D3KooWH3aoP7XqdSfCiHN2EPnPbMNCrz9Qb867X54GfdRUEy57"
+        },
+        {
+          "pubkey": "Z1feB0FO7sG9uIcPpM76ze8BCFH7ITP32M9fMyCBUrM=",
+          "peer_id": "12D3KooWGmmsXYF3YurDWFBZMqHftLkMTVQWfFzjsqco4Xf3XSCa"
+        },
+        {
+          "pubkey": "xeXSYViuleyTtu0myXKfoXoOGiKv+tPqFlBBqZeMJPY=",
+          "peer_id": "12D3KooWP8sjvQxCrNp12Ch1KbgMWFtwjmNXMLr5w5tr7LSbcPDo"
+        }
+      ],
+      "f": 1,
+      "threshold": 3,
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "tally_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "sigs": [
+        {
+          "signer": "y2vaHnXA+Uvl6UFN2QUMu/dGJRxe1sdF49ABXexyLF8=",
+          "sig": "vsT2eBDSCJZHkxwBscxCv+/+83i2A3mJCwkOv3SQYeJuXxrOaCCRpOXQGHsjWicv+e5jzQtdRsYao8SNHjEkAg=="
+        },
+        {
+          "signer": "A9MGEMikXW/0lZ9qcNVD/tZ/x0pDEXzEej566H0GnWk=",
+          "sig": "7tDYaAOhxHAU+BvePEEH9WUoZlDCXYFgmYXbU8BmmNFpIyer/gVY9zGlaSEtF9UEpppC7VYaDLEkY+wJox5FBw=="
+        }
+      ]
+    }
+  ]
+}

@@ -21,7 +21,7 @@ var (
 // configured LLM, else Google NLP. When the classifier fails the post goes to a human
 // (v1 approved it).
 func postPolicy(ctx context.Context, m proto.Msg) (bool, error) {
-	ok, err := classify(string(m.Content))
+	ok, err := classifyCtx(ctx, string(m.Content))
 	status := "0"
 	switch {
 	case err == moderator.ErrDefer:
@@ -32,6 +32,28 @@ func postPolicy(ctx context.Context, m proto.Msg) (bool, error) {
 	_ = service.AppendToModLog(models.UserMsg{Content: string(m.Content), TimeStamp: m.Ts}, status)
 	return ok, err
 }
+
+// classifyCtx gives up when ctx ends (the moderator's decide timeout): the v1
+// classifiers take no context, so a hung endpoint would otherwise hold a decision
+// slot forever. The post then goes to a human.
+func classifyCtx(ctx context.Context, content string) (bool, error) {
+	type result struct {
+		ok  bool
+		err error
+	}
+	ch := make(chan result, 1)
+	fn := classifier
+	go func() { ok, err := fn(content); ch <- result{ok, err} }()
+	select {
+	case r := <-ch:
+		return r.ok, r.err
+	case <-ctx.Done():
+		return false, moderator.ErrDefer
+	}
+}
+
+// classifier is classify; tests swap it.
+var classifier = classify
 
 func classify(content string) (bool, error) {
 	if imageRe.MatchString(content) {

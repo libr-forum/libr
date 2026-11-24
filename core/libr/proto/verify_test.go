@@ -114,14 +114,46 @@ func TestQuorumProperty(t *testing.T) {
 	}
 }
 
-// TestNoConflictingCerts: with at most f equivocating moderators, approve and reject
-// quorums for the same message cannot both form, since 2(2f+1) - (3f+1) = f+1 > f.
-func TestNoConflictingCerts(t *testing.T) {
+// TestCertsCarryHonestQuorum drives the real verifier: for random vote sets (some
+// with a repeated vote) and any f members called faulty, every accepted certificate holds at
+// least f+1 votes from the others. So a certificate needs f+1 honest approvals, and
+// since an honest moderator signs one vote per message (moderator vote log), a
+// message that f+1 honest moderators rejected can never be certified.
+func TestCertsCarryHonestQuorum(t *testing.T) {
+	rng := rand.New(rand.NewSource(2))
+	author := key("author")
 	for f := 1; f <= 3; f++ {
-		n := 3*f + 1
-		q := 2*f + 1
-		if overlap := 2*q - n; overlap <= f {
-			t.Fatalf("f=%d: quorum overlap %d does not exceed f", f, overlap)
+		c := genesis(t, "honest", f)
+		accepted := 0
+		for trial := 0; trial < 200; trial++ {
+			var signers []ed25519.PrivateKey
+			for _, i := range rng.Perm(len(c.mods))[:1+rng.Intn(len(c.mods))] {
+				signers = append(signers, c.mods[i])
+			}
+			if rng.Intn(3) == 0 { // a repeated vote must not count twice
+				signers = append(signers, signers[rng.Intn(len(signers))])
+			}
+			faulty := map[string]bool{}
+			for _, i := range rng.Perm(len(c.mods))[:f] {
+				faulty[string(c.mods[i].Public().(ed25519.PublicKey))] = true
+			}
+			cert := c.cert(author, "x", signers...)
+			if VerifyMsgCert(c.reg, cert, testNow) != nil {
+				continue
+			}
+			accepted++
+			honest := map[string]bool{}
+			for _, v := range cert.Votes {
+				if k := string(v.Mod); !faulty[k] {
+					honest[k] = true
+				}
+			}
+			if len(honest) < f+1 {
+				t.Fatalf("f=%d: accepted cert with %d honest signers", f, len(honest))
+			}
+		}
+		if accepted == 0 {
+			t.Fatalf("f=%d: no trial produced a valid certificate", f)
 		}
 	}
 }

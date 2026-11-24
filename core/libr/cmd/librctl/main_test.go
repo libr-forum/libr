@@ -2,6 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/ed25519"
+	"errors"
+	"github.com/libr-forum/Libr/core/libr/moderator"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,5 +107,47 @@ func TestSeparateFounderSigning(t *testing.T) {
 	}
 	if _, ok := reg.Head("general"); !ok {
 		t.Fatal("not loadable by nodes")
+	}
+}
+
+// TestReviewQueue: -review sends matching posts and images to the human queue while
+// the keyword policy still rejects outright, and `mod queue` decides over the
+// loopback admin address.
+func TestReviewQueue(t *testing.T) {
+	ctx := context.Background()
+	pol := withReview(moderator.Keywords("spam"), []string{"election"}, true)
+	for _, tc := range []struct {
+		text   string
+		ok     bool
+		queued bool
+	}{
+		{"hello", true, false},
+		{"buy spam", false, false},
+		{"about the election", false, true},
+		{`<img src="data:image/png;base64,AA">`, false, true},
+	} {
+		ok, err := pol(ctx, proto.Msg{Content: []byte(tc.text)})
+		if ok != tc.ok || errors.Is(err, moderator.ErrDefer) != tc.queued {
+			t.Errorf("%q: ok=%v err=%v", tc.text, ok, err)
+		}
+	}
+
+	if err := serveAdmin("0.0.0.0:0", &moderator.Mod{}); err == nil {
+		t.Fatal("admin accepted a non-loopback address")
+	}
+	ln, _ := net.Listen("tcp", "127.0.0.1:0")
+	addr := ln.Addr().String()
+	ln.Close()
+	q, _ := moderator.NewQueue("")
+	m := &moderator.Mod{Key: ed25519.NewKeyFromSeed(make([]byte, 32)), Queue: q, Policy: pol}
+	if err := serveAdmin(addr, m); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"mod", "queue", "-admin", addr, "list"}, &out); err != nil || out.Len() != 0 {
+		t.Fatalf("list: %q %v", out.String(), err)
+	}
+	if err := run([]string{"mod", "queue", "-admin", addr, "approve", "no-such-key"}, &out); err == nil {
+		t.Fatal("approved a missing item")
 	}
 }

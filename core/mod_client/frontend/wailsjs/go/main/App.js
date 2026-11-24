@@ -110,6 +110,10 @@ export function SendInput(arg1, arg2) {
   return window['go']['main']['App']['SendInput'](arg1, arg2);
 }
 
+export function SetStorageCommunities(arg1) {
+  return window['go']['main']['App']['SetStorageCommunities'](arg1);
+}
+
 export function SetStorageContribution(arg1) {
   return window['go']['main']['App']['SetStorageContribution'](arg1);
 }

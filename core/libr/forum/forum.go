@@ -28,8 +28,10 @@ const (
 	Replicas = 4
 	// StoredQuorum is ⌈(K+1)/2⌉ verified receipts, after which a post counts as stored.
 	StoredQuorum = Replicas/2 + 1
-	// indexReaders is how many DB nodes a feed reads each bucket from.
-	indexReaders = 2
+	// IndexReaders is how many of the closest DB nodes a feed reads each bucket from
+	// by default (the union is used). Every index entry is written to Replicas nodes;
+	// reading fewer lets that many Sybils near the predictable bucket key hide it.
+	IndexReaders = Replicas
 	// MaxFeedBuckets bounds one Feed call (one week of 15-minute buckets).
 	MaxFeedBuckets = 7 * 24 * 4
 	// MaxFeedFetches bounds the certificates one Feed call fetches, so index nodes that
@@ -53,7 +55,7 @@ var (
 
 // Event is one network request, for measurements (librctl --trace writes JSON lines).
 type Event struct {
-	Op    string  `json:"op"` // vote | store | index_put | index_get | get
+	Op    string  `json:"op"` // vote | store | index_put | index_get | get, or a phase: lookup | quorum | stored | indexed
 	Peer  string  `json:"peer"`
 	Ms    float64 `json:"ms"`
 	Bytes int     `json:"bytes"`
@@ -68,6 +70,8 @@ type Client struct {
 	Key   ed25519.PrivateKey
 	Trace func(Event)      // optional; called concurrently
 	Now   func() time.Time // nil means time.Now
+	// IndexReaders overrides the default IndexReaders (measurements).
+	IndexReaders int
 }
 
 // Posted is the outcome of Submit.
@@ -111,13 +115,16 @@ func (c *Client) finishPost(ctx context.Context, cert proto.MsgCert) (*Posted, e
 	}
 	p := &Posted{Cert: cert, Hash: cert.Hash()}
 	var err error
+	start := time.Now()
 	p.Done, err = both(
 		func() (d <-chan struct{}, err error) {
 			p.Receipts, d, err = c.replicate(ctx, "store", wire.ProtoStore, p.Hash, cert)
+			c.span("stored", start, err)
 			return d, err
 		},
 		func() (d <-chan struct{}, err error) {
 			p.Indexed, d, err = c.replicate(ctx, "index_put", wire.ProtoIndexPut, indexKeyOf(cert.Msg), cert)
+			c.span("indexed", start, err)
 			return d, err
 		})
 	return p, err
@@ -306,7 +313,7 @@ func (c *Client) Feed(ctx context.Context, community string, since, until time.T
 	return out, nil
 }
 
-// indexGet unions one bucket's hashes and tombstones from indexReaders of the
+// indexGet unions one bucket's hashes and tombstones from IndexReaders of the
 // closest nodes.
 func (c *Client) indexGet(ctx context.Context, community string, bucket int64) ([]proto.Hash, []proto.Tombstone, error) {
 	cands, err := c.closest(ctx, wire.IndexKey(community, bucket))
@@ -317,7 +324,11 @@ func (c *Client) indexGet(ctx context.Context, community string, bucket int64) (
 	seen := map[proto.Hash]bool{}
 	var tombs []proto.Tombstone
 	req := wire.IndexGetReq{Community: community, Bucket: bucket}
-	ok, _ := fanout(ctx, cands, indexReaders, indexReaders, indexReaders, func(ctx context.Context, p peer.ID) bool {
+	readers := c.IndexReaders
+	if readers <= 0 {
+		readers = IndexReaders
+	}
+	ok, _ := fanout(ctx, cands, readers, readers, readers, func(ctx context.Context, p peer.ID) bool {
 		var resp wire.IndexGetResp
 		err := c.call(ctx, "index_get", p, wire.ProtoIndexGet, req, &resp, func() error {
 			if resp.Err != "" {
@@ -402,11 +413,25 @@ func (c *Client) fetch(ctx context.Context, h proto.Hash) (proto.MsgCert, error)
 	return cert, nil
 }
 
+// span traces one phase (no peer) for measurements.
+func (c *Client) span(op string, start time.Time, err error) {
+	if c.Trace == nil {
+		return
+	}
+	e := Event{Op: op, Ms: float64(time.Since(start).Microseconds()) / 1000}
+	if err != nil {
+		e.Err = err.Error()
+	}
+	c.Trace(e)
+}
+
 // closest returns the DB nodes closest to key, nearest first.
 func (c *Client) closest(ctx context.Context, key proto.Hash) ([]peer.ID, error) {
 	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
 	defer cancel()
+	start := time.Now()
 	ps, err := c.DHT.GetClosestPeers(ctx, string(key[:]))
+	c.span("lookup", start, err)
 	if err != nil {
 		return nil, err
 	}

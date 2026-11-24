@@ -9,7 +9,7 @@ with a check.
 
 | Key | Who | Where | If lost / leaked |
 |---|---|---|---|
-| Founder key (one per founder) | each founder, **offline** | a USB stick or an air-gapped machine; never on a server | Lost: the existing genesis stays valid, but a new one needs every founder, so a replacement genesis must name a new founder set. Leaked: the attacker can sign a rival genesis, but apps and nodes only trust the file shipped to them, so nothing changes unless you ship theirs. |
+| Founder key (one per founder) | each founder, **offline** | a USB stick or an air-gapped machine; never on a server | Lost: the existing genesis stays valid, but a new one needs every founder, so a replacement genesis must name a new founder set. Leaked: the attacker can sign a rival genesis, but apps and nodes trust the community files they are given: the shipped ones, or a file placed in the data dir or `LIBR_COMMUNITIES` (which replaces a shipped file of the same name). Nothing changes unless someone installs theirs. |
 | Moderator key | each moderator | their desktop app identity (`~/.config/libr/keys/priv.key`, `%APPDATA%\libr\keys`, `~/Library/Application Support/libr/keys`) | Leaked key = one faulty moderator; the community tolerates f of them. Replace it with a new genesis (until epoch hand-off exists). |
 | Relay key | relay operator | `RELAY_PRIV_KEY` in `deploy/.env` | It is the relay's peer ID in every shipped app; changing it means a new release. Back it up. |
 | DB node key | DB node operator | `node.key` in the DB node's data volume | Same: shipped bootstrap peers name it. Back it up. |

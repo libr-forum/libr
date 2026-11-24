@@ -51,10 +51,11 @@ func TestHumanReview(t *testing.T) {
 	ctx, cancel := ctx90()
 	defer cancel()
 
-	if _, err := w.submit("plain text is decided at once"); err != nil {
+	plain, err := w.submit("plain text is decided at once")
+	if err != nil {
 		t.Fatal(err)
 	}
-	_, err := w.submit(`<img src="data:image/png;base64,AAAA">`)
+	_, err = w.submit(`<img src="data:image/png;base64,AAAA">`)
 	p := asPending(t, err)
 	if p.Waiting != 4 || len(p.Votes) != 0 {
 		t.Fatalf("pending: waiting %d votes %d", p.Waiting, len(p.Votes))
@@ -79,8 +80,13 @@ func TestHumanReview(t *testing.T) {
 		t.Fatalf("report kept by 2 of 4: %v", err)
 	}
 
-	// A second report with another reason is a new item; three moderators remove.
-	_, err = w.client.Report(ctx, posted.Cert, "illegal")
+	// A second report with another reason gets the same decisions: still kept.
+	if _, err := w.client.Report(ctx, posted.Cert, "illegal"); !errors.Is(err, ErrRejected) {
+		t.Fatalf("second report with a new reason: %v", err)
+	}
+
+	// Another post: three moderators remove it.
+	_, err = w.client.Report(ctx, plain.Cert, "illegal")
 	rp = asPending(t, err)
 	w.resolveAll(t, true, true, true)
 	_, removed, err := w.client.Resume(ctx, rp)
@@ -88,7 +94,7 @@ func TestHumanReview(t *testing.T) {
 		t.Fatalf("report removed by 3 of 4: %+v %v", removed, err)
 	}
 	<-removed.Done
-	if got := w.feed(); len(got) != 1 || got[0] != "plain text is decided at once" {
+	if got := w.feed(); len(got) != 1 || got[0] == "plain text is decided at once" {
 		t.Fatalf("feed after removal = %q", got)
 	}
 }

@@ -122,6 +122,11 @@ func (n *Node) get(_ peer.ID, req wire.GetReq) wire.GetResp {
 }
 
 func (n *Node) indexGet(_ peer.ID, req wire.IndexGetReq) wire.IndexGetResp {
+	if n.OptOut[req.Community] {
+		// An empty answer would count as one of the reader's K index nodes and hide
+		// the community's posts from it; refusing sends the reader to the next node.
+		return wire.IndexGetResp{Err: wire.ErrOptOut}
+	}
 	hs, err := n.Store.Index(req.Community, req.Bucket, wire.MaxIndexHashes)
 	if err != nil {
 		return wire.IndexGetResp{Err: wire.ErrInternal}

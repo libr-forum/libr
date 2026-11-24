@@ -79,9 +79,11 @@ func TestDeferReport(t *testing.T) {
 	if err != nil || !v.Approve || !proto.VerifyRepVote(*v, pub(key("mod0")), r) {
 		t.Fatalf("after resolve: %+v %v", v, err)
 	}
-	// Same message, different reason: a separate item.
-	if _, err := m.DecideReport(context.Background(), report(t, "r", published("hello"), "other")); !errors.Is(err, ErrPending) {
-		t.Fatalf("second reason: %v", err)
+	// Same message, different reason: the same decision, signed over the new reason.
+	v, err = m.DecideReport(context.Background(), report(t, "r2", published("hello"), "other"))
+	r.Reason = "other"
+	if err != nil || !v.Approve || !proto.VerifyRepVote(*v, pub(key("mod0")), r) {
+		t.Fatalf("second reason: %+v %v", v, err)
 	}
 }
 

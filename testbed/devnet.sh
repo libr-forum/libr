@@ -56,7 +56,7 @@ for i in 1 2 3 4; do
 done
 sleep 3
 for i in $(seq 1 $nctl); do
-  run mod$i "$ctl" mod serve -key "$DIR/keys/mod$i.key" -communities "$DIR/communities" \
+  run mod$i "$ctl" mod serve -key "$DIR/keys/mod$i.key" -votes "$DIR/mod$i.votes" -communities "$DIR/communities" \
     -relays "$RELAY" -bootstrap "$BOOT" -listen /ip4/0.0.0.0/tcp/420$i -report-policy keyword:remove-me
 done
 sleep 5

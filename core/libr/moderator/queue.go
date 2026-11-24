@@ -22,8 +22,9 @@ var ErrDefer = errors.New("deferred to a human moderator")
 var ErrPending = errors.New("pending human review")
 
 const (
-	maxQueued = 1000               // undecided items; beyond this, deferrals are refused
-	keepFor   = 7 * 24 * time.Hour // decided or not, items are dropped after this
+	maxQueued = 1000 // undecided items; beyond this, deferrals are refused
+
+	keepFor = 7 * 24 * time.Hour // decided or not, items are dropped after this
 )
 
 // Item is one post or report waiting for (or decided by) a human moderator.
@@ -44,9 +45,18 @@ func PostKey(m proto.Msg, epoch uint64) string {
 	return fmt.Sprintf("post/%s/%d", hex.EncodeToString(id[:]), epoch)
 }
 
-func ReportKey(m proto.Msg, epoch uint64, reason string) string {
-	id, r := m.ID(), sha256.Sum256([]byte(reason))
-	return fmt.Sprintf("report/%s/%s/%d", hex.EncodeToString(id[:]), hex.EncodeToString(r[:8]), epoch)
+// ReportKey identifies a moderator's one decision on removing a post: every report
+// of the post, whatever its reason, maps to it.
+func ReportKey(m proto.Msg, epoch uint64) string {
+	id := m.ID()
+	return fmt.Sprintf("report/%s/%d", hex.EncodeToString(id[:]), epoch)
+}
+
+// ContentKey identifies a post's content in a community, independent of author and
+// timestamp: a moderator that rejected it rejects identical content again.
+func ContentKey(m proto.Msg, epoch uint64) string {
+	h := sha256.Sum256(proto.Encode("libr/v2/content", []byte(m.Community), m.Content))
+	return fmt.Sprintf("content/%s/%d", hex.EncodeToString(h[:]), epoch)
 }
 
 // Queue holds deferred items, persisted as one JSON file (empty path: memory only).

@@ -107,8 +107,11 @@ func (s *ModSet) checkShape() error {
 	if s.Community == "" {
 		return errors.New("modset: empty community")
 	}
-	if uint64(len(s.Mods)) < 3*s.F+1 {
-		return fmt.Errorf("modset %s: %d mods cannot tolerate f=%d (need >= 3f+1)", s.Community, len(s.Mods), s.F)
+	// Exactly 3f+1: with more members, 2f+1 approvals no longer need an honest
+	// majority of the committee's non-faulty members, and f+1 honest rejections no
+	// longer make approval impossible.
+	if uint64(len(s.Mods)) != 3*s.F+1 {
+		return fmt.Errorf("modset %s: %d mods for f=%d, want 3f+1 = %d", s.Community, len(s.Mods), s.F, 3*s.F+1)
 	}
 	if s.Threshold != 2*s.F+1 {
 		return fmt.Errorf("modset %s: threshold %d, want 2f+1 = %d", s.Community, s.Threshold, 2*s.F+1)

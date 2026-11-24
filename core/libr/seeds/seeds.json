@@ -1,5 +1,15 @@
 {
-  "bootstrap": [],
-  "relays": [],
-  "seed_urls": []
+ "bootstrap": [
+  "/ip4/10.6.0.79/tcp/4511/p2p/12D3KooWDYuGySs7macMzqN53v8FrJSGRwVqAvMP3bcY9DsBhqaA",
+  "/ip4/10.6.0.79/tcp/4512/p2p/12D3KooWMFmW6YEzbBktvim4Tr1G5NR4HeQCPbpMeLoPNkENjeuC",
+  "/ip4/10.6.0.79/tcp/4513/p2p/12D3KooWMiaHtY4DUsg1AfLUgEiGgTBJbS1p85wKeXCQ84pVG7bw",
+  "/ip4/10.6.0.79/tcp/4514/p2p/12D3KooWS7nSoh9vR6rs6AWDehhahw4Kgn4Vn2UzRi4swuJzxZho",
+  "/ip4/10.6.0.79/tcp/4515/p2p/12D3KooWRobLnGsTsbF7h1UGYPBDwEU6HB61Zu5szRMKsJiuL9ef",
+  "/ip4/10.6.0.79/tcp/4516/p2p/12D3KooWE9VqCLk8Z1Dbxtr1h5SHm1ZTXpU4CHcynLrCHPrGBv2p"
+ ],
+ "relays": [
+  "/ip4/10.6.0.79/tcp/4501/p2p/12D3KooWMLsnrj2hbabT84RcTjUFHzEJYAFtoQ3euDz4k19AsNtJ",
+  "/ip4/10.6.0.79/tcp/4502/p2p/12D3KooWBCafkJCA9WuxdVNdnjCj2dP57yyYu4NK13M8GVXPzCe5"
+ ],
+ "seed_urls": []
 }

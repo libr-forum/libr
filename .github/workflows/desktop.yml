@@ -1,0 +1,60 @@
+name: Desktop apps
+
+# Builds the desktop app (Wails) for Windows, macOS and Linux and attaches it to the
+# release of the pushed tag. The network (seeds.json, community files) is built in.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Desktop (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-amd64, os: windows-latest, out: libr.exe, asset: libr-desktop-windows-amd64.exe, tags: '' }
+          - { name: macos-arm64, os: macos-14, out: libr.app, asset: libr-desktop-macos-arm64.zip, tags: '' }
+          - { name: macos-amd64, os: macos-13, out: libr.app, asset: libr-desktop-macos-amd64.zip, tags: '' }
+          - { name: linux-amd64, os: ubuntu-24.04, out: libr, asset: libr-desktop-linux-amd64, tags: webkit2_41 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/mod_client/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+      - name: Build
+        working-directory: core/mod_client
+        shell: bash
+        env:
+          CGO_ENABLED: '1' # SQLite for Contribute Storage
+        run: |
+          if [ -n "${{ matrix.tags }}" ]; then wails build -trimpath -tags ${{ matrix.tags }}; else wails build -trimpath; fi
+      - name: Package
+        working-directory: core/mod_client/build/bin
+        shell: bash
+        run: |
+          case "${{ matrix.asset }}" in
+            *.zip) ditto -c -k --keepParent "${{ matrix.out }}" "$GITHUB_WORKSPACE/${{ matrix.asset }}" ;;
+            *) cp "${{ matrix.out }}" "$GITHUB_WORKSPACE/${{ matrix.asset }}" ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ matrix.asset }}

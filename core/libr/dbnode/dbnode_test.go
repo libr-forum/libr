@@ -67,7 +67,7 @@ type rig struct {
 
 // newRig starts a relay, a NATed DB node and a NATed client; the client reaches the DB
 // node only through a relayed circuit.
-func newRig(t *testing.T, reg *proto.Registry) *rig {
+func newRig(t *testing.T, reg *proto.Registry, optOut ...string) *rig {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -85,7 +85,11 @@ func newRig(t *testing.T, reg *proto.Registry) *rig {
 	}
 	t.Cleanup(func() { db.Close() })
 	store := NewMemStore()
-	(&Node{Key: dbKey, Sets: reg, Store: store}).Register(db.Host)
+	out := map[string]bool{}
+	for _, c := range optOut {
+		out[c] = true
+	}
+	(&Node{Key: dbKey, Sets: reg, Store: store, OptOut: out}).Register(db.Host)
 
 	cl, err := testnet.NewNATedHost(ctx, p2p.Config{Listen: []string{"/ip4/127.0.0.1/tcp/0"}}, relays, false)
 	if err != nil {
@@ -183,6 +187,24 @@ func TestStoreRefusesInvalid(t *testing.T) {
 	}
 }
 
+// An opted-out node refuses both writes and index reads of the community, so readers
+// count it as unanswered and ask the next node instead of trusting its empty index.
+func TestOptOutRefusesReads(t *testing.T) {
+	reg, mods := community(t)
+	r := newRig(t, reg, "general")
+	c := cert(key("author"), "hi", now, mods[0], mods[1], mods[2])
+	var rr wire.ReceiptResp
+	r.call(t, string(wire.ProtoIndexPut), c, &rr)
+	if rr.Err != wire.ErrOptOut {
+		t.Fatalf("index put: %+v", rr)
+	}
+	var ir wire.IndexGetResp
+	r.call(t, string(wire.ProtoIndexGet), wire.IndexGetReq{Community: "general", Bucket: wire.Bucket(now)}, &ir)
+	if ir.Err != wire.ErrOptOut {
+		t.Fatalf("index get: %+v", ir)
+	}
+}
+
 func TestOversizeAndRateLimit(t *testing.T) {
 	reg, mods := community(t)
 	r := newRig(t, reg)
@@ -201,8 +223,10 @@ func TestOversizeAndRateLimit(t *testing.T) {
 	_ = s.Close()
 
 	c := cert(key("author"), "flood", now, mods[0], mods[1], mods[2])
+	// Send until refused: under load slow requests let the bucket refill a little,
+	// so a fixed count can flake; the cap still fails a node with no limit at all.
 	limited := 0
-	for i := 0; i < rateBurst+20; i++ {
+	for i := 0; i < 10*rateBurst && limited == 0; i++ {
 		var rr wire.ReceiptResp
 		r.call(t, string(wire.ProtoStore), c, &rr)
 		if rr.Err == wire.ErrRateLimited.Error() {

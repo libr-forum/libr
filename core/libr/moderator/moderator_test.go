@@ -180,7 +180,7 @@ func TestBusy(t *testing.T) {
 	done := make(chan error, maxDeciding)
 	for i := 0; i < maxDeciding; i++ {
 		go func(i int) {
-			_, err := m.Decide(context.Background(), msg(fmt.Sprint("a", i), "x", now))
+			_, err := m.Decide(context.Background(), msg(fmt.Sprint("a", i), fmt.Sprint("x", i), now))
 			done <- err
 		}(i)
 	}
