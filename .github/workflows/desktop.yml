@@ -18,8 +18,8 @@ jobs:
       matrix:
         include:
           - { name: windows-amd64, os: windows-latest, out: libr.exe, asset: libr-desktop-windows-amd64.exe, tags: '' }
-          - { name: macos-arm64, os: macos-14, out: libr.app, asset: libr-desktop-macos-arm64.zip, tags: '' }
-          - { name: macos-amd64, os: macos-13, out: libr.app, asset: libr-desktop-macos-amd64.zip, tags: '' }
+          - { name: macos-arm64, os: macos-latest, out: libr.app, asset: libr-desktop-macos-arm64.zip, tags: '' }
+          - { name: macos-amd64, os: macos-15-intel, out: libr.app, asset: libr-desktop-macos-amd64.zip, tags: '' }
           - { name: linux-amd64, os: ubuntu-24.04, out: libr, asset: libr-desktop-linux-amd64, tags: webkit2_41 }
     runs-on: ${{ matrix.os }}
     steps:
