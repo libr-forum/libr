@@ -21,12 +21,15 @@ import (
 	"github.com/libr-forum/Libr/core/libr/types"
 )
 
-var forbidden = LoadForbiddenWords()
+var forbidden []string
 
 type ModelFunc func(content string) (bool, error)
 
+// Package variables initialise before init(), so the default config must be written
+// first; otherwise a fresh install prints a spurious "Error loading forbidden words".
 func init() {
 	ensureModConfigExists()
+	forbidden = LoadForbiddenWords()
 }
 
 func GetModConfigPath() string {
