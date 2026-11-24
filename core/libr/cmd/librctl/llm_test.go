@@ -29,9 +29,12 @@ func fakeOllama(t *testing.T, bad string, models *[]string) *httptest.Server {
 		}
 		*models = append(*models, req.Model)
 		u := req.Messages[1]
-		d := "approve"
+		d, no := "approve", "reject"
+		if strings.Contains(req.Messages[0].Content, "was reported") {
+			d, no = "keep", "remove"
+		}
 		if strings.Contains(u.Content, bad) || (len(u.Images) > 0 && u.Images[0] == bad) {
-			d = "reject"
+			d = no
 		}
 		if strings.Contains(u.Content, "garble") {
 			_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": "not json"}})
@@ -84,5 +87,31 @@ func TestLLMPolicy(t *testing.T) {
 	srv.Close()
 	if ok, err := ask("g", "hello"); ok || !errors.Is(err, moderator.ErrDefer) {
 		t.Fatalf("server down: want deferral, got %v %v", ok, err)
+	}
+}
+
+func TestLLMReport(t *testing.T) {
+	var models []string
+	srv := fakeOllama(t, "BAD", &models)
+	defer srv.Close()
+	var audit []auditEntry
+	c := llmConfig{URL: srv.URL, Model: "text", VisionModel: "vision", Rules: map[string]string{"g": "no BAD"},
+		audit: func(e auditEntry) { audit = append(audit, e) }}
+	rp := c.reportPolicy(srv.Client())
+	report := func(content, reason string) (bool, error) {
+		return rp(context.Background(), proto.Msg{Community: "g", Content: []byte(content)}, reason)
+	}
+	if rm, err := report("hello", "spam"); rm || err != nil {
+		t.Fatalf("clean post: %v %v", rm, err)
+	}
+	if rm, err := report("hello", "mentions BAD"); !rm || err != nil { // the reason reaches the model
+		t.Fatalf("reason ignored: %v %v", rm, err)
+	}
+	models = nil
+	if rm, err := report(`<img src="data:image/png;base64,AAAA">`, "x"); rm || err != nil || models[0] != "vision" {
+		t.Fatalf("image report: %v %v %v", rm, err, models)
+	}
+	if len(audit) != 3 || audit[1].Kind != "report" || audit[1].Decision != "remove" || audit[1].Report != "mentions BAD" {
+		t.Fatalf("audit %+v", audit)
 	}
 }

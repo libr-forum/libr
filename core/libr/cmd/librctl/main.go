@@ -357,7 +357,7 @@ func modServe(args []string) error {
 	fs := flag.NewFlagSet("mod serve", flag.ContinueOnError)
 	nf := addNetFlags(fs, true)
 	policy := fs.String("policy", "approve-all", "posts: approve-all | keyword:w1,w2 | llm:FILE (local Ollama model, rules per community; see llm.go)")
-	reportPolicy := fs.String("report-policy", "", "reports: remove what this policy would reject (default: -policy)")
+	reportPolicy := fs.String("report-policy", "", "reports: remove what this policy would reject (default: -policy); llm:FILE also weighs the reporter's reason")
 	voteLog := fs.String("votes", "", "file of every decision this moderator signs (required; a restart must never sign twice). \"memory\": keep in memory only (tests)")
 	review := fs.String("review", "", "posts containing any of these comma-separated words, or images, go to the human queue (needs -queue)")
 	queuePath := fs.String("queue", "", "human review queue file; with it, every report goes to a human unless -report-policy is set")
@@ -380,11 +380,17 @@ func modServe(args []string) error {
 	}
 	mod := &moderator.Mod{Policy: pol, VoteLog: *voteLog}
 	if *reportPolicy != "" {
-		rp, _, err := parsePolicy(*reportPolicy)
-		if err != nil {
-			return err
+		if strings.HasPrefix(*reportPolicy, "llm:") {
+			if mod.Report, err = loadLLMReport(strings.TrimPrefix(*reportPolicy, "llm:")); err != nil {
+				return err
+			}
+		} else {
+			rp, _, err := parsePolicy(*reportPolicy)
+			if err != nil {
+				return err
+			}
+			mod.Report = moderator.RemoveIfRejected(rp)
 		}
-		mod.Report = moderator.RemoveIfRejected(rp)
 	}
 	if *queuePath != "" {
 		if mod.Queue, err = moderator.NewQueue(*queuePath); err != nil {
