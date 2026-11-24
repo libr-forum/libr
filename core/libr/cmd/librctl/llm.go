@@ -10,6 +10,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/libr-forum/Libr/core/libr/moderator"
 	"github.com/libr-forum/Libr/core/libr/proto"
@@ -22,6 +24,41 @@ type llmConfig struct {
 	Model       string            `json:"model"`        // text model
 	VisionModel string            `json:"vision_model"` // model for attached images; empty: images go to the human queue
 	Rules       map[string]string `json:"rules"`        // community name -> rules in plain language
+	AuditLog    string            `json:"audit_log"`    // optional: one JSON line per model call (test data)
+
+	audit func(auditEntry)
+}
+
+// auditEntry records one model call. Text is kept only for rejected or deferred
+// posts (approved posts are on the DB nodes anyway); images are never kept.
+type auditEntry struct {
+	Time      string `json:"time"`
+	Community string `json:"community"`
+	MsgID     string `json:"msg_id"`
+	Author    string `json:"author"`
+	Kind      string `json:"kind"` // text | image
+	Model     string `json:"model"`
+	Decision  string `json:"decision"` // approve | reject | defer
+	Reason    string `json:"reason"`
+	Ms        int64  `json:"ms"`
+	Chars     int    `json:"chars"`
+	Images    int    `json:"images"`
+	Text      string `json:"text,omitempty"`
+	Err       string `json:"err,omitempty"`
+}
+
+func openAudit(path string) (func(auditEntry), error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	var mu sync.Mutex
+	enc := json.NewEncoder(f)
+	return func(e auditEntry) {
+		mu.Lock()
+		defer mu.Unlock()
+		_ = enc.Encode(e)
+	}, nil
 }
 
 var imgRe = regexp.MustCompile(`(?i)<img\s+[^>]*src="data:image/[a-z+]+;base64,([^"]+)"[^>]*>`)
@@ -50,6 +87,11 @@ func loadLLMPolicy(path string) (moderator.Policy, bool, error) {
 	if cfg.URL == "" || cfg.Model == "" || len(cfg.Rules) == 0 {
 		return nil, false, fmt.Errorf("%s: url, model and rules are required", path)
 	}
+	if cfg.AuditLog != "" {
+		if cfg.audit, err = openAudit(os.ExpandEnv(cfg.AuditLog)); err != nil { // e.g. /data/$MOD/audit.jsonl
+			return nil, false, err
+		}
+	}
 	return cfg.policy(http.DefaultClient), cfg.VisionModel != "", nil
 }
 
@@ -66,8 +108,30 @@ func (c llmConfig) policy(hc *http.Client) moderator.Policy {
 		if strings.Contains(content, "data:image/") && len(images) == 0 {
 			return false, fmt.Errorf("unrecognised image encoding: %w", moderator.ErrDefer)
 		}
-		if text := strings.TrimSpace(imgRe.ReplaceAllString(content, "")); text != "" {
-			ok, err := c.ask(ctx, hc, c.Model, fmt.Sprintf(llmSystem, m.Community, rules), "<post>\n"+text+"\n</post>", nil)
+		text := strings.TrimSpace(imgRe.ReplaceAllString(content, ""))
+		id := m.ID()
+		record := func(kind, model string, start time.Time, ok bool, reason string, err error) {
+			if c.audit == nil {
+				return
+			}
+			e := auditEntry{Time: start.UTC().Format(time.RFC3339), Community: m.Community, MsgID: fmt.Sprintf("%x", id[:]),
+				Author: shortKey(m.Author), Kind: kind, Model: model, Reason: reason,
+				Ms: time.Since(start).Milliseconds(), Chars: len(text), Images: len(images), Decision: "approve"}
+			switch {
+			case err != nil:
+				e.Decision, e.Err = "defer", err.Error()
+			case !ok:
+				e.Decision = "reject"
+			}
+			if e.Decision != "approve" {
+				e.Text = text
+			}
+			c.audit(e)
+		}
+		if text != "" {
+			start := time.Now()
+			ok, reason, err := c.ask(ctx, hc, c.Model, fmt.Sprintf(llmSystem, m.Community, rules), "<post>\n"+text+"\n</post>", nil)
+			record("text", c.Model, start, ok, reason, err)
 			if err != nil || !ok {
 				return ok, err
 			}
@@ -76,7 +140,9 @@ func (c llmConfig) policy(hc *http.Client) moderator.Policy {
 			if c.VisionModel == "" {
 				return false, moderator.ErrDefer
 			}
-			ok, err := c.ask(ctx, hc, c.VisionModel, fmt.Sprintf(llmVision, m.Community, rules), "Image to judge.", []string{img[1]})
+			start := time.Now()
+			ok, reason, err := c.ask(ctx, hc, c.VisionModel, fmt.Sprintf(llmVision, m.Community, rules), "Image to judge.", []string{img[1]})
+			record("image", c.VisionModel, start, ok, reason, err)
 			if err != nil || !ok {
 				return ok, err
 			}
@@ -85,7 +151,7 @@ func (c llmConfig) policy(hc *http.Client) moderator.Policy {
 	}
 }
 
-func (c llmConfig) ask(ctx context.Context, hc *http.Client, model, system, user string, images []string) (bool, error) {
+func (c llmConfig) ask(ctx context.Context, hc *http.Client, model, system, user string, images []string) (bool, string, error) {
 	type msg struct {
 		Role    string   `json:"role"`
 		Content string   `json:"content"`
@@ -98,12 +164,12 @@ func (c llmConfig) ask(ctx context.Context, hc *http.Client, model, system, user
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.URL, "/")+"/api/chat", bytes.NewReader(body))
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := hc.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("llm: %v: %w", err, moderator.ErrDefer)
+		return false, "", fmt.Errorf("llm: %v: %w", err, moderator.ErrDefer)
 	}
 	defer resp.Body.Close()
 	var out struct {
@@ -111,19 +177,28 @@ func (c llmConfig) ask(ctx context.Context, hc *http.Client, model, system, user
 		Error   string                   `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("llm: status %d %s: %w", resp.StatusCode, out.Error, moderator.ErrDefer)
+		return false, "", fmt.Errorf("llm: status %d %s: %w", resp.StatusCode, out.Error, moderator.ErrDefer)
 	}
 	var verdict struct{ Decision, Reason string }
 	if err := json.Unmarshal([]byte(out.Message.Content), &verdict); err != nil {
-		return false, fmt.Errorf("llm: unreadable answer %q: %w", out.Message.Content, moderator.ErrDefer)
+		return false, "", fmt.Errorf("llm: unreadable answer %q: %w", out.Message.Content, moderator.ErrDefer)
 	}
 	d := strings.ToLower(strings.TrimSpace(verdict.Decision))
 	log.Printf("llm %s: %s (%s)", model, d, verdict.Reason)
 	switch d {
 	case "approve":
-		return true, nil
+		return true, verdict.Reason, nil
 	case "reject":
-		return false, nil
+		return false, verdict.Reason, nil
 	}
-	return false, fmt.Errorf("llm: decision %q: %w", verdict.Decision, moderator.ErrDefer)
+	return false, "", fmt.Errorf("llm: decision %q: %w", verdict.Decision, moderator.ErrDefer)
+}
+
+// shortKey is a short, stable author label for the audit log.
+func shortKey(k []byte) string {
+	h := fmt.Sprintf("%x", k)
+	if len(h) > 16 {
+		h = h[:16]
+	}
+	return h
 }

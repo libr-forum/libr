@@ -45,7 +45,9 @@ func TestLLMPolicy(t *testing.T) {
 	var models []string
 	srv := fakeOllama(t, "BAD", &models)
 	defer srv.Close()
-	c := llmConfig{URL: srv.URL, Model: "text", VisionModel: "vision", Rules: map[string]string{"g": "no BAD"}}
+	var audit []auditEntry
+	c := llmConfig{URL: srv.URL, Model: "text", VisionModel: "vision", Rules: map[string]string{"g": "no BAD"},
+		audit: func(e auditEntry) { audit = append(audit, e) }}
 	pol := c.policy(srv.Client())
 	ask := func(community, content string) (bool, error) {
 		return pol(context.Background(), proto.Msg{Community: community, Content: []byte(content)})
@@ -55,6 +57,9 @@ func TestLLMPolicy(t *testing.T) {
 	}
 	if ok, err := ask("g", "BAD words"); ok || err != nil {
 		t.Fatalf("bad text: %v %v", ok, err)
+	}
+	if len(audit) != 2 || audit[0].Decision != "approve" || audit[0].Text != "" || audit[1].Decision != "reject" || audit[1].Text != "BAD words" {
+		t.Fatalf("audit: %+v", audit)
 	}
 	if ok, err := ask("g", `look <img src="data:image/png;base64,BAD" />`); ok || err != nil {
 		t.Fatalf("bad image: %v %v", ok, err)
